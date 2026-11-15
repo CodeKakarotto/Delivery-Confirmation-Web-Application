@@ -21,7 +21,7 @@ export function ConfirmationDetailPage() {
     if (detail.data) setRetrievedAt(new Date().toISOString());
   }, [detail.data]);
 
-  const back = <BackButton fallback="/shop/confirmations" />;
+  const back = <BackButton fallback="/shop" />;
   if (detail.error) {
     const notFound = detail.error instanceof ApiRequestError && detail.error.status === 404;
     return (

@@ -18,8 +18,9 @@ for the test runner by `frontend/test/register-tsx.mjs` (esbuild).
 | `worker/test/dashboard.test.ts` | List, exact search, filters, paging, detail, signature serving (no-store), daily summary and missing confirmations |
 | `worker/test/shopCalendar.test.ts` | Month → week → day grouping in the shop time zone, weeks split at month ends, today always present, day filter, 10-per-page paging, order view (awaiting/confirmed/cancelled), summary default date |
 | `worker/test/shopTime.test.ts` | Shop-local days, daylight-saving day ranges, Sunday weeks |
-| `frontend/test/shopUi.test.tsx` | "Delivered to recipient" bubble before the Delivery Exception group (one radio group), signature pop-up launcher and preview, calendar tree opening on this month/week/day |
-| `worker/test/roles.test.ts` | Driver endpoints only for the driver role, dashboard only for the shop role, the driver's awaiting list (today, unconfirmed, no addresses, shop day) |
+| `frontend/test/shopUi.test.tsx` | "Delivered to recipient" bubble before the Delivery Exception group (one radio group), signature pop-up launcher and preview |
+| `frontend/test/monthCalendar.test.tsx` | Month grid (Sunday weeks), the single calendar: current week row, today, day counts, selected day, today's date underneath, no date picker |
+| `worker/test/roles.test.ts` | Driver endpoints only for the driver role, dashboard only for the shop role, the driver's awaiting list (today, unconfirmed, no addresses, shop day, 5 per page with total) |
 | `frontend/test/roleGate.test.tsx` | Each section shown only to its role; role chooser prompt |
 | `worker/test/barcode.test.ts` | Code 128 table, checksum, exact round-trip of order IDs |
 | `frontend/test/deliveryCard.test.tsx` | Required field order, barcode under the order ID encoding it exactly, exception inside Deliver To, Received By/Signature inside Delivery Instructions, "—"/"Not recorded", text escaping, saved/print view order |

@@ -48,7 +48,6 @@ function ThemeToggle() {
 
 const NAV = {
   driver: [{ to: '/confirm', label: 'Confirm a delivery' }],
-  // Overview and Confirmations are the tabs inside the shop section.
   shop: [{ to: '/shop', label: 'Shop employees' }],
 } as const;
 

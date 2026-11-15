@@ -172,26 +172,49 @@ async function refuseSecond(
   throw ALREADY_CONFIRMED();
 }
 
-/** Today's (shop-local) orders that still need a confirmation, by stop number. No street addresses. */
+/** Today's (shop-local) orders that still need a confirmation, by stop number, a page at a time. No street addresses. */
 export async function awaiting(ctx: RequestContext): Promise<Response> {
   requireDemoAccess(ctx);
   requireRole(ctx, 'driver');
   await rateLimit(ctx, RATE_LIMITS.lookup);
+  const limit = pageParam(ctx, 'limit', 5, 1, 50);
+  const offset = pageParam(ctx, 'offset', 0, 0, 10_000);
   const date = localDateKey(ctx.now, ctx.settings.timeZone);
-  const res = await ctx.db
-    .prepare(
-      `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city
-         FROM deliveries d
-        WHERE d.delivery_date = ? AND d.cancelled_at IS NULL
-          AND NOT EXISTS (SELECT 1 FROM delivery_confirmations c WHERE c.delivery_id = d.id)
-        ORDER BY d.stop_number IS NULL, d.stop_number, d.order_id
-        LIMIT 200`,
-    )
-    .bind(date)
-    .all<{ order_id: string; stop_number: number | null; zone: string | null; recipient_name: string | null; city: string }>();
+  const awaitingWhere = `d.delivery_date = ? AND d.cancelled_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM delivery_confirmations c WHERE c.delivery_id = d.id)`;
+  const [rows, count] = await ctx.db.batch<AwaitingRow | { n: number }>([
+    ctx.db
+      .prepare(
+        `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city
+           FROM deliveries d
+          WHERE ${awaitingWhere}
+          ORDER BY d.stop_number IS NULL, d.stop_number, d.order_id
+          LIMIT ? OFFSET ?`,
+      )
+      .bind(date, limit, offset),
+    ctx.db.prepare(`SELECT COUNT(*) AS n FROM deliveries d WHERE ${awaitingWhere}`).bind(date),
+  ]);
   const body: DriverAwaitingResponse = {
     date,
-    items: res.results.map((r) => ({ orderId: r.order_id, stopNumber: r.stop_number, zone: r.zone, recipientName: r.recipient_name, city: r.city })),
+    total: (count!.results[0] as { n: number }).n,
+    items: (rows!.results as AwaitingRow[]).map((r) => ({ orderId: r.order_id, stopNumber: r.stop_number, zone: r.zone, recipientName: r.recipient_name, city: r.city })),
   };
   return json(body);
+}
+
+interface AwaitingRow {
+  order_id: string;
+  stop_number: number | null;
+  zone: string | null;
+  recipient_name: string | null;
+  city: string;
+}
+
+function pageParam(ctx: RequestContext, name: string, fallback: number, min: number, max: number): number {
+  const raw = ctx.url.searchParams.get(name);
+  if (raw === null || raw === '') return fallback;
+  if (!/^\d{1,6}$/.test(raw) || Number(raw) < min || Number(raw) > max) {
+    throw validationError([{ path: name, message: `Must be a whole number from ${min} to ${max}` }]);
+  }
+  return Number(raw);
 }

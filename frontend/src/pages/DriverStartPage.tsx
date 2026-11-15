@@ -1,20 +1,26 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ORDER_ID_MAX, ORDER_ID_PATTERN } from '../../../shared/schemas.ts';
 import { errorMessage } from '../api/client.ts';
 import { driverApi } from '../api/endpoints.ts';
 import { BackButton } from '../components/BackButton.tsx';
+import { Pager } from '../components/ConfirmationRows.tsx';
 import { Field, Notice, Spinner } from '../components/ui.tsx';
 import { fullDayLabel } from '../lib/calendar.ts';
 import { useApi } from '../lib/useApi.ts';
 
+const PAGE_SIZE = 5;
+
 /**
- * Driver home: today's deliveries still awaiting confirmation (tap one to confirm it), and an order-ID box for an
- * order that is not on the list. The list shows no street addresses; those appear after opening an order.
+ * Driver home: today's deliveries still awaiting confirmation, 5 per page (tap one to confirm it), and underneath an
+ * order-ID box for an order that is not on the list. The list shows no street addresses; those appear after opening
+ * an order. The page number lives in the URL, so Back returns to it.
  */
 export function DriverStartPage() {
   const navigate = useNavigate();
-  const awaiting = useApi(() => driverApi.awaiting(), []);
+  const [params, setParams] = useSearchParams();
+  const page = Math.max(1, Number(params.get('p')) || 1);
+  const awaiting = useApi(() => driverApi.awaiting({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [page]);
   const [orderId, setOrderId] = useState('');
   const [error, setError] = useState<string | undefined>();
 
@@ -37,7 +43,7 @@ export function DriverStartPage() {
         <div className="card-head-row">
           <h2 id="awaiting-title">
             Awaiting delivery
-            {awaiting.data && <span className="h1-sub">{awaiting.data.items.length}</span>}
+            {awaiting.data && <span className="h1-sub">{awaiting.data.total}</span>}
           </h2>
           <button type="button" className="btn btn-small btn-ghost" onClick={awaiting.reload} disabled={awaiting.loading}>
             Refresh
@@ -50,10 +56,14 @@ export function DriverStartPage() {
           </Notice>
         ) : !awaiting.data ? (
           <Spinner label="Loading today’s deliveries" />
-        ) : awaiting.data.items.length === 0 ? (
+        ) : awaiting.data.total === 0 ? (
           <p className="muted">Every delivery scheduled for today is confirmed.</p>
+        ) : awaiting.data.items.length === 0 ? (
+          <p className="muted">
+            No deliveries on this page. <button type="button" className="link-button" onClick={() => setParams({}, { replace: true })}>Go to page 1</button>
+          </p>
         ) : (
-          <ul className="plain-list awaiting-list">
+          <ul className={`plain-list awaiting-list${awaiting.loading ? ' is-loading' : ''}`} aria-busy={awaiting.loading}>
             {awaiting.data.items.map((a) => (
               <li key={a.orderId}>
                 <Link to={`/confirm/${encodeURIComponent(a.orderId)}`} className="awaiting-row driver-stop">
@@ -73,6 +83,14 @@ export function DriverStartPage() {
               </li>
             ))}
           </ul>
+        )}
+        {awaiting.data && (
+          <Pager
+            page={page}
+            total={awaiting.data.total}
+            pageSize={PAGE_SIZE}
+            onPage={(p) => setParams(p > 1 ? { p: String(p) } : {})}
+          />
         )}
       </section>
 

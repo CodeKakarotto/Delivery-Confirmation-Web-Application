@@ -1,18 +1,3 @@
-import { weekWithinMonth } from '../../../shared/shopTime.ts';
-import type { ConfirmationCalendar } from '../../../shared/types.ts';
-
-/** Which month, week (its start inside the month) and day are expanded. null = collapsed. */
-export interface OpenPath {
-  month: string | null;
-  week: string | null;
-  day: string | null;
-}
-
-/** The Confirmations tab opens on the current month, week and day (in the shop's time zone). */
-export function defaultOpenPath(cal: Pick<ConfirmationCalendar, 'today'>): OpenPath {
-  return { month: cal.today.slice(0, 7), week: weekWithinMonth(cal.today).start, day: cal.today };
-}
-
 // Calendar labels are fixed US English: the shop is a US business and dates are shown, not converted.
 const noon = (dateKey: string) => new Date(`${dateKey}T12:00:00Z`);
 const monthFmt = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });

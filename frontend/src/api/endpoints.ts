@@ -19,7 +19,8 @@ export const configApi = {
 
 export const driverApi = {
   /** Today's orders still awaiting confirmation (no street addresses). */
-  awaiting: () => api<DriverAwaitingResponse>('GET', '/api/driver/deliveries'),
+  awaiting: (page: { limit: number; offset: number }) =>
+    api<DriverAwaitingResponse>('GET', `/api/driver/deliveries?${new URLSearchParams({ limit: String(page.limit), offset: String(page.offset) })}`),
   /** One order by its exact ID. The ID goes in the path (it is not customer data); nothing else does. */
   lookup: (orderId: string, signal?: AbortSignal) =>
     api<DriverLookupResponse>('GET', `/api/driver/deliveries/${encodeURIComponent(orderId)}`, undefined, { signal }),

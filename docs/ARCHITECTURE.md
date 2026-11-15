@@ -30,8 +30,7 @@ the route app. In development Vite (5173) proxies `/api` to `wrangler dev` (8787
 | --- | --- |
 | `/` | Home: driver or employee |
 | `/confirm`, `/confirm/:orderId` | Driver: open an order, then the confirmation form |
-| `/shop` | Shop employees: Overview (today vs scheduled; awaiting orders open an order view) |
-| `/shop/confirmations` | Month → week → day → deliveries with times, 10 per page. The open path is in the URL (`m`, `w`, `d`, page `p`), so Back returns to it |
+| `/shop` | Shop employees: one month calendar (current week highlighted, today circled, today's date underneath). The selected day (`d`), shown month (`m`) and page (`p`) are in the URL, so Back returns to them. Below/beside it: the day's figures, awaiting orders (open an order view) and confirmed deliveries with times, 10 per page |
 | `/shop/confirmations/:id` | Saved record and printout |
 | `/shop/orders/:orderId` | One order opened from the awaiting list |
 

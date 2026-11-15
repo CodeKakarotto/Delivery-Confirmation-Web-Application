@@ -58,6 +58,8 @@ export interface DriverDelivery {
 /** Today's orders still awaiting confirmation, as listed on the driver page (no street addresses). */
 export interface DriverAwaitingResponse {
   date: string;
+  /** All awaiting orders for the day; `items` is one page of them. */
+  total: number;
   items: AwaitingDelivery[];
 }
 

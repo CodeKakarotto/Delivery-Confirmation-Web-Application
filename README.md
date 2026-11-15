@@ -18,7 +18,7 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
   only get Confirm a Delivery; shop employees only get the view-only Overview and Confirmations. The server checks
   the role on every request. It is **not** security (anyone can pick either role); real logins replace it.
 - **Driver home** (`/confirm`): today's deliveries still awaiting confirmation (stop #, zone, order ID, recipient,
-  city). Tap one to confirm it, or enter an order ID.
+  city), **5 per page**. Tap one to confirm it. Underneath: "Not on the list? Enter the order ID".
 
 - **Driver screen** (`/confirm`): open one order by its exact ID. The card shows, in this order:
   `#` → Zone → Order ID + Code 128 barcode → Deliver To (a **Delivered to recipient** bubble, then the Delivery
@@ -29,11 +29,10 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
 - Server-side validation of every field, including a structural check of the signature PNG.
 - Safe submission: a double tap or a retry after a lost response never saves twice (idempotency key); entries are kept
   after a recoverable failure; success is shown only after the server confirms the save.
-- **Shop employees section** (`/shop`), kept apart from the driver screens (but not sign-in protected; see below).
-  The header always shows today's date and the current week (shop time zone, America/New_York).
-  - **Overview**: the day's scheduled orders vs saved confirmations; awaiting/missing orders open an order view.
-  - **Confirmations**: month → week (Sunday–Saturday) → day → each delivery with its **delivery time**, opening on this
-    month, this week and today. 10 deliveries per page. Exact order-ID search and Needs review / Flagged filters.
+- **Shop employees** (`/shop`, view only): a **single month calendar**. The current week's row is highlighted,
+  today is circled, and today's date is written underneath (shop time zone, America/New_York). Each day shows how many
+  deliveries were confirmed. Tapping a day shows its figures, the orders still awaiting (tap to open) and the confirmed
+  deliveries with their **delivery time**, 10 per page. Find by order ID at the top.
   - **Record and print** (`/shop/confirmations/:id`): the saved record in the same field order, with logo, barcode,
     signature and delivery time, and refused duplicate/conflicting attempts.
 
@@ -53,7 +52,8 @@ npm run dev:api                       # Worker API on http://127.0.0.1:8787
 npm run dev:web                       # app on http://localhost:5173 (proxies /api to the Worker)
 ```
 
-Open http://localhost:5173. Demo order IDs: `MF-10482`, `MF-10483`, `MF-10484`, `MF-10485` (no zone, stop or product
+Open http://localhost:5173. Every start (and `npm run db:demo-today:local`) adds twelve demo orders for today
+(`MF-MMDD-01` … `-12`) if they are not there yet. Other demo order IDs: `MF-10482`, `MF-10483`, `MF-10484`, `MF-10485` (no zone, stop or product
 total, to show missing values), `FTD-2207731`, `MF-10490` (cancelled).
 
 To try the driver screen on a phone on the same Wi-Fi, add this computer's LAN address to `DEV_EXTRA_HOSTS` in

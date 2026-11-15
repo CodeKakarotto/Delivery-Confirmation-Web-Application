@@ -5,7 +5,7 @@ import { useShopConfig } from '../lib/useShopConfig.ts';
 
 /**
  * "Who are you?": the prototype's stand-in for a login screen. Drivers get Confirm a Delivery; shop employees get the
- * view-only Overview and Confirmations. The final system replaces this with real sign-in.
+ * view-only delivery calendar. The final system replaces this with real sign-in.
  */
 export function HomePage() {
   const config = useShopConfig();
@@ -39,7 +39,7 @@ export function HomePage() {
         <button type="button" className={`card home-card${role === 'shop' ? ' is-current' : ''}`} onClick={() => choose('shop')}>
           <span className="home-card-kicker">Shop employees</span>
           <span className="home-card-title">I’m a shop employee</span>
-          <span className="muted">View today’s deliveries and every confirmation by month, week and day with its delivery time.</span>
+          <span className="muted">A calendar of every delivery: tap a day to see what is awaiting and what was confirmed, with times.</span>
         </button>
       </div>
       <p className="muted small home-note">

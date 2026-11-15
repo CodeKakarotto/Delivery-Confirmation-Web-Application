@@ -34,7 +34,7 @@ export function ConfirmationRows({ items, timeZone, showDate = false }: { items:
   );
 }
 
-/** "Previous · Page 1 of 3 · Next" for lists of 10. */
+/** Previous / Next paging for lists (10 per page for shop employees, 5 for drivers). */
 export function Pager({ page, total, pageSize, onPage }: { page: number; total: number; pageSize: number; onPage: (p: number) => void }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (pages <= 1) return null;

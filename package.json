@@ -14,10 +14,11 @@
     "preview:web": "vite preview --config frontend/vite.config.ts",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:seed:local": "wrangler d1 execute DB --local --file=seed/demo-seed.sql",
-    "db:setup:local": "npm run db:migrate:local && npm run db:seed:local",
+    "db:setup:local": "npm run db:migrate:local && npm run db:seed:local && npm run db:demo-today:local",
     "test": "node --disable-warning=ExperimentalWarning --import ./frontend/test/register-tsx.mjs --test --test-reporter=spec \"worker/test/**/*.test.ts\" \"frontend/test/**/*.test.tsx\"",
     "typecheck": "tsc -p worker/tsconfig.json && tsc -p worker/test/tsconfig.json && tsc -p frontend/tsconfig.json && tsc -p frontend/test/tsconfig.json",
-    "check": "npm run typecheck && npm test && npm run build:web"
+    "check": "npm run typecheck && npm test && npm run build:web",
+    "db:demo-today:local": "wrangler d1 execute DB --local --file=seed/demo-today.sql"
   },
   "dependencies": {
     "react": "^19.1.0",

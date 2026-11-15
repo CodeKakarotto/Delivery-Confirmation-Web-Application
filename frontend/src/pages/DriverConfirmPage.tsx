@@ -219,7 +219,10 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
             // Leaving loses the entries and signature on this form, so check first once anything was entered.
             const dirty = form.outcome || form.receivedBy.trim() || form.signature || form.note.trim() || form.outcomeDetail.trim();
             if (dirty && phase !== 'saved' && !window.confirm('Leave this delivery? What you entered will be lost.')) return;
-            navigate('/confirm');
+            // Back to the list the driver came from (same page), or the driver home if opened directly.
+            const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
+            if (idx > 0) navigate(-1);
+            else navigate('/confirm');
           }}
         >
           <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">

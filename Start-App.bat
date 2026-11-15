@@ -28,6 +28,9 @@ if not exist .wrangler\state\v3\d1 (
   call npm run db:setup:local || goto :failed
 )
 
+echo Adding today's demo orders (only ones that are not there yet)...
+call npm run db:demo-today:local >nul 2>nul
+
 echo Starting the API and the website in two new windows...
 start "Michael's Flowers API (close to stop)" cmd /k npm run dev:api
 start "Michael's Flowers Website (close to stop)" cmd /k npm run dev:web

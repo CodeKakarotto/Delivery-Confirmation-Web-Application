@@ -21,9 +21,9 @@ role_required`. A stand-in for logins, not security (docs/SECURITY.md).
 
 ## Driver
 
-### `GET /api/driver/deliveries`
-Today's (shop time zone) orders that are not cancelled and not confirmed, by stop number:
-`{ date, items: [{ orderId, stopNumber, zone, recipientName, city }] }`. No street addresses. Rate limited (60/min).
+### `GET /api/driver/deliveries?limit=5&offset=0`
+Today's (shop time zone) orders that are not cancelled and not confirmed, by stop number, one page at a time
+(`limit` 1–50, default 5): `{ date, total, items: [{ orderId, stopNumber, zone, recipientName, city }] }`. No street addresses. Rate limited (60/min).
 
 ### `GET /api/driver/deliveries/:orderId`
 Exact, case-insensitive order ID. Rate limited (60/min).

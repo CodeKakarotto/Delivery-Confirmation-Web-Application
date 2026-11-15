@@ -72,3 +72,23 @@ describe('driver page: orders awaiting delivery today', () => {
     assert.equal(res.body.items.length, 5);
   });
 });
+
+describe('driver page: awaiting list, 5 per page', () => {
+  it('pages the awaiting list with a total', async () => {
+    const { client, db } = setup();
+    const insert = db.sqlite.prepare(
+      `INSERT INTO deliveries (order_id, recipient_name, address_line, city, state, postal_code, stop_number, delivery_date, created_at, updated_at)
+       VALUES (?, 'Demo Person', '1 Test St', 'Lake Ridge', 'VA', '22192', ?, '2026-11-14', '2026-11-14T00:00:00Z', '2026-11-14T00:00:00Z')`,
+    );
+    for (let i = 1; i <= 7; i++) insert.run(`PAGE-${i}`, 10 + i);
+    // 5 seeded orders for the day + 7 more = 12 awaiting.
+    const page1 = await client.request('GET', '/api/driver/deliveries?limit=5&offset=0', undefined, { now: NOW });
+    assert.equal(page1.status, 200);
+    assert.equal(page1.body.total, 12);
+    assert.deepEqual(page1.body.items.map((i: { orderId: string }) => i.orderId), ['MF-10482', 'MF-10483', 'MF-10484', 'FTD-2207731', 'PAGE-1']);
+    const page3 = await client.request('GET', '/api/driver/deliveries?limit=5&offset=10', undefined, { now: NOW });
+    assert.deepEqual(page3.body.items.map((i: { orderId: string }) => i.orderId), ['PAGE-7', 'MF-10485']);
+    assert.equal((await client.request('GET', '/api/driver/deliveries?limit=0', undefined, { now: NOW })).status, 422);
+    assert.equal((await client.request('GET', '/api/driver/deliveries?limit=51', undefined, { now: NOW })).status, 422);
+  });
+});
