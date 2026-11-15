@@ -29,7 +29,7 @@ export function DeliveryCard({
   footer,
 }: {
   delivery: DriverDelivery;
-  /** Delivery Exception subsection, shown inside Deliver To below the address. */
+  /** How it was handed over ("Delivered to recipient" or a Delivery Exception), inside Deliver To below the address. */
   exception: ReactNode;
   receivedBy: ReactNode;
   /** When set, "Received By" is a <label> for this input. */
@@ -68,7 +68,7 @@ export function DeliveryCard({
           </span>
         </address>
         {d.addressNotes && <p className="dc-address-notes">{d.addressNotes}</p>}
-        <div className="deliver-exception">{exception}</div>
+        <div className="deliver-outcome">{exception}</div>
       </section>
 
       <section data-section="total-products" className="dc-section dc-inline">

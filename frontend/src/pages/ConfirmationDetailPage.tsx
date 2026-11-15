@@ -1,28 +1,27 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { OUTCOME_LABELS } from '../../../shared/types.ts';
 import { ApiRequestError, errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
+import { BackButton } from '../components/BackButton.tsx';
 import { Brand } from '../components/Layout.tsx';
 import { SavedConfirmationCard } from '../components/SavedConfirmationCard.tsx';
 import { FlagTag, Notice, Spinner } from '../components/ui.tsx';
-import { localDateTime } from '../lib/time.ts';
+import { shopDateTime } from '../lib/time.ts';
 import { useApi } from '../lib/useApi.ts';
+import { useShopTimeZone } from '../lib/useShopConfig.ts';
 
 /** One saved confirmation, in the required field order, ready to print. */
 export function ConfirmationDetailPage() {
   const { id = '' } = useParams();
   const detail = useApi(() => dashboardApi.detail(id), [id]);
+  const timeZone = useShopTimeZone();
   const [retrievedAt, setRetrievedAt] = useState<string | null>(null);
   useEffect(() => {
     if (detail.data) setRetrievedAt(new Date().toISOString());
   }, [detail.data]);
 
-  const back = (
-    <p className="crumb no-print">
-      <Link to="/dashboard">← Confirmations</Link>
-    </p>
-  );
+  const back = <BackButton fallback="/shop/confirmations" />;
   if (detail.error) {
     const notFound = detail.error instanceof ApiRequestError && detail.error.status === 404;
     return (
@@ -44,7 +43,7 @@ export function ConfirmationDetailPage() {
       <div className="print-only print-header">
         <Brand subtitle="Delivery confirmation record" />
         <p className="print-note">
-          Retrieved from the confirmation database {retrievedAt ? `on ${localDateTime(retrievedAt)}` : ''}. Record {c.id}.
+          Retrieved from the confirmation database {retrievedAt ? `on ${shopDateTime(retrievedAt, timeZone)}` : ''}. Record {c.id}.
         </p>
       </div>
       <div className="page-head">
@@ -71,7 +70,7 @@ export function ConfirmationDetailPage() {
           <ul className="attempt-list">
             {c.attempts.map((a, i) => (
               <li key={i}>
-                {localDateTime(a.createdAt)}: {a.kind === 'conflict' ? 'different details' : 'same details sent again'}
+                {shopDateTime(a.createdAt, timeZone)}: {a.kind === 'conflict' ? 'different details' : 'same details sent again'}
                 {a.receivedBy ? `, received by ${a.receivedBy}` : ''}
                 {a.outcome ? `, ${OUTCOME_LABELS[a.outcome]}` : ''}
               </li>
@@ -97,6 +96,7 @@ export function ConfirmationDetailPage() {
         signatureHeight={c.signatureHeight}
         result={c.result}
         confirmedAt={c.confirmedAt}
+        timeZone={timeZone}
       />
     </div>
   );

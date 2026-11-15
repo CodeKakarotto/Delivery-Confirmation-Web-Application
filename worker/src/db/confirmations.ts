@@ -196,8 +196,8 @@ export interface ListFilter {
   orderId?: string;
   result?: ConfirmationResult;
   flagged?: boolean;
-  /** Confirmation day (UTC), YYYY-MM-DD. */
-  date?: string;
+  /** Only confirmations in [from, to): the UTC range of one shop-local day. */
+  range?: { from: string; to: string };
   limit: number;
   offset: number;
 }
@@ -215,9 +215,10 @@ export async function listConfirmations(db: D1Database, f: ListFilter): Promise<
     binds.push(f.result);
   }
   if (f.flagged) where.push('EXISTS (SELECT 1 FROM confirmation_attempts a WHERE a.confirmation_id = c.id)');
-  if (f.date !== undefined) {
-    where.push('substr(c.confirmed_at, 1, 10) = ?');
-    binds.push(f.date);
+  if (f.range !== undefined) {
+    // ISO-8601 UTC strings of one fixed format compare correctly as text.
+    where.push('c.confirmed_at >= ? AND c.confirmed_at < ?');
+    binds.push(f.range.from, f.range.to);
   }
   const clause = where.length ? ` WHERE ${where.join(' AND ')}` : '';
   const [rows, count] = await db.batch<ListRow | { n: number }>([
@@ -297,4 +298,23 @@ export async function getSignature(db: D1Database, id: string): Promise<Uint8Arr
   const v = row.signature_png;
   // D1 returns BLOBs as an ArrayBuffer or a number array depending on the runtime; copy into a fresh buffer.
   return v instanceof Uint8Array ? new Uint8Array(v) : new Uint8Array(v as ArrayBuffer | number[]);
+}
+
+/** Every confirmation's time, result and flag: the input for the month → week → day calendar. */
+export async function listCalendarRows(db: D1Database): Promise<Array<{ confirmed_at: string; result: ConfirmationResult; flagged: number }>> {
+  const res = await db
+    .prepare(
+      `SELECT c.confirmed_at, c.result,
+              EXISTS (SELECT 1 FROM confirmation_attempts a WHERE a.confirmation_id = c.id) AS flagged
+         FROM delivery_confirmations c`,
+    )
+    .all<{ confirmed_at: string; result: ConfirmationResult; flagged: number }>();
+  return res.results;
+}
+
+export async function findShopOrder(db: D1Database, orderId: string) {
+  const delivery = await findDeliveryByOrderId(db, orderId);
+  if (!delivery) return null;
+  const confirmation = await findConfirmationByDelivery(db, delivery.id);
+  return { delivery, confirmation };
 }

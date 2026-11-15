@@ -31,6 +31,8 @@
     // Anything other than "development" is treated as production, where all data endpoints fail closed.
     "APP_ENV": "development",
     // Extra browser origins allowed to send state-changing requests (same-origin is always allowed).
-    "ALLOWED_ORIGINS": ""
+    "ALLOWED_ORIGINS": "",
+    // The shop's time zone: confirmations are grouped into its days, weeks and months.
+    "SHOP_TIME_ZONE": "America/New_York"
   }
 }

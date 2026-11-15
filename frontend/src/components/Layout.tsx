@@ -47,7 +47,7 @@ function ThemeToggle() {
 
 const NAV = [
   { to: '/confirm', label: 'Confirm a delivery' },
-  { to: '/dashboard', label: 'Confirmations' },
+  { to: '/shop', label: 'Shop employees' },
 ];
 
 export function AppLayout() {

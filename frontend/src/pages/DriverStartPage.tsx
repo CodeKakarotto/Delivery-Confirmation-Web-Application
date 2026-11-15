@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { ORDER_ID_MAX, ORDER_ID_PATTERN } from '../../../shared/schemas.ts';
+import { BackButton } from '../components/BackButton.tsx';
 import { Field } from '../components/ui.tsx';
 
 /**
@@ -24,6 +25,7 @@ export function DriverStartPage() {
 
   return (
     <div className="narrow">
+      <BackButton fallback="/" always label="Back to home" />
       <div className="page-head">
         <h1 ref={headingRef} tabIndex={-1}>
           Confirm a delivery

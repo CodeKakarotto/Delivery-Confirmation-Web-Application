@@ -142,7 +142,7 @@ export interface AwaitingDelivery {
 /** Per-day overview. "Expected" = orders scheduled for that day and not cancelled (the only reliable source). */
 export interface DashboardSummary {
   date: string;
-  /** True when the date is before today (UTC): unconfirmed orders are then reported as missing. */
+  /** True when the date is before today in the shop's time zone: unconfirmed orders are then reported as missing. */
   isPast: boolean;
   expected: number;
   confirmed: number;
@@ -153,6 +153,52 @@ export interface DashboardSummary {
 
 export interface AppConfig {
   appEnv: 'development' | 'production';
+  /** The shop's IANA time zone; days, weeks and months are counted in it. */
+  timeZone: string;
   /** Always false in this prototype: there is no sign-in, so nothing here identifies a person. */
   authenticated: false;
+}
+
+// ---------- Shop employees section ----------
+
+export interface CalendarCounts {
+  count: number;
+  needsReview: number;
+  flagged: number;
+}
+
+export interface CalendarDay extends CalendarCounts {
+  /** Shop-local day, YYYY-MM-DD. */
+  date: string;
+}
+
+export interface CalendarWeek extends CalendarCounts {
+  /** First and last day of the Sunday–Saturday week that fall inside this month. */
+  start: string;
+  end: string;
+  days: CalendarDay[];
+}
+
+export interface CalendarMonth extends CalendarCounts {
+  /** YYYY-MM */
+  month: string;
+  weeks: CalendarWeek[];
+}
+
+/** Confirmations grouped by shop-local month → week → day, newest first. Always includes today. */
+export interface ConfirmationCalendar {
+  timeZone: string;
+  today: string;
+  /** Sunday of the current week. */
+  currentWeekStart: string;
+  months: CalendarMonth[];
+}
+
+export type ShopOrderStatus = 'awaiting' | 'confirmed' | 'cancelled';
+
+/** One order as the shop sees it (opened from the awaiting list). */
+export interface ShopOrderResponse {
+  status: ShopOrderStatus;
+  delivery: DriverDelivery & { deliveryDate: string | null };
+  confirmation: { id: string; confirmedAt: string; result: ConfirmationResult } | null;
 }

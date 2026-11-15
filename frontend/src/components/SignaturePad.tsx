@@ -3,14 +3,17 @@ import type { CapturedSignature } from '../lib/confirmationForm.ts';
 
 type Point = { x: number; y: number };
 
-/** Saved image size (fixed, independent of the screen): small enough to store, sharp enough to print. */
-const EXPORT_W = 900;
-const EXPORT_H = 300;
+/**
+ * The saved image keeps the pad's shape, scaled to fit this box: small enough to store, sharp enough to print, and
+ * inside the sizes the Worker accepts (100–2400 × 50–1200 px).
+ */
+const EXPORT_MAX_W = 1500;
+const EXPORT_MAX_H = 900;
 const INK = '#17201b';
 
 /**
- * Touch-, stylus- and mouse-friendly signature capture (the pad keeps a fixed 3:1 shape, like the saved image). Strokes are kept as points and redrawn, so the pad stays sharp
- * after rotation or resizing. The saved PNG has a white background (readable in dark mode and on paper). The image
+ * Touch-, stylus- and mouse-friendly signature capture, shown large in the signature pop-up. Strokes are kept as
+ * points and redrawn, so the pad stays sharp after rotation or resizing. The saved PNG has a white background (readable in dark mode and on paper). The image
  * lives only in memory until it is submitted; nothing is written to browser storage.
  */
 export function SignaturePad({
@@ -20,6 +23,7 @@ export function SignaturePad({
   describedBy,
   invalid,
   disabled,
+  className = '',
 }: {
   value: CapturedSignature | null;
   onChange: (sig: CapturedSignature | null) => void;
@@ -27,6 +31,7 @@ export function SignaturePad({
   describedBy?: string;
   invalid?: boolean;
   disabled?: boolean;
+  className?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const strokes = useRef<Point[][]>([]);
@@ -81,11 +86,11 @@ export function SignaturePad({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    onChange({ dataUrl: exportPng(strokes.current), strokeLength: inkLength(strokes.current, rect.width, rect.height) });
+    onChange({ dataUrl: exportPng(strokes.current, rect.width, rect.height), strokeLength: inkLength(strokes.current, rect.width, rect.height) });
   };
 
   return (
-    <div className={`signature-pad${invalid ? ' is-invalid' : ''}${disabled ? ' is-disabled' : ''}`}>
+    <div className={`signature-pad ${className}${invalid ? ' is-invalid' : ''}${disabled ? ' is-disabled' : ''}`}>
       <canvas
         ref={canvasRef}
         className="signature-canvas"
@@ -149,14 +154,17 @@ function drawStrokes(ctx: CanvasRenderingContext2D, all: Point[][], w: number, h
   }
 }
 
-function exportPng(all: Point[][]): string {
+function exportPng(all: Point[][], padW: number, padH: number): string {
+  const scale = Math.min(EXPORT_MAX_W / padW, EXPORT_MAX_H / padH);
+  const w = Math.max(100, Math.round(padW * scale));
+  const h = Math.max(50, Math.round(padH * scale));
   const canvas = document.createElement('canvas');
-  canvas.width = EXPORT_W;
-  canvas.height = EXPORT_H;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d')!;
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, EXPORT_W, EXPORT_H);
-  drawStrokes(ctx, all, EXPORT_W, EXPORT_H, 4);
+  ctx.fillRect(0, 0, w, h);
+  drawStrokes(ctx, all, w, h, Math.max(3, w / 300));
   return canvas.toDataURL('image/png');
 }
 

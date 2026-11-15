@@ -16,6 +16,7 @@ export const router = new Router()
   .add('GET', '/api/config', async (ctx) => {
     const body: AppConfig & { dataAvailable: boolean } = {
       appEnv: ctx.settings.appEnv,
+      timeZone: ctx.settings.timeZone,
       authenticated: false,
       dataAvailable: !ctx.settings.isProduction && ctx.settings.demoHosts.has(ctx.url.hostname.toLowerCase()),
     };
@@ -26,6 +27,8 @@ export const router = new Router()
   .add('POST', '/api/driver/confirmations', driver.submit)
   // Employee dashboard. NOT access-controlled (there is no login): local demonstration only, see docs/SECURITY.md.
   .add('GET', '/api/dashboard/summary', dashboard.summary)
+  .add('GET', '/api/dashboard/calendar', dashboard.calendar)
+  .add('GET', '/api/dashboard/orders/:orderId', dashboard.order)
   .add('GET', '/api/dashboard/confirmations', dashboard.list)
   .add('GET', '/api/dashboard/confirmations/:id', dashboard.detail)
   .add('GET', '/api/dashboard/confirmations/:id/signature', dashboard.signature);

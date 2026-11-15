@@ -30,9 +30,18 @@ the route app. In development Vite (5173) proxies `/api` to `wrangler dev` (8787
 | --- | --- |
 | `/` | Home: driver or employee |
 | `/confirm`, `/confirm/:orderId` | Driver: open an order, then the confirmation form |
-| `/dashboard` | Employee dashboard |
-| `/dashboard/confirmations/:id` | Saved record and printout |
+| `/shop` | Shop employees: Overview (today vs scheduled; awaiting orders open an order view) |
+| `/shop/confirmations` | Month → week → day → deliveries with times, 10 per page. The open path is in the URL (`m`, `w`, `d`, page `p`), so Back returns to it |
+| `/shop/confirmations/:id` | Saved record and printout |
+| `/shop/orders/:orderId` | One order opened from the awaiting list |
 
 `DeliveryCard` renders the required field order once; the driver form (`DriverConfirmPage`) and the saved record
 (`SavedConfirmationCard`) fill its slots, so they cannot drift apart. `Barcode` draws Code 128-B from
-`shared/barcode.ts` as SVG. `SignaturePad` keeps strokes in memory and exports a 900×300 white PNG.
+`shared/barcode.ts` as SVG. `SignatureField` opens a full-screen pop-up with `SignaturePad`, which keeps strokes in
+memory and exports a white PNG in the pad's shape (fitted into 1500×900).
+
+## Shop time zone
+
+Days, weeks (Sunday–Saturday) and months are counted in `SHOP_TIME_ZONE` (default America/New_York) by
+`shared/shopTime.ts`, including daylight-saving days. Times are stored in UTC and shown in the shop time zone with its
+abbreviation (e.g. "3:30 PM EST").

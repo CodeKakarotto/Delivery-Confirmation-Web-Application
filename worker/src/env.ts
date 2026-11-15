@@ -1,3 +1,5 @@
+import { DEFAULT_SHOP_TIME_ZONE, isValidTimeZone } from '../../shared/shopTime.ts';
+
 /** Bindings and variables available to the Worker (see wrangler.jsonc and .dev.vars.example). */
 export interface Env {
   DB: D1Database;
@@ -9,6 +11,8 @@ export interface Env {
   DEV_EXTRA_HOSTS?: string;
   /** Secret used to hash client IP addresses for rate limiting. */
   APP_SECRET?: string;
+  /** IANA time zone the shop's days, weeks and months are counted in (default America/New_York). */
+  SHOP_TIME_ZONE?: string;
 }
 
 export interface Settings {
@@ -18,6 +22,8 @@ export interface Settings {
   /** Host names (lowercase, no port) allowed to reach the data endpoints. Empty in production. */
   demoHosts: Set<string>;
   appSecret: string | null;
+  /** The shop's IANA time zone (validated; falls back to America/New_York). */
+  timeZone: string;
 }
 
 const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]', '::1'];
@@ -39,5 +45,6 @@ export function loadSettings(env: Env): Settings {
       .filter(Boolean),
     demoHosts: isProduction ? new Set() : new Set([...LOOPBACK_HOSTS, ...extra]),
     appSecret: env.APP_SECRET && env.APP_SECRET.length >= 16 ? env.APP_SECRET : null,
+    timeZone: env.SHOP_TIME_ZONE?.trim() && isValidTimeZone(env.SHOP_TIME_ZONE.trim()) ? env.SHOP_TIME_ZONE.trim() : DEFAULT_SHOP_TIME_ZONE,
   };
 }

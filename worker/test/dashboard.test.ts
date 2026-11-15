@@ -3,10 +3,15 @@ import { randomUUID } from 'node:crypto';
 import { describe, it } from 'node:test';
 import { createEnv, makePng, TestClient, validSubmission } from './helpers/app.ts';
 
+/** Fixed "now": Saturday 14 November 2026, 3 PM in New York (the shop's time zone). */
+const NOW = new Date('2026-11-14T20:00:00.000Z');
+
 async function seeded() {
   const { env, db } = createEnv();
+  // The seed schedules orders for "today" and "yesterday" relative to the real clock; pin them to fixed days.
+  db.sqlite.exec("UPDATE deliveries SET delivery_date = CASE WHEN delivery_date = date('now', '-5 hours') THEN '2026-11-14' ELSE '2026-11-13' END");
   const client = new TestClient(env);
-  const now = new Date();
+  const now = NOW;
   const a = await client.request('POST', '/api/driver/confirmations', validSubmission(), { now });
   const b = await client.request(
     'POST',
@@ -116,13 +121,12 @@ describe('employee dashboard: detail and signature', () => {
 describe('employee dashboard: daily summary', () => {
   it('compares confirmations with the orders scheduled for the day', async () => {
     const { client } = await seeded();
-    const today = new Date().toISOString().slice(0, 10);
-    const res = await client.request('GET', `/api/dashboard/summary?date=${today}`);
+    const res = await client.request('GET', '/api/dashboard/summary?date=2026-11-14', undefined, { now: NOW });
     assert.equal(res.status, 200);
     const s = res.body;
-    assert.equal(s.date, today);
+    assert.equal(s.date, '2026-11-14');
     assert.equal(s.isPast, false);
-    // Seed: 5 orders today that are not cancelled (MF-10490 is cancelled and not expected).
+    // Seed: 5 orders that day that are not cancelled (MF-10490 is cancelled and not expected).
     assert.equal(s.expected, 5);
     assert.equal(s.confirmed, 1);
     assert.equal(s.needsReview, 1);
@@ -137,17 +141,16 @@ describe('employee dashboard: daily summary', () => {
 
   it('marks a past day so unconfirmed orders can be reported as missing', async () => {
     const { client } = await seeded();
-    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
-    const res = await client.request('GET', `/api/dashboard/summary?date=${yesterday}`);
+    const res = await client.request('GET', '/api/dashboard/summary?date=2026-11-13', undefined, { now: NOW });
     assert.equal(res.body.isPast, true);
     assert.equal(res.body.expected, 2);
     assert.equal(res.body.awaiting.length, 2);
   });
 
-  it('defaults to today and validates the date', async () => {
+  it('defaults to today in the shop time zone and validates the date', async () => {
     const { client } = await seeded();
-    const res = await client.request('GET', '/api/dashboard/summary');
-    assert.equal(res.body.date, new Date().toISOString().slice(0, 10));
+    const res = await client.request('GET', '/api/dashboard/summary', undefined, { now: NOW });
+    assert.equal(res.body.date, '2026-11-14');
     assert.equal((await client.request('GET', '/api/dashboard/summary?date=2026-02-30')).status, 422);
     assert.equal((await client.request('GET', '/api/dashboard/summary?date=yesterday')).status, 422);
   });

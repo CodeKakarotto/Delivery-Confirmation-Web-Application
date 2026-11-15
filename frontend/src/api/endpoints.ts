@@ -1,12 +1,14 @@
 import type {
   AppConfig,
   ConfirmationDetailResponse,
+  ConfirmationCalendar,
   ConfirmationListResponse,
   ConfirmationResult,
   ConfirmationSubmit,
   ConfirmationSubmitResponse,
   DashboardSummary,
   DriverLookupResponse,
+  ShopOrderResponse,
 } from '../../../shared/types.ts';
 import { api } from './client.ts';
 
@@ -23,6 +25,8 @@ export const driverApi = {
 
 export interface ListQuery {
   orderId?: string;
+  /** One shop-local day, YYYY-MM-DD. */
+  day?: string;
   result?: ConfirmationResult;
   flagged?: boolean;
   limit?: number;
@@ -30,10 +34,14 @@ export interface ListQuery {
 }
 
 export const dashboardApi = {
-  summary: (date: string) => api<DashboardSummary>('GET', `/api/dashboard/summary?${new URLSearchParams({ date })}`),
+  /** The day's expected vs confirmed orders; no date = today in the shop's time zone. */
+  summary: (date?: string) => api<DashboardSummary>('GET', `/api/dashboard/summary${date ? `?${new URLSearchParams({ date })}` : ''}`),
+  calendar: () => api<ConfirmationCalendar>('GET', '/api/dashboard/calendar'),
+  order: (orderId: string) => api<ShopOrderResponse>('GET', `/api/dashboard/orders/${encodeURIComponent(orderId)}`),
   list: (q: ListQuery) => {
     const p = new URLSearchParams();
     if (q.orderId) p.set('orderId', q.orderId);
+    if (q.day) p.set('day', q.day);
     if (q.result) p.set('result', q.result);
     if (q.flagged) p.set('flagged', '1');
     if (q.limit) p.set('limit', String(q.limit));

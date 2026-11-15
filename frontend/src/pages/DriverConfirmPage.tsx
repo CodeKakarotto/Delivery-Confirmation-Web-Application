@@ -1,28 +1,39 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { NOTE_MAX, RECEIVED_BY_MAX } from '../../../shared/schemas.ts';
 import { OUTCOME_LABELS, type ConfirmationReceipt, type ConfirmationSubmit, type DriverDelivery } from '../../../shared/types.ts';
 import { ApiRequestError, errorMessage, fieldIssues } from '../api/client.ts';
 import { driverApi } from '../api/endpoints.ts';
 import { DeliveryCard } from '../components/DeliveryCard.tsx';
 import { ExceptionPicker } from '../components/ExceptionPicker.tsx';
-import { SignaturePad } from '../components/SignaturePad.tsx';
+import { BackButton } from '../components/BackButton.tsx';
+import { SignatureField } from '../components/SignatureField.tsx';
 import { Notice, ResultTag, Spinner } from '../components/ui.tsx';
 import { validateConfirmationForm, type ConfirmationFormState, type FormErrors } from '../lib/confirmationForm.ts';
-import { localDateTime } from '../lib/time.ts';
+import { shopDateTime } from '../lib/time.ts';
+import { useShopTimeZone } from '../lib/useShopConfig.ts';
 import { useApi } from '../lib/useApi.ts';
 
 /** Step 2 for the driver: check the delivery, record the hand-off and the customer's signature. */
 export function DriverConfirmPage() {
   const { orderId = '' } = useParams();
   const lookup = useApi(() => driverApi.lookup(orderId), [orderId]);
+  const timeZone = useShopTimeZone();
 
-  if (lookup.loading && !lookup.data) return <Spinner label="Loading the delivery" />;
+  if (lookup.loading && !lookup.data) {
+    return (
+      <div className="narrow">
+        <BackButton fallback="/confirm" always />
+        <Spinner label="Loading the delivery" />
+      </div>
+    );
+  }
   if (lookup.error) {
     const err = lookup.error;
     const notFound = err instanceof ApiRequestError && err.code === 'order_not_found';
     return (
       <div className="narrow">
+        <BackButton fallback="/confirm" always />
         <Notice
           tone={notFound ? 'warn' : 'error'}
           title={notFound ? `Order ${orderId} was not found` : 'This delivery cannot be opened'}
@@ -46,8 +57,9 @@ export function DriverConfirmPage() {
   if (data.status === 'already_confirmed') {
     return (
       <div className="narrow">
+        <BackButton fallback="/confirm" always />
         <Notice tone="info" title={`Order ${data.orderId} is already confirmed`}>
-          A delivery confirmation was saved on {localDateTime(data.confirmedAt)}. It cannot be changed from this screen. Call the shop
+          A delivery confirmation was saved on {shopDateTime(data.confirmedAt, timeZone)}. It cannot be changed from this screen. Call the shop
           if something is wrong.
         </Notice>
         <Link to="/confirm" className="btn btn-primary">
@@ -56,14 +68,14 @@ export function DriverConfirmPage() {
       </div>
     );
   }
-  return <ConfirmForm key={data.delivery.orderId} delivery={data.delivery} />;
+  return <ConfirmForm key={data.delivery.orderId} delivery={data.delivery} timeZone={timeZone} />;
 }
 
 type Phase = 'editing' | 'submitting' | 'uncertain' | 'refused' | 'saved';
 
 const EMPTY: ConfirmationFormState = { outcome: null, outcomeDetail: '', note: '', receivedBy: '', signature: null };
 
-function ConfirmForm({ delivery }: { delivery: DriverDelivery }) {
+function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZone: string }) {
   const [form, setForm] = useState<ConfirmationFormState>(EMPTY);
   const [errors, setErrors] = useState<FormErrors>({});
   const [phase, setPhase] = useState<Phase>('editing');
@@ -75,6 +87,7 @@ function ConfirmForm({ delivery }: { delivery: DriverDelivery }) {
   const sentRef = useRef<ConfirmationSubmit | null>(null);
   const inFlight = useRef(false);
   const ids = { receivedBy: useId(), signatureLabel: useId(), signatureHint: useId(), note: useId() };
+  const navigate = useNavigate();
   const summaryRef = useRef<HTMLDivElement>(null);
   const savedRef = useRef<HTMLHeadingElement>(null);
 
@@ -146,6 +159,7 @@ function ConfirmForm({ delivery }: { delivery: DriverDelivery }) {
   if (phase === 'saved' && receipt) {
     return (
       <div className="narrow">
+        <BackButton fallback="/confirm" label="Back to order entry" always />
         <section className="card saved-card" aria-labelledby="saved-title">
           <div className="saved-mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="28" height="28">
@@ -173,9 +187,9 @@ function ConfirmForm({ delivery }: { delivery: DriverDelivery }) {
               <dd>{receipt.receivedBy}</dd>
             </div>
             <div>
-              <dt>Saved</dt>
+              <dt>Delivery time</dt>
               <dd>
-                <time dateTime={receipt.confirmedAt}>{localDateTime(receipt.confirmedAt)}</time>
+                <time dateTime={receipt.confirmedAt}>{shopDateTime(receipt.confirmedAt, timeZone)}</time>
               </dd>
             </div>
             <div>
@@ -197,13 +211,23 @@ function ConfirmForm({ delivery }: { delivery: DriverDelivery }) {
 
   return (
     <form className="confirm-form" onSubmit={onSubmit} noValidate aria-busy={phase === 'submitting'}>
-      <div className="page-head">
-        <div>
-          <p className="crumb">
-            <Link to="/confirm">← Another order</Link>
-          </p>
-          <h1>Confirm delivery</h1>
-        </div>
+      <div className="page-head page-head-back">
+        <button
+          type="button"
+          className="btn btn-ghost back-btn"
+          onClick={() => {
+            // Leaving loses the entries and signature on this form, so check first once anything was entered.
+            const dirty = form.outcome || form.receivedBy.trim() || form.signature || form.note.trim() || form.outcomeDetail.trim();
+            if (dirty && phase !== 'saved' && !window.confirm('Leave this delivery? What you entered will be lost.')) return;
+            navigate('/confirm');
+          }}
+        >
+          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+            <path d="M12.5 4.5 7 10l5.5 5.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Back
+        </button>
+        <h1>Confirm delivery</h1>
       </div>
       <p className="muted lead">Check the order details with the recipient, choose how it was handed over, and ask the customer to sign.</p>
 
@@ -257,22 +281,19 @@ function ConfirmForm({ delivery }: { delivery: DriverDelivery }) {
           signatureLabelId={ids.signatureLabel}
           signature={
             <div className={`field${errors.signature ? ' field-invalid' : ''}`}>
-              <SignaturePad
+              <SignatureField
                 value={form.signature}
                 onChange={(sig) => update('signature', sig)}
+                orderId={delivery.orderId}
+                recipientName={delivery.recipientName}
                 labelledBy={ids.signatureLabel}
                 describedBy={ids.signatureHint}
                 invalid={Boolean(errors.signature)}
                 disabled={locked}
               />
-              <div className="signature-tools">
-                <p className={errors.signature ? 'field-error' : 'field-hint'} id={ids.signatureHint}>
-                  {errors.signature ?? 'The customer signs with a finger, stylus or mouse. A typed name is not a signature.'}
-                </p>
-                <button type="button" className="btn btn-small" onClick={() => update('signature', null)} disabled={!form.signature || locked}>
-                  Clear signature
-                </button>
-              </div>
+              <p className={errors.signature ? 'field-error' : 'field-hint'} id={ids.signatureHint}>
+                {errors.signature ?? 'The customer signs with a finger, stylus or mouse. A typed name is not a signature.'}
+              </p>
             </div>
           }
           footer={

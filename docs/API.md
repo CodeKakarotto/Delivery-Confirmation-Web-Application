@@ -12,7 +12,7 @@ POST requests need a same-origin `Origin` header and a JSON body.
 | Method | Path | Response |
 | --- | --- | --- |
 | GET | `/api/health` | `{ "ok": true }` |
-| GET | `/api/config` | `{ appEnv, authenticated: false, dataAvailable }` |
+| GET | `/api/config` | `{ appEnv, timeZone, authenticated: false, dataAvailable }` |
 
 ## Driver
 
@@ -55,8 +55,10 @@ Rate limited (20/min). Body (unknown fields are rejected):
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/api/dashboard/summary?date=YYYY-MM-DD` | Default today (UTC). `{ date, isPast, expected, confirmed, needsReview, flagged, awaiting[] }` |
-| GET | `/api/dashboard/confirmations` | `?orderId=` (exact), `?result=confirmed\|needs_review`, `?flagged=1`, `?date=`, `?limit=1..200` (50), `?offset=`. `{ items, total }`, newest first |
+| GET | `/api/dashboard/summary?date=YYYY-MM-DD` | Default today in the shop time zone. `{ date, isPast, expected, confirmed, needsReview, flagged, awaiting[] }` |
+| GET | `/api/dashboard/calendar` | Confirmations by shop-local month → week (Sun–Sat, split at month ends) → day, newest first, with `count`, `needsReview`, `flagged` at each level. Always includes today. `{ timeZone, today, currentWeekStart, months[] }` |
+| GET | `/api/dashboard/confirmations` | `?orderId=` (exact), `?day=YYYY-MM-DD` (shop-local day), `?result=confirmed\|needs_review`, `?flagged=1`, `?limit=1..200` (50; the UI uses 10), `?offset=`. `{ items, total }`, newest first |
+| GET | `/api/dashboard/orders/:orderId` | One order for the shop: `{ status: awaiting\|confirmed\|cancelled, delivery, confirmation: { id, confirmedAt, result } \| null }` |
 | GET | `/api/dashboard/confirmations/:id` | `{ confirmation }` with `delivery`, `outcomeDetail`, `note`, signature size and `attempts[]` |
 | GET | `/api/dashboard/confirmations/:id/signature` | `image/png`, `no-store`, sandboxed |
 

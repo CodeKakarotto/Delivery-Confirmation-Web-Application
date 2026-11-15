@@ -2,6 +2,10 @@
 
 ## The limitation
 
+The **Shop employees** section is a separate part of the app for shop staff, but without a login it is **not**
+restricted to them: anyone who can open the local demonstration can open it. Restricting it needs the access-model
+decision below. A sign-in was deliberately not added, because the project requires no login.
+
 This prototype has **no login**: a project requirement. Without one, the server cannot know who is using it. Hiding a
 button or page does not change that. In particular:
 
@@ -79,5 +83,4 @@ storage (only the light/dark theme choice). Customer data never goes in URLs; on
 
 - No access control beyond "local demonstration only" (see above).
 - Rate limits are per IP. Clients behind one shared address (e.g. the shop's Wi-Fi) share a limit.
-- "Today" on the dashboard is the UTC date, which differs from Eastern time in the evening.
 - No retention or deletion of signatures has been implemented (pending decision 6).

@@ -89,7 +89,7 @@ describe('DeliveryCard: required field order', () => {
       'data-section="total-products"',
     ]);
     assertIncreasing([deliverTo!, address!, exception!, total!], 'deliver to');
-    assert.match(html, /class="deliver-exception"/);
+    assert.match(html, /class="deliver-outcome"/);
   });
 
   it('puts Received By and Customer Signature inside Delivery Instructions, after the instructions', () => {

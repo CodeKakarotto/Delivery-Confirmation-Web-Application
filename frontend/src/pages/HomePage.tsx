@@ -22,10 +22,10 @@ export function HomePage() {
           <span className="home-card-title">Confirm a delivery</span>
           <span className="muted">Open an order by its ID, record who received it and capture the customer’s signature.</span>
         </Link>
-        <Link to="/dashboard" className="card home-card">
+        <Link to="/shop" className="card home-card">
           <span className="home-card-kicker">Shop employees</span>
-          <span className="home-card-title">Review confirmations</span>
-          <span className="muted">See the day’s deliveries, find proof of delivery by order ID and review exceptions.</span>
+          <span className="home-card-title">Shop employees</span>
+          <span className="muted">Today’s deliveries, and every confirmation by month, week and day with its delivery time.</span>
         </Link>
       </div>
     </>

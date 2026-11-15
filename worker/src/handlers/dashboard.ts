@@ -7,8 +7,19 @@
  */
 
 import { isValidDate, ORDER_ID_MAX, ORDER_ID_PATTERN } from '../../../shared/schemas.ts';
-import type { AwaitingDelivery, ConfirmationDetailResponse, ConfirmationListResponse, ConfirmationResult, DashboardSummary } from '../../../shared/types.ts';
-import { getConfirmationDetail, getSignature, listConfirmations } from '../db/confirmations.ts';
+import { localDateKey, localDayRangeUtc, monthKey, weekStartKey, weekWithinMonth } from '../../../shared/shopTime.ts';
+import type {
+  AwaitingDelivery,
+  CalendarCounts,
+  CalendarMonth,
+  ConfirmationCalendar,
+  ConfirmationDetailResponse,
+  ConfirmationListResponse,
+  ConfirmationResult,
+  DashboardSummary,
+  ShopOrderResponse,
+} from '../../../shared/types.ts';
+import { findShopOrder, getConfirmationDetail, getSignature, listCalendarRows, listConfirmations, toDriverDelivery } from '../db/confirmations.ts';
 import { ApiError, json, SECURITY_HEADERS, validationError } from '../http.ts';
 import type { RequestContext } from '../router.ts';
 import { RATE_LIMITS, rateLimit, requireDemoAccess } from '../security.ts';
@@ -41,13 +52,15 @@ export async function list(ctx: RequestContext): Promise<Response> {
   if (resultRaw !== undefined && resultRaw !== 'confirmed' && resultRaw !== 'needs_review') {
     throw validationError([{ path: 'result', message: 'Must be confirmed or needs_review' }]);
   }
-  const date = q.get('date') || undefined;
-  if (date !== undefined && !isValidDate(date)) throw validationError([{ path: 'date', message: 'Use YYYY-MM-DD' }]);
+  // One shop-local day (e.g. a day opened in the Confirmations tab).
+  const day = q.get('day') || undefined;
+  if (day !== undefined && !isValidDate(day)) throw validationError([{ path: 'day', message: 'Use YYYY-MM-DD' }]);
+  const dayRange = day ? localDayRangeUtc(day, ctx.settings.timeZone) : undefined;
   const body: ConfirmationListResponse = await listConfirmations(ctx.db, {
     orderId,
     result: resultRaw as ConfirmationResult | undefined,
     flagged: q.get('flagged') === '1',
-    date,
+    range: dayRange ? { from: dayRange.start.toISOString(), to: dayRange.end.toISOString() } : undefined,
     limit: intParam(ctx, 'limit', 50, 1, 200),
     offset: intParam(ctx, 'offset', 0, 0, 100_000),
   });
@@ -89,7 +102,7 @@ export async function signature(ctx: RequestContext): Promise<Response> {
  */
 export async function summary(ctx: RequestContext): Promise<Response> {
   await guard(ctx);
-  const today = ctx.now.toISOString().slice(0, 10);
+  const today = localDateKey(ctx.now, ctx.settings.timeZone);
   const date = ctx.url.searchParams.get('date') || today;
   if (!isValidDate(date)) throw validationError([{ path: 'date', message: 'Use YYYY-MM-DD' }]);
 
@@ -137,4 +150,84 @@ interface AwaitingRow {
   zone: string | null;
   recipient_name: string | null;
   city: string;
+}
+
+const zero = (): CalendarCounts => ({ count: 0, needsReview: 0, flagged: 0 });
+function bump(c: CalendarCounts, result: ConfirmationResult, flagged: boolean): void {
+  c.count++;
+  if (result === 'needs_review') c.needsReview++;
+  if (flagged) c.flagged++;
+}
+
+/**
+ * Confirmations grouped by shop-local month → week (Sunday–Saturday, split at month boundaries) → day, newest first.
+ * The current month, week and day are always present so the Confirmations tab can open on them.
+ */
+export async function calendar(ctx: RequestContext): Promise<Response> {
+  await guard(ctx);
+  const tz = ctx.settings.timeZone;
+  const today = localDateKey(ctx.now, tz);
+  type DayAcc = CalendarCounts & { date: string };
+  type WeekAcc = CalendarCounts & { start: string; end: string; days: Map<string, DayAcc> };
+  type MonthAcc = CalendarCounts & { month: string; weeks: Map<string, WeekAcc> };
+  const months = new Map<string, MonthAcc>();
+
+  const slot = (date: string) => {
+    const m = monthKey(date);
+    let month = months.get(m);
+    if (!month) months.set(m, (month = { month: m, ...zero(), weeks: new Map() }));
+    const span = weekWithinMonth(date);
+    let week = month.weeks.get(span.start);
+    if (!week) month.weeks.set(span.start, (week = { ...span, ...zero(), days: new Map() }));
+    let day = week.days.get(date);
+    if (!day) week.days.set(date, (day = { date, ...zero() }));
+    return { month, week, day };
+  };
+
+  slot(today); // always show where "now" is
+  for (const row of await listCalendarRows(ctx.db)) {
+    const date = localDateKey(new Date(row.confirmed_at), tz);
+    const { month, week, day } = slot(date);
+    for (const c of [month, week, day]) bump(c, row.result, row.flagged === 1);
+  }
+
+  const desc = <T>(entries: Iterable<[string, T]>) => [...entries].sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([, v]) => v);
+  const body: ConfirmationCalendar = {
+    timeZone: tz,
+    today,
+    currentWeekStart: weekStartKey(today),
+    months: desc(months).map(
+      (m): CalendarMonth => ({
+        month: m.month,
+        count: m.count,
+        needsReview: m.needsReview,
+        flagged: m.flagged,
+        weeks: desc(m.weeks).map((w) => ({
+          start: w.start,
+          end: w.end,
+          count: w.count,
+          needsReview: w.needsReview,
+          flagged: w.flagged,
+          days: desc(w.days).map((d) => ({ date: d.date, count: d.count, needsReview: d.needsReview, flagged: d.flagged })),
+        })),
+      }),
+    ),
+  };
+  return json(body);
+}
+
+/** One order as the shop sees it: details plus whether (and when) it was confirmed. */
+export async function order(ctx: RequestContext): Promise<Response> {
+  await guard(ctx);
+  const orderId = (ctx.params.orderId ?? '').trim();
+  if (!orderId || orderId.length > ORDER_ID_MAX || !ORDER_ID_PATTERN.test(orderId)) throw new ApiError(404, 'order_not_found', 'Order not found.');
+  const found = await findShopOrder(ctx.db, orderId);
+  if (!found) throw new ApiError(404, 'order_not_found', 'Order not found.');
+  const { delivery, confirmation } = found;
+  const body: ShopOrderResponse = {
+    status: confirmation ? 'confirmed' : delivery.cancelled_at ? 'cancelled' : 'awaiting',
+    delivery: { ...toDriverDelivery(delivery), deliveryDate: delivery.delivery_date },
+    confirmation: confirmation ? { id: confirmation.id, confirmedAt: confirmation.confirmed_at, result: confirmation.result } : null,
+  };
+  return json(body);
 }

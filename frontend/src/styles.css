@@ -3049,3 +3049,488 @@ a.cell-strong {
     border: 0.5pt solid #666;
   }
 }
+
+/* =====================================================================================================
+   Back buttons, outcome bubbles, signature pop-up and the shop employees' section.
+   ===================================================================================================== */
+
+.back-btn {
+  padding-left: 0.4rem;
+  margin: 0 0 0.5rem -0.4rem;
+  min-height: 2.75rem;
+  font-weight: 600;
+}
+.page-head-back {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+
+/* ---------- How it was delivered: recipient bubble, then Delivery Exception ---------- */
+
+.deliver-outcome {
+  margin-top: 0.9rem;
+}
+.outcome-picker {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.recipient-bubble {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 3.4rem;
+  padding: 0.6rem 1rem;
+  border: 2px solid var(--leaf-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--evergreen-strong);
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+}
+.recipient-bubble:hover {
+  border-color: var(--fern);
+}
+.recipient-bubble input[type='radio'] {
+  width: 1.35rem;
+  height: 1.35rem;
+  accent-color: var(--success);
+}
+.recipient-bubble-text {
+  flex: 1;
+}
+.recipient-bubble.is-active {
+  border-color: var(--success);
+  background: var(--ok-wash);
+  color: var(--success);
+}
+.recipient-bubble.is-static {
+  cursor: default;
+  display: inline-flex;
+  margin-bottom: 0;
+}
+.recipient-bubble-check {
+  color: var(--success);
+}
+.recipient-bubble:has(input:focus-visible) {
+  outline: 3px solid var(--fern);
+  outline-offset: 2px;
+}
+.outcome-picker > .field-error {
+  margin-top: 0.4rem;
+}
+.not-yet {
+  margin: 0;
+}
+
+/* ---------- Signature: launcher, preview, pop-up ---------- */
+
+.signature-launch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 100%;
+  min-height: 9rem;
+  padding: 1rem;
+  font: inherit;
+  color: var(--evergreen);
+  background: #fff;
+  border: 2px dashed #8a8693;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  margin-bottom: 0.4rem;
+}
+.signature-launch:hover:not(:disabled) {
+  border-color: var(--fern);
+  background: #fcfaff;
+}
+.signature-launch[data-invalid='true'] {
+  border-color: var(--error);
+  border-style: solid;
+}
+.signature-launch:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.signature-launch-text {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #6e4a6a;
+}
+.signature-launch-hint {
+  font-size: 0.85rem;
+  color: #5b6b62;
+}
+.signature-captured {
+  margin-bottom: 0.4rem;
+}
+.signature-preview {
+  background: #fff;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  padding: 0.25rem;
+}
+.signature-preview img {
+  display: block;
+  width: 100%;
+  max-height: 12rem;
+  object-fit: contain;
+}
+.signature-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.signature-actions .btn {
+  flex: 1;
+  min-height: 2.75rem;
+}
+.sig-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(23, 22, 26, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.sig-dialog {
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  width: min(960px, 100%);
+  height: min(640px, 100%);
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1rem 1rem;
+}
+.sig-dialog-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.sig-dialog-head .back-btn {
+  margin: 0;
+}
+.sig-dialog-heading h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.sig-dialog-heading p {
+  margin: 0;
+}
+.sig-dialog-hint {
+  margin: 0.4rem 0 0.6rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.sig-dialog-pad {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.signature-pad.signature-pad-large {
+  aspect-ratio: auto;
+  min-height: 0;
+  height: 100%;
+  flex: 1;
+}
+.sig-dialog-foot {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.sig-dialog-foot .btn {
+  min-height: 3rem;
+}
+.sig-dialog-done {
+  flex: 1;
+}
+@media (max-width: 720px) {
+  /* Phones: the pop-up takes the whole screen. */
+  .sig-dialog-backdrop {
+    padding: 0;
+  }
+  .sig-dialog {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    padding: calc(0.5rem + env(safe-area-inset-top)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* ---------- Shop employees' section ---------- */
+
+.shop-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+.shop-kicker {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--evergreen);
+  margin: 0 0 0.15rem;
+}
+.shop-now {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  margin: 0;
+  color: var(--evergreen-strong);
+}
+.shop-now strong {
+  color: var(--muted);
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+.shop-tabs {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--leaf);
+  padding: 0.25rem;
+  border-radius: 999px;
+}
+.shop-tabs a {
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+  color: var(--evergreen);
+  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+}
+.shop-tabs a:hover {
+  color: var(--evergreen-strong);
+}
+.shop-tabs a.is-active {
+  background: var(--primary-bg);
+  color: #fff;
+}
+.shop-warning {
+  font-size: 0.85rem;
+  color: var(--amber);
+  background: var(--amber-wash);
+  border-radius: var(--radius-control);
+  padding: 0.45rem 0.75rem;
+  margin-bottom: 1rem;
+}
+.day-title {
+  font-size: 1.1rem;
+  margin-bottom: 0.6rem;
+}
+.tag-now {
+  background: var(--primary-bg);
+  color: #fff;
+}
+.awaiting-list li + li {
+  border-top: 1px solid var(--rule);
+}
+.awaiting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.65rem 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: var(--radius-control);
+  color: inherit;
+  text-decoration: none;
+}
+.awaiting-row > span:first-child {
+  display: flex;
+  flex-direction: column;
+}
+.awaiting-row:hover {
+  background: var(--leaf);
+  color: inherit;
+}
+.row-chevron {
+  color: var(--muted);
+}
+.records-filter {
+  margin-bottom: 0.75rem;
+}
+
+/* Month → week → day tree */
+.cal-card {
+  padding: 0.5rem;
+}
+.cal-months,
+.cal-weeks,
+.cal-days {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cal-weeks {
+  padding-left: 1rem;
+  border-left: 2px solid var(--leaf-strong);
+  margin: 0.15rem 0 0.5rem 1.1rem;
+}
+.cal-days {
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--leaf-strong);
+  margin: 0.15rem 0 0.4rem 1.1rem;
+}
+.cal-month + .cal-month {
+  border-top: 1px solid var(--rule);
+}
+.cal-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.6rem;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.55rem 0.6rem;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+.cal-row:hover {
+  background: var(--leaf);
+}
+.cal-chevron {
+  flex: none;
+  color: var(--evergreen);
+  transition: transform 0.15s;
+}
+.cal-row[aria-expanded='true'] .cal-chevron {
+  transform: rotate(90deg);
+}
+.cal-title {
+  font-weight: 700;
+  color: var(--evergreen-strong);
+}
+.cal-row-month .cal-title {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+}
+.cal-row-day .cal-title {
+  font-weight: 600;
+}
+.cal-counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  margin-left: auto;
+}
+.cal-count {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.cal-week.is-now > .cal-row,
+.cal-day.is-now > .cal-row {
+  background: var(--leaf);
+}
+.cal-day-body {
+  padding: 0.25rem 0 0.5rem 0.4rem;
+}
+.cal-empty {
+  margin: 0.25rem 0.5rem 0.5rem;
+}
+
+/* One confirmation per row, with its delivery time */
+.conf-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.conf-rows li + li {
+  border-top: 1px solid var(--rule);
+}
+.conf-row {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr auto;
+  gap: 0.25rem 1rem;
+  align-items: center;
+  padding: 0.7rem 0.6rem;
+  border-radius: var(--radius-control);
+  color: inherit;
+  text-decoration: none;
+}
+.conf-row:hover {
+  background: var(--canvas);
+  color: inherit;
+}
+.conf-time {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--evergreen-strong);
+}
+.conf-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.conf-order {
+  font-weight: 700;
+  color: var(--evergreen);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.conf-received {
+  font-size: 0.9rem;
+}
+.cal-card .pager {
+  border-top: 1px solid var(--rule);
+  margin-top: 0.25rem;
+}
+@media (max-width: 720px) {
+  .shop-tabs {
+    width: 100%;
+  }
+  .shop-tabs a {
+    flex: 1;
+    justify-content: center;
+  }
+  .conf-row {
+    grid-template-columns: 1fr;
+  }
+  .conf-tags {
+    justify-content: flex-start;
+  }
+  .cal-weeks,
+  .cal-days {
+    margin-left: 0.6rem;
+    padding-left: 0.5rem;
+  }
+  .cal-counts {
+    margin-left: 1.9rem;
+    width: 100%;
+  }
+  .pager {
+    flex-wrap: wrap;
+  }
+}
+@media print {
+  .shop-head,
+  .shop-warning,
+  .back-btn {
+    display: none !important;
+  }
+}
+.deliver-outcome > .deliver-exception {
+  margin-top: 0;
+}

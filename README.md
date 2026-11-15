@@ -15,16 +15,21 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
 ## Features
 
 - **Driver screen** (`/confirm`): open one order by its exact ID. The card shows, in this order:
-  `#` → Zone → Order ID + Code 128 barcode → Deliver To (with the Delivery Exception subsection) → Total Products →
-  Delivery Instructions (with Received By and Customer Signature).
-- Touch/stylus/mouse signature pad with **Clear signature**; a typed name never counts as a signature.
+  `#` → Zone → Order ID + Code 128 barcode → Deliver To (a **Delivered to recipient** bubble, then the Delivery
+  Exception options) → Total Products → Delivery Instructions (with Received By and Customer Signature).
+- **Signature pop-up**: "Tap to sign" opens a full-screen signing area (Clear, Cancel, Done); the card then shows the
+  signature with Re-sign and Clear. A typed name never counts as a signature.
+- **Back buttons** on every driver screen and shop page.
 - Server-side validation of every field, including a structural check of the signature PNG.
 - Safe submission: a double tap or a retry after a lost response never saves twice (idempotency key); entries are kept
   after a recoverable failure; success is shown only after the server confirms the save.
-- **Dashboard** (`/dashboard`): the day's scheduled orders compared with saved confirmations ("not yet confirmed",
-  or "missing" for past days), exact order-ID search, filters for exceptions and flagged duplicates.
-- **Detail and print** (`/dashboard/confirmations/:id`): the saved record in the same field order, with logo, barcode,
-  signature and server time, and refused duplicate/conflicting attempts.
+- **Shop employees section** (`/shop`), kept apart from the driver screens (but not sign-in protected; see below).
+  The header always shows today's date and the current week (shop time zone, America/New_York).
+  - **Overview**: the day's scheduled orders vs saved confirmations; awaiting/missing orders open an order view.
+  - **Confirmations**: month → week (Sunday–Saturday) → day → each delivery with its **delivery time**, opening on this
+    month, this week and today. 10 deliveries per page. Exact order-ID search and Needs review / Flagged filters.
+  - **Record and print** (`/shop/confirmations/:id`): the saved record in the same field order, with logo, barcode,
+    signature and delivery time, and refused duplicate/conflicting attempts.
 
 ## Getting started
 

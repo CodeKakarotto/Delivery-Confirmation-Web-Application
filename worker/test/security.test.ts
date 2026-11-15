@@ -7,6 +7,8 @@ const DATA_ENDPOINTS: Array<[string, string]> = [
   ['POST', '/api/driver/confirmations'],
   ['GET', '/api/dashboard/confirmations'],
   ['GET', '/api/dashboard/summary'],
+  ['GET', '/api/dashboard/calendar'],
+  ['GET', '/api/dashboard/orders/MF-10482'],
 ];
 
 describe('no-login access limits (fail closed)', () => {
@@ -53,7 +55,7 @@ describe('no-login access limits (fail closed)', () => {
     assert.equal((await client.request('GET', '/api/health')).status, 200);
     const config = await client.request('GET', '/api/config');
     assert.equal(config.status, 200);
-    assert.deepEqual(config.body, { appEnv: 'production', authenticated: false, dataAvailable: false });
+    assert.deepEqual(config.body, { appEnv: 'production', timeZone: 'America/New_York', authenticated: false, dataAvailable: false });
   });
 });
 
