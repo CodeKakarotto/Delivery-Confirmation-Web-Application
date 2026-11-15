@@ -1,0 +1,7 @@
+# Copy to .dev.vars for local development (never commit .dev.vars).
+APP_ENV=development
+# Random string of 32+ characters. Used only to hash client IP addresses for rate limiting.
+APP_SECRET=replace-with-a-long-random-string
+# Optional: extra host names (besides localhost) allowed to reach the API in development, e.g. this
+# computer's LAN address so a phone on the same Wi-Fi can try the driver screen. Comma-separated.
+# DEV_EXTRA_HOSTS=192.168.1.20

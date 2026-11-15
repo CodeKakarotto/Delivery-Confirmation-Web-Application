@@ -1,0 +1,65 @@
+# Michael's Flowers — Mobile Delivery Confirmation
+
+Prototype 3 of the Michael's Flowers capstone: a mobile-friendly web app that replaces paper delivery confirmation
+sheets. Drivers open an order, record how it was handed over, who received it and the customer's signature. Employees
+review the saved proof of delivery on a dashboard, find it by order ID and print it.
+
+It uses the same stack and visual design as the route-optimization prototype (React + TypeScript + Vite, Cloudflare
+Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be merged later
+([docs/INTEGRATION.md](docs/INTEGRATION.md)).
+
+> **No login, local demonstration only.** The prototype has no sign-in, as the project requires. That means it cannot
+> tell a driver from an employee from a stranger, so the Worker serves delivery data **only** with `APP_ENV=development`
+> on `localhost`. Use synthetic data only. Read [docs/SECURITY.md](docs/SECURITY.md) before connecting anything real.
+
+## Features
+
+- **Driver screen** (`/confirm`): open one order by its exact ID. The card shows, in this order:
+  `#` → Zone → Order ID + Code 128 barcode → Deliver To (with the Delivery Exception subsection) → Total Products →
+  Delivery Instructions (with Received By and Customer Signature).
+- Touch/stylus/mouse signature pad with **Clear signature**; a typed name never counts as a signature.
+- Server-side validation of every field, including a structural check of the signature PNG.
+- Safe submission: a double tap or a retry after a lost response never saves twice (idempotency key); entries are kept
+  after a recoverable failure; success is shown only after the server confirms the save.
+- **Dashboard** (`/dashboard`): the day's scheduled orders compared with saved confirmations ("not yet confirmed",
+  or "missing" for past days), exact order-ID search, filters for exceptions and flagged duplicates.
+- **Detail and print** (`/dashboard/confirmations/:id`): the saved record in the same field order, with logo, barcode,
+  signature and server time, and refused duplicate/conflicting attempts.
+
+## Getting started
+
+Requires Node.js 22.18+ (see `.nvmrc`).
+
+```bash
+npm install
+cp .dev.vars.example .dev.vars        # then set APP_SECRET to a long random string
+npm run db:setup:local                # local D1: migrations + synthetic demo orders
+npm run dev:api                       # Worker API on http://127.0.0.1:8787
+npm run dev:web                       # app on http://localhost:5173 (proxies /api to the Worker)
+```
+
+Open http://localhost:5173. Demo order IDs: `MF-10482`, `MF-10483`, `MF-10484`, `MF-10485` (no zone, stop or product
+total, to show missing values), `FTD-2207731`, `MF-10490` (cancelled).
+
+To try the driver screen on a phone on the same Wi-Fi, add this computer's LAN address to `DEV_EXTRA_HOSTS` in
+`.dev.vars` and run Vite with `--host`. Still synthetic data only.
+
+## Checks
+
+```bash
+npm test            # Worker API, barcode and React component tests (Node's built-in test runner)
+npm run typecheck   # Worker, frontend and tests
+npm run build:web   # production build
+npm run check       # all three
+```
+
+## Documentation
+
+| File | Contents |
+| --- | --- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit, request flow, design reuse |
+| [docs/API.md](docs/API.md) | Endpoints, requests, responses and error codes |
+| [docs/SCHEMA.md](docs/SCHEMA.md) | D1 tables and constraints |
+| [docs/SECURITY.md](docs/SECURITY.md) | No-login limitations, controls, **decisions needed before production** |
+| [docs/INTEGRATION.md](docs/INTEGRATION.md) | How to connect this to the route-optimization app |
+| [docs/TESTING.md](docs/TESTING.md) | Test layout and what is covered |

@@ -1,0 +1,36 @@
+// Cloudflare Worker for the Michael's Flowers delivery confirmation prototype: serves the React app
+// (static assets) and the JSON API (/api/*) from one origin, like the route-optimization app.
+//
+// LOCAL DEMONSTRATION ONLY. This prototype has no login (a project requirement), so it cannot keep customer
+// proof-of-delivery data private on a public URL. The Worker therefore refuses every data request unless
+// APP_ENV=development AND the request is addressed to localhost (or a host listed in DEV_EXTRA_HOSTS).
+// Do not deploy it with real customer data until an access model is approved (docs/SECURITY.md).
+//
+// Secrets are never stored here. Local values go in .dev.vars (see .dev.vars.example).
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "michaels-flowers-confirmations",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./frontend/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "michaels-flowers-confirmations-db",
+      // Placeholder on purpose: local D1 data is stored under a file name derived from it.
+      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    // Anything other than "development" is treated as production, where all data endpoints fail closed.
+    "APP_ENV": "development",
+    // Extra browser origins allowed to send state-changing requests (same-origin is always allowed).
+    "ALLOWED_ORIGINS": ""
+  }
+}
