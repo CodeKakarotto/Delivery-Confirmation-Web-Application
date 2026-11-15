@@ -1,3 +1,4 @@
+import type { SessionUser } from './auth.ts';
 import type { Env, Settings } from './env.ts';
 
 export interface RequestContext {
@@ -11,6 +12,8 @@ export interface RequestContext {
   now: Date;
   /** Response headers handlers want added. */
   responseHeaders: Headers;
+  /** The signed-in account, once requireUser has run. */
+  user: SessionUser | null;
 }
 
 export type Handler = (ctx: RequestContext) => Promise<Response>;

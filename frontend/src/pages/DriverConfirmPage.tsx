@@ -23,7 +23,7 @@ export function DriverConfirmPage() {
   if (lookup.loading && !lookup.data) {
     return (
       <div className="narrow">
-        <BackButton fallback="/confirm" always />
+        <BackButton fallback="/driver" always />
         <Spinner label="Loading the delivery" />
       </div>
     );
@@ -33,7 +33,7 @@ export function DriverConfirmPage() {
     const notFound = err instanceof ApiRequestError && err.code === 'order_not_found';
     return (
       <div className="narrow">
-        <BackButton fallback="/confirm" always />
+        <BackButton fallback="/driver" always />
         <Notice
           tone={notFound ? 'warn' : 'error'}
           title={notFound ? `Order ${orderId} was not found` : 'This delivery cannot be opened'}
@@ -47,8 +47,8 @@ export function DriverConfirmPage() {
         >
           {errorMessage(err)}
         </Notice>
-        <Link to="/confirm" className="btn">
-          Enter another order ID
+        <Link to="/driver" className="btn">
+          Back to my dashboard
         </Link>
       </div>
     );
@@ -57,12 +57,12 @@ export function DriverConfirmPage() {
   if (data.status === 'already_confirmed') {
     return (
       <div className="narrow">
-        <BackButton fallback="/confirm" always />
+        <BackButton fallback="/driver" always />
         <Notice tone="info" title={`Order ${data.orderId} is already confirmed`}>
           A delivery confirmation was saved on {shopDateTime(data.confirmedAt, timeZone)}. It cannot be changed from this screen. Call the shop
           if something is wrong.
         </Notice>
-        <Link to="/confirm" className="btn btn-primary">
+        <Link to="/driver" className="btn btn-primary">
           Confirm another delivery
         </Link>
       </div>
@@ -159,7 +159,7 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
   if (phase === 'saved' && receipt) {
     return (
       <div className="narrow">
-        <BackButton fallback="/confirm" label="Back to order entry" always />
+        <BackButton fallback="/driver" label="Back to my dashboard" always />
         <section className="card saved-card" aria-labelledby="saved-title">
           <div className="saved-mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="28" height="28">
@@ -199,7 +199,7 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
               </dd>
             </div>
           </dl>
-          <Link to="/confirm" className="btn btn-primary btn-block btn-large">
+          <Link to="/driver" className="btn btn-primary btn-block btn-large">
             Confirm another delivery
           </Link>
         </section>
@@ -222,7 +222,7 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
             // Back to the list the driver came from (same page), or the driver home if opened directly.
             const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
             if (idx > 0) navigate(-1);
-            else navigate('/confirm');
+            else navigate('/driver');
           }}
         >
           <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
@@ -327,7 +327,7 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
         <Notice tone="error" title="This confirmation was not saved">
           {errorMessage(failure)}
           <div className="notice-links">
-            <Link to="/confirm">Enter another order ID</Link>
+            <Link to="/driver">Back to my dashboard</Link>
           </div>
         </Notice>
       )}

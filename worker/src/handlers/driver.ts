@@ -1,5 +1,5 @@
 /**
- * Driver endpoints (prototype: role chosen on screen, no login). The driver sees today's awaiting orders (no street
+ * Driver endpoints (signed-in driver accounts only). The driver sees today's awaiting orders (no street
  * addresses), opens ONE order by its order ID and submits its confirmation. An order that is already confirmed returns
  * no customer details.
  */
@@ -20,7 +20,8 @@ import { ApiError, isUniqueViolation, json, logEvent, readJson, validationError 
 import type { RequestContext } from '../router.ts';
 import { localDateKey } from '../../../shared/shopTime.ts';
 import type { DriverAwaitingResponse } from '../../../shared/types.ts';
-import { RATE_LIMITS, rateLimit, requireDemoAccess, requireRole } from '../security.ts';
+import { requireRole } from '../auth.ts';
+import { RATE_LIMITS, rateLimit, requireDemoAccess } from '../security.ts';
 import { validateSignature } from '../signature.ts';
 
 const ORDER_NOT_FOUND = () =>
@@ -40,7 +41,7 @@ export function resultFor(outcome: DeliveryOutcome): ConfirmationResult {
 
 export async function lookup(ctx: RequestContext): Promise<Response> {
   requireDemoAccess(ctx);
-  requireRole(ctx, 'driver');
+  await requireRole(ctx, 'driver');
   // Counted before anything else, so guessing order IDs is slowed down whether or not they exist.
   await rateLimit(ctx, RATE_LIMITS.lookup);
   const orderId = (ctx.params.orderId ?? '').trim();
@@ -68,7 +69,7 @@ function blankToNull(text: string | undefined): string | null {
 
 export async function submit(ctx: RequestContext): Promise<Response> {
   requireDemoAccess(ctx);
-  requireRole(ctx, 'driver');
+  const driverAccount = await requireRole(ctx, 'driver');
   await rateLimit(ctx, RATE_LIMITS.submit);
   const input = await readJson(ctx.request, confirmationSubmitSchema, SUBMIT_MAX_BODY_BYTES);
   const cross = crossFieldIssues(input);
@@ -115,6 +116,7 @@ export async function submit(ctx: RequestContext): Promise<Response> {
       idempotencyKey: input.idempotencyKey,
       requestHash,
       confirmedAt,
+      confirmedByUserId: driverAccount.id,
     });
   } catch (err) {
     // Lost a race with a simultaneous request: the same retry (same key) or another submission for this order.
@@ -175,7 +177,7 @@ async function refuseSecond(
 /** Today's (shop-local) orders that still need a confirmation, by stop number, a page at a time. No street addresses. */
 export async function awaiting(ctx: RequestContext): Promise<Response> {
   requireDemoAccess(ctx);
-  requireRole(ctx, 'driver');
+  await requireRole(ctx, 'driver');
   await rateLimit(ctx, RATE_LIMITS.lookup);
   const limit = pageParam(ctx, 'limit', 5, 1, 50);
   const offset = pageParam(ctx, 'offset', 0, 0, 10_000);

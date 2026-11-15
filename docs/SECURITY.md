@@ -1,24 +1,41 @@
-# Security, privacy and the no-login limitation
+# Security and privacy
 
-## The limitation
+## Sign-in (added at the team's request)
 
-**Prototype roles.** The home screen asks whether you are a driver or a shop employee. The choice is sent as
-`X-Demo-Role` and the Worker accepts each endpoint only for its role (`requireRole` in `worker/src/security.ts`):
-drivers use `/api/driver/*`, shop employees use the view-only `/api/dashboard/*`. This keeps the two parts apart,
-but it is **not** access control: anyone can choose either role. The final system will have logins; then
-`requireRole` reads the signed-in account's role instead, and the endpoints do not change.
+The original instruction file asked for no login. The team has since asked for sign-in accounts for drivers and shop
+employees (no two-factor), so the app now requires a signed-in account for all delivery data.
 
-The driver page lists today's awaiting orders (stop, zone, order ID, recipient name, city; no street addresses) at
-the project's request. Without logins, anyone who can open the local demonstration as a "driver" can see that list.
+| Who | Can do |
+| --- | --- |
+| Driver | Dashboard (today's awaiting orders, find an order, recently confirmed), confirm deliveries, Confirmations tab (calendar of **their own** confirmations, with signatures) |
+| Shop employee | Dashboard (calendar of all deliveries), Deliveries list, Search, every confirmation record. **View only**: cannot confirm |
 
-This prototype has **no login**: a project requirement. Without one, the server cannot know who is using it. Hiding a
-button or page does not change that. In particular:
+The Worker enforces this on every request (`requireRole` / `requireUser` in `worker/src/auth.ts`); the screens only
+mirror it. A driver asking for another driver's record or signature gets 404.
 
-- A submitted signature does **not** authenticate the driver, and nothing identifies a driver or employee.
-- The dashboard cannot be restricted to employees.
-- Anyone who can reach the API could read proof-of-delivery records (names, addresses, signatures).
+**Measures**
+- **Passwords**: PBKDF2-SHA256, 100,000 iterations (the Workers maximum), random 16-byte salt per account,
+  constant-time comparison. Only the hash is stored; passwords are never logged. Generated passwords are 16 random
+  characters.
+- **Sessions**: random 256-bit token in an `HttpOnly`, `SameSite=Strict` cookie (`Secure` and `__Host-` prefixed over
+  HTTPS); scripts cannot read it. Only the token's SHA-256 is stored. A new session on every sign-in. Sessions end
+  after **2 hours idle** or **12 hours** in total, on **Sign out** (deleted on the server), or when the account is
+  deactivated.
+- **Forgery protection**: every change needs the session's anti-forgery token (`X-CSRF-Token`) and a same-site
+  `Origin`; JSON-only bodies; no CORS.
+- **Guessing**: 5 wrong passwords lock a username for up to 15 minutes (also for usernames that do not exist, so the
+  lock reveals nothing); at most 20 sign-in attempts per device per 15 minutes. Every failure says "The username or
+  password is incorrect", and unknown usernames take as long to check as wrong passwords.
+- **Responses**: `Cache-Control: no-store` everywhere; generic errors with a request ID; logs carry account IDs and
+  event names only, never passwords, tokens, customer details or signatures.
+- **Accounts** are created by an administrator with `npm run users:create` (no self-registration). Demo accounts come
+  from `npm run users:demo`; their passwords are saved to `demo-accounts.local.txt`, which git ignores.
 
-So the prototype **fails closed**:
+Not included (by request or scope): two-factor sign-in, self-service password reset, a password change screen.
+
+## Local demonstration only
+
+The app still serves delivery data only in the local demonstration, and still uses **synthetic data only**:
 
 | Where | Delivery data served? |
 | --- | --- |
@@ -26,15 +43,14 @@ So the prototype **fails closed**:
 | `APP_ENV=development`, request to a host listed in `DEV_EXTRA_HOSTS` | Yes (e.g. a phone on the same Wi-Fi) |
 | Anything else, including any deployed URL | No: `503 access_model_required` |
 
-`/api/health` and `/api/config` stay available and contain no customer data. **Use synthetic data only.**
+Deploying it needs HTTPS, real accounts and a review of the decisions below.
 
 ## Decisions needed before real use
 
 These were not decided by the developer, on purpose:
 
-1. **Access model.** How should drivers and employees be restricted? Options to discuss with the sponsor: reuse the
-   route app's Cloudflare Access + Auth0 sign-in for the dashboard only; delivery-specific signed links issued by the
-   route app to the assigned driver; or keep the app on the shop's private network. None is implemented.
+1. **Accounts in the combined system.** These local accounts work for the prototype. When the prototypes are merged,
+   decide whether to keep them or use the route app's Cloudflare Access + Auth0 sign-in.
 2. **Delivery exception list.** The five options (delivered to recipient, left at door, front desk / reception,
    neighbor, other) are the instruction file's suggestions and still need sponsor review.
 3. **Which exceptions count as a completed delivery.** Currently only "Delivered to recipient" is saved as

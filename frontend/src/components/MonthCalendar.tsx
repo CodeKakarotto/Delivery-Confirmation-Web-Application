@@ -1,7 +1,7 @@
 import type { CalendarDay } from '../../../shared/types.ts';
-import { fullDayLabel, monthLabel, weekLabel } from '../lib/calendar.ts';
+import { fullDayLabel, monthLabel } from '../lib/calendar.ts';
 import { addMonths, monthGrid } from '../lib/monthGrid.ts';
-import { addDays, weekStartKey } from '../../../shared/shopTime.ts';
+import { weekStartKey } from '../../../shared/shopTime.ts';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -14,8 +14,7 @@ function dayLabel(date: string, info: CalendarDay | undefined): string {
 }
 
 /**
- * The shop's single calendar: one month, the current week's row highlighted, today circled, and today's date written
- * underneath. Each day shows how many deliveries were confirmed; tapping a day selects it.
+ * A single month calendar: the current week's row highlighted, today circled, and today's date written underneath. Each day shows how many deliveries were confirmed; tapping a day selects it.
  */
 export function MonthCalendar({
   month,
@@ -100,7 +99,6 @@ export function MonthCalendar({
       </table>
       <p className="month-cal-date">
         <span className="month-cal-today">{fullDayLabel(today)}</span>
-        <span className="muted">Week of {weekLabel(thisWeek, addDays(thisWeek, 6))}</span>
       </p>
     </div>
   );

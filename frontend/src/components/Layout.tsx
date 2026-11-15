@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
-import { ROLE_LABEL, useRole } from '../lib/role.tsx';
+import { ROLE_LABEL, useAuth } from '../lib/auth.tsx';
 import { applyTheme, currentTheme, type Theme } from '../lib/theme.ts';
 
 /**
@@ -47,45 +47,52 @@ function ThemeToggle() {
 }
 
 const NAV = {
-  driver: [{ to: '/confirm', label: 'Confirm a delivery' }],
-  shop: [{ to: '/shop', label: 'Shop employees' }],
+  driver: [
+    { to: '/driver', label: 'Dashboard', end: true },
+    { to: '/driver/confirmations', label: 'Confirmations', end: false },
+  ],
+  employee: [
+    { to: '/shop', label: 'Dashboard', end: true },
+    { to: '/shop/deliveries', label: 'Deliveries', end: false },
+    { to: '/shop/search', label: 'Search', end: false },
+  ],
 } as const;
 
-/** The chosen role and "Switch role" (prototype stand-in for the signed-in name and Sign out). */
-function RoleBadge() {
-  const { role, setRole } = useRole();
+/** The signed-in account and Sign out (which ends the session on the server). */
+function AccountBadge() {
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  if (!role) return null;
+  if (!user) return null;
   return (
     <span className="role-badge">
       <span className="account-name">
-        {ROLE_LABEL[role]}
-        <span className="account-role">Prototype role</span>
+        {user.displayName}
+        <span className="account-role">{ROLE_LABEL[user.role]}</span>
       </span>
       <button
         type="button"
         className="btn btn-small"
-        onClick={() => {
-          setRole(null);
-          navigate('/');
+        onClick={async () => {
+          await logout();
+          navigate('/login', { replace: true });
         }}
       >
-        Switch role
+        Sign out
       </button>
     </span>
   );
 }
 
 export function AppLayout() {
-  const { role } = useRole();
-  const nav = role ? NAV[role] : [];
+  const { user } = useAuth();
+  const nav = user ? NAV[user.role] : [];
   return (
     <div className="app">
       <a className="skip-link" href="#main">
         Skip to content
       </a>
       <div className="demo-ribbon no-print" role="note">
-        Local demonstration with synthetic data. There is no sign-in, so this app must not hold real customer information.
+        Local demonstration with synthetic data only.
       </div>
       <header className="topbar no-print">
         <div className="topbar-inner">
@@ -94,13 +101,13 @@ export function AppLayout() {
           </NavLink>
           <nav className="mainnav" aria-label="Main">
             {nav.map((item) => (
-              <NavLink key={item.to} to={item.to} className={({ isActive }) => (isActive ? 'is-active' : '')}>
+              <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? 'is-active' : '')}>
                 {item.label}
               </NavLink>
             ))}
           </nav>
           <div className="account">
-            <RoleBadge />
+            <AccountBadge />
             <ThemeToggle />
           </div>
         </div>

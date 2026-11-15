@@ -17,20 +17,26 @@ export class ApiRequestError extends Error {
 
 type Method = 'GET' | 'POST';
 
-/** Prototype role sent with every call (stand-in for a login; see lib/role.tsx). */
-let apiRole: string | null = null;
-export function setApiRole(role: string | null): void {
-  apiRole = role;
+/** Anti-forgery token of the current session, sent with every change (see lib/auth.tsx). */
+let csrfToken: string | null = null;
+export function setCsrfToken(token: string | null): void {
+  csrfToken = token;
+}
+
+/** Called when the server says the session is gone (401), so the app can show the sign-in page. */
+let onSignedOut: (() => void) | null = null;
+export function onSessionEnded(handler: (() => void) | null): void {
+  onSignedOut = handler;
 }
 
 /**
- * Same-origin JSON API call. No credentials, tokens or customer data are stored in the browser; nothing is sent to
- * analytics or error-reporting services.
+ * Same-origin JSON API call. The session cookie is HttpOnly (scripts cannot read it); no tokens or customer data are
+ * stored in browser storage, and nothing is sent to analytics or error-reporting services.
  */
 export async function api<T>(method: Method, path: string, body?: unknown, opts: { signal?: AbortSignal } = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
-  if (apiRole) headers['X-Demo-Role'] = apiRole;
+  if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
   let res: Response;
   try {
@@ -60,6 +66,7 @@ export async function api<T>(method: Method, path: string, body?: unknown, opts:
   }
   if (!res.ok) {
     const err = (data as ApiErrorBody | null)?.error;
+    if (res.status === 401 && !path.startsWith('/api/auth/')) onSignedOut?.();
     throw new ApiRequestError(
       res.status,
       err?.code ?? 'http_error',

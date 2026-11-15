@@ -1,5 +1,8 @@
 import type {
   AppConfig,
+  AuthResponse,
+  DeliveryListResponse,
+  DeliveryStatus,
   ConfirmationDetailResponse,
   ConfirmationCalendar,
   ConfirmationListResponse,
@@ -12,6 +15,12 @@ import type {
   ShopOrderResponse,
 } from '../../../shared/types.ts';
 import { api } from './client.ts';
+
+export const authApi = {
+  me: () => api<AuthResponse>('GET', '/api/auth/me'),
+  login: (username: string, password: string) => api<AuthResponse>('POST', '/api/auth/login', { username, password }),
+  logout: () => api<{ ok: true }>('POST', '/api/auth/logout', {}),
+};
 
 export const configApi = {
   get: () => api<AppConfig & { dataAvailable: boolean }>('GET', '/api/config'),
@@ -51,6 +60,16 @@ export const dashboardApi = {
     if (q.limit) p.set('limit', String(q.limit));
     if (q.offset) p.set('offset', String(q.offset));
     return api<ConfirmationListResponse>('GET', `/api/dashboard/confirmations?${p}`);
+  },
+  /** Employees: orders for a day, or matching ?q= (order ID or recipient name), 10 per page. */
+  deliveries: (q: { date?: string; q?: string; status?: DeliveryStatus | 'all'; limit?: number; offset?: number }) => {
+    const p = new URLSearchParams();
+    if (q.date) p.set('date', q.date);
+    if (q.q) p.set('q', q.q);
+    if (q.status && q.status !== 'all') p.set('status', q.status);
+    if (q.limit) p.set('limit', String(q.limit));
+    if (q.offset) p.set('offset', String(q.offset));
+    return api<DeliveryListResponse>('GET', `/api/dashboard/deliveries?${p}`);
   },
   detail: (id: string) => api<ConfirmationDetailResponse>('GET', `/api/dashboard/confirmations/${encodeURIComponent(id)}`),
   signatureUrl: (id: string) => `/api/dashboard/confirmations/${encodeURIComponent(id)}/signature`,

@@ -20,8 +20,9 @@ for the test runner by `frontend/test/register-tsx.mjs` (esbuild).
 | `worker/test/shopTime.test.ts` | Shop-local days, daylight-saving day ranges, Sunday weeks |
 | `frontend/test/shopUi.test.tsx` | "Delivered to recipient" bubble before the Delivery Exception group (one radio group), signature pop-up launcher and preview |
 | `frontend/test/monthCalendar.test.tsx` | Month grid (Sunday weeks), the single calendar: current week row, today, day counts, selected day, today's date underneath, no date picker |
-| `worker/test/roles.test.ts` | Driver endpoints only for the driver role, dashboard only for the shop role, the driver's awaiting list (today, unconfirmed, no addresses, shop day, 5 per page with total) |
-| `frontend/test/roleGate.test.tsx` | Each section shown only to its role; role chooser prompt |
+| `worker/test/auth.test.ts` | Sign-in: cookie flags (HttpOnly, SameSite=Strict, Secure/__Host- on HTTPS), generic errors, lockout after 5 failures, per-device limit, deactivated accounts, hashes only, nothing secret in logs, idle and absolute expiry, sign-out, anti-forgery token, old role header ignored |
+| `worker/test/roles.test.ts` | Sign-in required everywhere; only drivers confirm; employee-only views; drivers see only their own confirmations and signatures; signature served with the cookie alone; awaiting list (5 per page); employees' deliveries list and search (wildcards escaped) |
+| `frontend/test/authGate.test.tsx` | Pages shown only to signed-in accounts of the right role |
 | `worker/test/barcode.test.ts` | Code 128 table, checksum, exact round-trip of order IDs |
 | `frontend/test/deliveryCard.test.tsx` | Required field order, barcode under the order ID encoding it exactly, exception inside Deliver To, Received By/Signature inside Delivery Instructions, "—"/"Not recorded", text escaping, saved/print view order |
 | `frontend/test/confirmationForm.test.tsx` | Client validation: outcome, "Other" detail, Received By, drawn signature required |

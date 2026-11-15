@@ -1,9 +1,6 @@
 /**
- * Employee confirmation dashboard endpoints.
- *
- * IMPORTANT: there is no login, so these endpoints cannot check that the caller is an employee. They are served only
- * inside the local demonstration (requireDemoAccess) and must not be exposed publicly until an access model is
- * approved (docs/SECURITY.md).
+ * Confirmation and delivery views. Employees see everything; drivers see only the confirmations they saved. The day
+ * summary, the deliveries list and order lookups are for employees only.
  */
 
 import { isValidDate, ORDER_ID_MAX, ORDER_ID_PATTERN } from '../../../shared/schemas.ts';
@@ -17,20 +14,28 @@ import type {
   ConfirmationListResponse,
   ConfirmationResult,
   DashboardSummary,
+  DeliveryListItem,
+  DeliveryListResponse,
   ShopOrderResponse,
 } from '../../../shared/types.ts';
 import { findShopOrder, getConfirmationDetail, getSignature, listCalendarRows, listConfirmations, toDriverDelivery } from '../db/confirmations.ts';
 import { ApiError, json, SECURITY_HEADERS, validationError } from '../http.ts';
 import type { RequestContext } from '../router.ts';
-import { RATE_LIMITS, rateLimit, requireDemoAccess, requireRole } from '../security.ts';
+import { requireRole, requireUser } from '../auth.ts';
+import { RATE_LIMITS, rateLimit, requireDemoAccess } from '../security.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NOT_FOUND = () => new ApiError(404, 'not_found', 'Confirmation not found.');
 
-async function guard(ctx: RequestContext): Promise<void> {
+/**
+ * 'employee': shop employees only. 'own': any signed-in account; returns the account id to limit results to for
+ * drivers (their own confirmations) or undefined for employees (everything).
+ */
+async function guard(ctx: RequestContext, who: 'employee' | 'own'): Promise<number | undefined> {
   requireDemoAccess(ctx);
-  requireRole(ctx, 'shop');
+  const user = who === 'employee' ? await requireRole(ctx, 'employee') : await requireUser(ctx);
   await rateLimit(ctx, RATE_LIMITS.dashboard);
+  return user.role === 'driver' ? user.id : undefined;
 }
 
 function intParam(ctx: RequestContext, name: string, fallback: number, min: number, max: number): number {
@@ -43,7 +48,7 @@ function intParam(ctx: RequestContext, name: string, fallback: number, min: numb
 }
 
 export async function list(ctx: RequestContext): Promise<Response> {
-  await guard(ctx);
+  const userId = await guard(ctx, 'own');
   const q = ctx.url.searchParams;
   const orderId = q.get('orderId')?.trim() || undefined;
   if (orderId !== undefined && (orderId.length > ORDER_ID_MAX || !ORDER_ID_PATTERN.test(orderId))) {
@@ -58,6 +63,7 @@ export async function list(ctx: RequestContext): Promise<Response> {
   if (day !== undefined && !isValidDate(day)) throw validationError([{ path: 'day', message: 'Use YYYY-MM-DD' }]);
   const dayRange = day ? localDayRangeUtc(day, ctx.settings.timeZone) : undefined;
   const body: ConfirmationListResponse = await listConfirmations(ctx.db, {
+    userId,
     orderId,
     result: resultRaw as ConfirmationResult | undefined,
     flagged: q.get('flagged') === '1',
@@ -69,10 +75,10 @@ export async function list(ctx: RequestContext): Promise<Response> {
 }
 
 export async function detail(ctx: RequestContext): Promise<Response> {
-  await guard(ctx);
+  const userId = await guard(ctx, 'own');
   const id = ctx.params.id ?? '';
   if (!UUID.test(id)) throw NOT_FOUND();
-  const confirmation = await getConfirmationDetail(ctx.db, id.toLowerCase());
+  const confirmation = await getConfirmationDetail(ctx.db, id.toLowerCase(), userId);
   if (!confirmation) throw NOT_FOUND();
   const body: ConfirmationDetailResponse = { confirmation };
   return json(body);
@@ -80,10 +86,10 @@ export async function detail(ctx: RequestContext): Promise<Response> {
 
 /** The saved signature image. Never cached, never sniffed, sandboxed if opened directly. */
 export async function signature(ctx: RequestContext): Promise<Response> {
-  await guard(ctx);
+  const userId = await guard(ctx, 'own');
   const id = ctx.params.id ?? '';
   if (!UUID.test(id)) throw NOT_FOUND();
-  const bytes = await getSignature(ctx.db, id.toLowerCase());
+  const bytes = await getSignature(ctx.db, id.toLowerCase(), userId);
   if (!bytes) throw NOT_FOUND();
   return new Response(bytes, {
     status: 200,
@@ -102,7 +108,7 @@ export async function signature(ctx: RequestContext): Promise<Response> {
  * (deliveries.delivery_date) that are not cancelled; nothing is reported as missing without it.
  */
 export async function summary(ctx: RequestContext): Promise<Response> {
-  await guard(ctx);
+  await guard(ctx, 'employee');
   const today = localDateKey(ctx.now, ctx.settings.timeZone);
   const date = ctx.url.searchParams.get('date') || today;
   if (!isValidDate(date)) throw validationError([{ path: 'date', message: 'Use YYYY-MM-DD' }]);
@@ -165,7 +171,7 @@ function bump(c: CalendarCounts, result: ConfirmationResult, flagged: boolean): 
  * The current month, week and day are always present so the Confirmations tab can open on them.
  */
 export async function calendar(ctx: RequestContext): Promise<Response> {
-  await guard(ctx);
+  const userId = await guard(ctx, 'own');
   const tz = ctx.settings.timeZone;
   const today = localDateKey(ctx.now, tz);
   type DayAcc = CalendarCounts & { date: string };
@@ -186,7 +192,7 @@ export async function calendar(ctx: RequestContext): Promise<Response> {
   };
 
   slot(today); // always show where "now" is
-  for (const row of await listCalendarRows(ctx.db)) {
+  for (const row of await listCalendarRows(ctx.db, userId)) {
     const date = localDateKey(new Date(row.confirmed_at), tz);
     const { month, week, day } = slot(date);
     for (const c of [month, week, day]) bump(c, row.result, row.flagged === 1);
@@ -219,7 +225,7 @@ export async function calendar(ctx: RequestContext): Promise<Response> {
 
 /** One order as the shop sees it: details plus whether (and when) it was confirmed. */
 export async function order(ctx: RequestContext): Promise<Response> {
-  await guard(ctx);
+  await guard(ctx, 'employee');
   const orderId = (ctx.params.orderId ?? '').trim();
   if (!orderId || orderId.length > ORDER_ID_MAX || !ORDER_ID_PATTERN.test(orderId)) throw new ApiError(404, 'order_not_found', 'Order not found.');
   const found = await findShopOrder(ctx.db, orderId);
@@ -229,6 +235,87 @@ export async function order(ctx: RequestContext): Promise<Response> {
     status: confirmation ? 'confirmed' : delivery.cancelled_at ? 'cancelled' : 'awaiting',
     delivery: { ...toDriverDelivery(delivery), deliveryDate: delivery.delivery_date },
     confirmation: confirmation ? { id: confirmation.id, confirmedAt: confirmation.confirmed_at, result: confirmation.result } : null,
+  };
+  return json(body);
+}
+
+const STATUSES = ['all', 'awaiting', 'confirmed', 'exception', 'cancelled'] as const;
+
+/**
+ * Employees' deliveries list: every order for a day (default today) or, with ?q=, orders whose ID or recipient name
+ * contains the text (any day). Filter by status; 10 per page by default.
+ */
+export async function deliveries(ctx: RequestContext): Promise<Response> {
+  await guard(ctx, 'employee');
+  const q = ctx.url.searchParams;
+  const text = (q.get('q') ?? '').trim();
+  if (text.length > 100) throw validationError([{ path: 'q', message: 'Use at most 100 characters' }]);
+  const status = (q.get('status') || 'all') as (typeof STATUSES)[number];
+  if (!STATUSES.includes(status)) throw validationError([{ path: 'status', message: `Must be one of: ${STATUSES.join(', ')}` }]);
+  const dateRaw = q.get('date') || undefined;
+  if (dateRaw !== undefined && !isValidDate(dateRaw)) throw validationError([{ path: 'date', message: 'Use YYYY-MM-DD' }]);
+  const date = dateRaw ?? (text ? undefined : localDateKey(ctx.now, ctx.settings.timeZone));
+
+  // Fixed clauses with placeholders only; user text is always bound, with LIKE wildcards escaped.
+  const where: string[] = [];
+  const binds: unknown[] = [];
+  if (date) {
+    where.push('d.delivery_date = ?');
+    binds.push(date);
+  }
+  if (text) {
+    where.push(`(d.order_id LIKE ? ESCAPE '!' OR d.recipient_name LIKE ? ESCAPE '!')`);
+    const like = `%${text.replace(/[!%_]/g, (c) => `!${c}`)}%`;
+    binds.push(like, like);
+  }
+  if (status === 'awaiting') where.push('d.cancelled_at IS NULL AND c.id IS NULL');
+  if (status === 'confirmed') where.push(`c.result = 'confirmed'`);
+  if (status === 'exception') where.push(`c.result = 'needs_review'`);
+  if (status === 'cancelled') where.push('d.cancelled_at IS NOT NULL AND c.id IS NULL');
+  const clause = where.length ? ` WHERE ${where.join(' AND ')}` : '';
+  const from = 'FROM deliveries d LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id';
+  const limit = intParam(ctx, 'limit', 10, 1, 100);
+  const offset = intParam(ctx, 'offset', 0, 0, 100_000);
+
+  type Row = {
+    order_id: string;
+    stop_number: number | null;
+    zone: string | null;
+    recipient_name: string | null;
+    city: string;
+    delivery_date: string | null;
+    cancelled_at: string | null;
+    c_id: string | null;
+    confirmed_at: string | null;
+    result: ConfirmationResult | null;
+    received_by: string | null;
+  };
+  const [rows, count] = await ctx.db.batch<Row | { n: number }>([
+    ctx.db
+      .prepare(
+        `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city, d.delivery_date, d.cancelled_at,
+                c.id AS c_id, c.confirmed_at, c.result, c.received_by
+           ${from}${clause}
+          ORDER BY d.delivery_date DESC, d.stop_number IS NULL, d.stop_number, d.order_id
+          LIMIT ? OFFSET ?`,
+      )
+      .bind(...binds, limit, offset),
+    ctx.db.prepare(`SELECT COUNT(*) AS n ${from}${clause}`).bind(...binds),
+  ]);
+  const body: DeliveryListResponse = {
+    total: (count!.results[0] as { n: number }).n,
+    items: (rows!.results as Row[]).map(
+      (r): DeliveryListItem => ({
+        orderId: r.order_id,
+        stopNumber: r.stop_number,
+        zone: r.zone,
+        recipientName: r.recipient_name,
+        city: r.city,
+        deliveryDate: r.delivery_date,
+        status: r.c_id ? (r.result === 'confirmed' ? 'confirmed' : 'exception') : r.cancelled_at ? 'cancelled' : 'awaiting',
+        confirmation: r.c_id ? { id: r.c_id, confirmedAt: r.confirmed_at!, result: r.result!, receivedBy: r.received_by! } : null,
+      }),
+    ),
   };
   return json(body);
 }

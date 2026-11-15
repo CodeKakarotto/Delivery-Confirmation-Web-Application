@@ -63,3 +63,9 @@ export function isValidDate(value: string): boolean {
   const d = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
+
+/** Sign-in form. Passwords are not trimmed or otherwise changed. */
+export const loginSchema = s.object({
+  username: s.string({ min: 1, max: 64 }),
+  password: s.string({ min: 1, max: 256, trim: false }),
+});

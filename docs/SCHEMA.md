@@ -1,6 +1,7 @@
 # Database schema (Cloudflare D1)
 
-Source of truth: [`migrations/0001_initial.sql`](../migrations/0001_initial.sql). Timestamps are ISO-8601 UTC text;
+Source of truth: [`migrations/0001_initial.sql`](../migrations/0001_initial.sql) and
+[`migrations/0002_accounts.sql`](../migrations/0002_accounts.sql) (accounts and sessions; additive). Timestamps are ISO-8601 UTC text;
 foreign keys are enforced. Demo data: [`seed/demo-seed.sql`](../seed/demo-seed.sql) (synthetic only).
 
 ## `deliveries`
@@ -29,6 +30,16 @@ One per order (`UNIQUE delivery_id`), never updated by the API. `delivery_id →
 ## `confirmation_attempts`
 Refused submissions for an already confirmed order: `confirmation_id → delivery_confirmations`, `kind`
 (`duplicate`: same content; `conflict`: different content), `received_by`, `outcome`, `created_at`. No signature kept.
+
+## `users` (0002)
+`username` (unique, case-insensitive), `display_name`, `role` (`driver` | `employee`), `password_hash`
+(`pbkdf2-sha256$<iterations>$<salt>$<hash>`; never the password), `active`, `last_login_at`, timestamps.
+
+## `sessions` (0002)
+`id` = SHA-256 of the cookie token (the token itself is never stored), `user_id` → users (cascade), `csrf_token`,
+`created_at`, `last_seen_at`, `expires_at`.
+
+`delivery_confirmations.confirmed_by_user_id` (0002) → users: the driver account that saved it.
 
 ## `rate_limits`
 `(bucket, window_start)` → `hits`. `bucket` = scope + HMAC of the client IP. Windows older than an hour are deleted.

@@ -107,6 +107,8 @@ export interface NewConfirmation {
   idempotencyKey: string;
   requestHash: string;
   confirmedAt: string;
+  /** The signed-in driver account. */
+  confirmedByUserId: number;
 }
 
 /**
@@ -119,8 +121,8 @@ export async function insertConfirmation(db: D1Database, c: NewConfirmation): Pr
     .prepare(
       `INSERT INTO delivery_confirmations
          (id, delivery_id, order_id, stop_number, zone, received_by, outcome, outcome_detail, note, signature_png,
-          signature_width, signature_height, result, idempotency_key, request_hash, confirmed_at)
-       SELECT ?, d.id, d.order_id, d.stop_number, d.zone, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+          signature_width, signature_height, result, idempotency_key, request_hash, confirmed_at, confirmed_by_user_id)
+       SELECT ?, d.id, d.order_id, d.stop_number, d.zone, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
          FROM deliveries d
         WHERE d.id = ? AND d.cancelled_at IS NULL`,
     )
@@ -137,6 +139,7 @@ export async function insertConfirmation(db: D1Database, c: NewConfirmation): Pr
       c.idempotencyKey,
       c.requestHash,
       c.confirmedAt,
+      c.confirmedByUserId,
       c.deliveryId,
     )
     .run();
@@ -193,6 +196,8 @@ function toListItem(r: ListRow): ConfirmationListItem {
 }
 
 export interface ListFilter {
+  /** Only confirmations saved by this account (drivers see their own). */
+  userId?: number;
   orderId?: string;
   result?: ConfirmationResult;
   flagged?: boolean;
@@ -206,6 +211,10 @@ export async function listConfirmations(db: D1Database, f: ListFilter): Promise<
   // Fixed clauses with placeholders only; user input is always bound, never concatenated.
   const where: string[] = [];
   const binds: unknown[] = [];
+  if (f.userId !== undefined) {
+    where.push('c.confirmed_by_user_id = ?');
+    binds.push(f.userId);
+  }
   if (f.orderId !== undefined) {
     where.push('c.order_id = ?');
     binds.push(f.orderId);
@@ -244,21 +253,23 @@ interface DetailRow extends ListRow {
   delivery_notes: string | null;
   total_products: number | null;
   delivery_date: string | null;
+  confirmed_by: string | null;
 }
 
-export async function getConfirmationDetail(db: D1Database, id: string) {
+export async function getConfirmationDetail(db: D1Database, id: string, userId?: number) {
   const row = await db
     .prepare(
       `SELECT c.id, c.order_id, c.stop_number, c.zone, d.recipient_name, c.received_by, c.outcome, c.result, c.confirmed_at,
               (SELECT COUNT(*) FROM confirmation_attempts a WHERE a.confirmation_id = c.id) AS attempt_count,
               (SELECT COUNT(*) FROM confirmation_attempts a WHERE a.confirmation_id = c.id AND a.kind = 'conflict') AS conflict_count,
               c.outcome_detail, c.note, c.signature_width, c.signature_height,
-              d.address_line, d.city, d.state, d.postal_code, d.address_notes, d.delivery_notes, d.total_products, d.delivery_date
+              d.address_line, d.city, d.state, d.postal_code, d.address_notes, d.delivery_notes, d.total_products, d.delivery_date,
+              (SELECT u.display_name FROM users u WHERE u.id = c.confirmed_by_user_id) AS confirmed_by
          FROM delivery_confirmations c
          JOIN deliveries d ON d.id = c.delivery_id
-        WHERE c.id = ?`,
+        WHERE c.id = ? AND (? IS NULL OR c.confirmed_by_user_id = ?)`,
     )
-    .bind(id)
+    .bind(id, userId ?? null, userId ?? null)
     .first<DetailRow>();
   if (!row) return null;
   const attempts = await db
@@ -286,14 +297,18 @@ export async function getConfirmationDetail(db: D1Database, id: string) {
     note: row.note,
     signatureWidth: row.signature_width,
     signatureHeight: row.signature_height,
+    confirmedBy: row.confirmed_by,
     attempts: attempts.results.map(
       (a): ConfirmationAttempt => ({ kind: a.kind, receivedBy: a.received_by, outcome: a.outcome, createdAt: a.created_at }),
     ),
   };
 }
 
-export async function getSignature(db: D1Database, id: string): Promise<Uint8Array<ArrayBuffer> | null> {
-  const row = await db.prepare('SELECT signature_png FROM delivery_confirmations WHERE id = ?').bind(id).first<{ signature_png: ArrayBuffer | Uint8Array | number[] }>();
+export async function getSignature(db: D1Database, id: string, userId?: number): Promise<Uint8Array<ArrayBuffer> | null> {
+  const row = await db
+    .prepare('SELECT signature_png FROM delivery_confirmations WHERE id = ? AND (? IS NULL OR confirmed_by_user_id = ?)')
+    .bind(id, userId ?? null, userId ?? null)
+    .first<{ signature_png: ArrayBuffer | Uint8Array | number[] }>();
   if (!row) return null;
   const v = row.signature_png;
   // D1 returns BLOBs as an ArrayBuffer or a number array depending on the runtime; copy into a fresh buffer.
@@ -301,13 +316,15 @@ export async function getSignature(db: D1Database, id: string): Promise<Uint8Arr
 }
 
 /** Every confirmation's time, result and flag: the input for the month → week → day calendar. */
-export async function listCalendarRows(db: D1Database): Promise<Array<{ confirmed_at: string; result: ConfirmationResult; flagged: number }>> {
+export async function listCalendarRows(db: D1Database, userId?: number): Promise<Array<{ confirmed_at: string; result: ConfirmationResult; flagged: number }>> {
   const res = await db
     .prepare(
       `SELECT c.confirmed_at, c.result,
               EXISTS (SELECT 1 FROM confirmation_attempts a WHERE a.confirmation_id = c.id) AS flagged
-         FROM delivery_confirmations c`,
+         FROM delivery_confirmations c
+        WHERE ? IS NULL OR c.confirmed_by_user_id = ?`,
     )
+    .bind(userId ?? null, userId ?? null)
     .all<{ confirmed_at: string; result: ConfirmationResult; flagged: number }>();
   return res.results;
 }

@@ -319,7 +319,11 @@ describe('privacy in logs', () => {
       await client.request('POST', '/api/driver/confirmations', validSubmission({ signaturePng: 'data:image/png;base64,AAAA' }));
       // Force an unexpected server error.
       const broken = new TestClient({ ...env, DB: { prepare() { throw new Error('boom Avery Demo 100 Sample Way'); } } as never });
-      const res = await broken.request('POST', '/api/driver/confirmations', validSubmission());
+      // A well-formed session cookie makes the server query the (broken) database.
+      const res = await broken.request('POST', '/api/driver/confirmations', validSubmission(), {
+        role: null,
+        headers: { Cookie: `mf_session=${'a'.repeat(43)}` },
+      });
       assert.equal(res.status, 500);
       assert.equal(res.body.error.message, 'Something went wrong on the server. Try again.');
       assert.ok(!JSON.stringify(res.body).includes('boom'));

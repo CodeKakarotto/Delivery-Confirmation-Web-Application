@@ -4,12 +4,23 @@ import { shopDateTime, shopTime } from '../lib/time.ts';
 import { FlagTag, ResultTag } from './ui.tsx';
 
 /** Saved confirmations as tappable rows, each with its delivery time. */
-export function ConfirmationRows({ items, timeZone, showDate = false }: { items: ConfirmationListItem[]; timeZone: string; showDate?: boolean }) {
+export function ConfirmationRows({
+  items,
+  timeZone,
+  showDate = false,
+  linkBase = '/shop/confirmations',
+}: {
+  items: ConfirmationListItem[];
+  timeZone: string;
+  showDate?: boolean;
+  /** Where a row opens: the employee or the driver record page. */
+  linkBase?: string;
+}) {
   return (
     <ul className="conf-rows">
       {items.map((c) => (
         <li key={c.id}>
-          <Link to={`/shop/confirmations/${c.id}`} className="conf-row">
+          <Link to={`${linkBase}/${c.id}`} className="conf-row">
             <time className="conf-time" dateTime={c.confirmedAt}>
               {showDate ? shopDateTime(c.confirmedAt, timeZone) : shopTime(c.confirmedAt, timeZone)}
             </time>

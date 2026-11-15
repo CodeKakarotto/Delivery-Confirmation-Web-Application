@@ -1,10 +1,7 @@
 /**
- * Request guards for a prototype WITHOUT a login (a project requirement).
- *
- * Because nobody signs in, the server cannot tell a driver from an employee from a stranger. These guards do not
- * pretend otherwise. They:
+ * Request guards that apply before sign-in (worker/src/auth.ts):
  *  1. keep all customer data inside a controlled local demonstration (requireDemoAccess), failing closed anywhere
- *     else until the sponsor approves a real access model (docs/SECURITY.md);
+ *     else until the app is reviewed for deployment (docs/SECURITY.md);
  *  2. stop other websites from submitting confirmations through a visitor's browser (checkOrigin);
  *  3. slow down automated guessing and flooding (rateLimit).
  */
@@ -60,6 +57,8 @@ export const RATE_LIMITS = {
   lookup: { scope: 'lookup', limit: 60, windowSeconds: 60 },
   submit: { scope: 'submit', limit: 20, windowSeconds: 60 },
   dashboard: { scope: 'dashboard', limit: 300, windowSeconds: 60 },
+  /** Sign-in attempts per device (IP); separate from the per-username lock in handlers/auth.ts. */
+  login: { scope: 'login', limit: 20, windowSeconds: 15 * 60 },
 } as const satisfies Record<string, RateLimitRule>;
 
 async function hmacHex(secret: string, text: string): Promise<string> {
@@ -93,24 +92,5 @@ export async function rateLimit(ctx: RequestContext, rule: RateLimitRule): Promi
   if (hits > rule.limit) {
     const retryAfter = String(windowStart + rule.windowSeconds - nowSec);
     throw new ApiError(429, 'rate_limited', 'Too many requests. Wait a minute and try again.', undefined, { 'Retry-After': retryAfter });
-  }
-}
-
-export type DemoRole = 'driver' | 'shop';
-
-/**
- * PROTOTYPE STAND-IN FOR LOGINS. The screen the person chose ("I'm a driver" / "I'm a shop employee") is sent in the
- * X-Demo-Role header, and each endpoint accepts only its own role. This keeps drivers and shop employees on their own
- * parts of the app, but it is NOT security: anyone can choose either role. When logins are added, replace this
- * function's body with the signed-in account's role (the route app's requireUser / requireEmployee); the endpoints
- * that call it do not change.
- */
-export function requireRole(ctx: RequestContext, role: DemoRole): void {
-  if (ctx.request.headers.get('X-Demo-Role') !== role) {
-    throw new ApiError(
-      403,
-      'role_required',
-      role === 'driver' ? 'This part of the app is for drivers.' : 'This part of the app is for shop employees.',
-    );
   }
 }

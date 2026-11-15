@@ -17,7 +17,7 @@ describe('no-login access limits (fail closed)', () => {
       const { env } = createEnv({ APP_ENV: appEnv });
       const client = new TestClient(env);
       for (const [method, path] of DATA_ENDPOINTS) {
-        const res = await client.request(method, path, method === 'POST' ? validSubmission() : undefined);
+        const res = await client.request(method, path, method === 'POST' ? validSubmission() : undefined, { role: null });
         assert.equal(res.status, 503, `${appEnv} ${method} ${path}`);
         assert.equal(res.body.error.code, 'access_model_required');
       }
@@ -30,6 +30,7 @@ describe('no-login access limits (fail closed)', () => {
     for (const [method, path] of DATA_ENDPOINTS) {
       const res = await client.request(method, path, method === 'POST' ? validSubmission() : undefined, {
         origin: 'https://confirm.example.com',
+        role: null,
       });
       assert.equal(res.status, 503, `${method} ${path}`);
     }
@@ -40,13 +41,13 @@ describe('no-login access limits (fail closed)', () => {
     const ok = new TestClient(env, 'http://192.168.1.20:5173');
     assert.equal((await ok.request('GET', '/api/driver/deliveries/MF-10482')).status, 200);
     const other = new TestClient(env, 'http://192.168.1.21:5173');
-    assert.equal((await other.request('GET', '/api/driver/deliveries/MF-10482')).status, 503);
+    assert.equal((await other.request('GET', '/api/driver/deliveries/MF-10482', undefined, { role: null })).status, 503);
   });
 
   it('ignores DEV_EXTRA_HOSTS outside development', async () => {
     const { env } = createEnv({ APP_ENV: 'production', DEV_EXTRA_HOSTS: '192.168.1.20' });
     const client = new TestClient(env, 'http://192.168.1.20:5173');
-    assert.equal((await client.request('GET', '/api/driver/deliveries/MF-10482')).status, 503);
+    assert.equal((await client.request('GET', '/api/driver/deliveries/MF-10482', undefined, { role: null })).status, 503);
   });
 
   it('keeps health and configuration endpoints available and free of customer data', async () => {
@@ -55,7 +56,7 @@ describe('no-login access limits (fail closed)', () => {
     assert.equal((await client.request('GET', '/api/health')).status, 200);
     const config = await client.request('GET', '/api/config');
     assert.equal(config.status, 200);
-    assert.deepEqual(config.body, { appEnv: 'production', timeZone: 'America/New_York', authenticated: false, dataAvailable: false });
+    assert.deepEqual(config.body, { appEnv: 'production', timeZone: 'America/New_York', authenticated: true, dataAvailable: false });
   });
 });
 

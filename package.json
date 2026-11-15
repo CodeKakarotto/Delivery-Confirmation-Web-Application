@@ -16,9 +16,11 @@
     "db:seed:local": "wrangler d1 execute DB --local --file=seed/demo-seed.sql",
     "db:setup:local": "npm run db:migrate:local && npm run db:seed:local && npm run db:demo-today:local",
     "test": "node --disable-warning=ExperimentalWarning --import ./frontend/test/register-tsx.mjs --test --test-reporter=spec \"worker/test/**/*.test.ts\" \"frontend/test/**/*.test.tsx\"",
-    "typecheck": "tsc -p worker/tsconfig.json && tsc -p worker/test/tsconfig.json && tsc -p frontend/tsconfig.json && tsc -p frontend/test/tsconfig.json",
+    "typecheck": "tsc -p worker/tsconfig.json && tsc -p worker/test/tsconfig.json && tsc -p frontend/tsconfig.json && tsc -p frontend/test/tsconfig.json && tsc -p scripts/tsconfig.json",
     "check": "npm run typecheck && npm test && npm run build:web",
-    "db:demo-today:local": "wrangler d1 execute DB --local --file=seed/demo-today.sql"
+    "db:demo-today:local": "wrangler d1 execute DB --local --file=seed/demo-today.sql",
+    "users:create": "node scripts/create-user.ts",
+    "users:demo": "node scripts/demo-accounts.ts"
   },
   "dependencies": {
     "react": "^19.1.0",

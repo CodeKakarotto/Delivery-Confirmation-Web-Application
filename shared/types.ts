@@ -133,6 +133,8 @@ export interface ConfirmationDetail extends ConfirmationListItem {
   signatureWidth: number;
   signatureHeight: number;
   attempts: ConfirmationAttempt[];
+  /** Display name of the driver account that saved it (null for records from before accounts). */
+  confirmedBy: string | null;
 }
 
 export interface ConfirmationDetailResponse {
@@ -163,8 +165,43 @@ export interface AppConfig {
   appEnv: 'development' | 'production';
   /** The shop's IANA time zone; days, weeks and months are counted in it. */
   timeZone: string;
-  /** Always false in this prototype: there is no sign-in, so nothing here identifies a person. */
-  authenticated: false;
+  /** Sign-in is required for all delivery data. */
+  authenticated: true;
+}
+
+// ---------- Accounts ----------
+
+export type UserRole = 'driver' | 'employee';
+
+export interface PublicUser {
+  username: string;
+  displayName: string;
+  role: UserRole;
+}
+
+export interface AuthResponse {
+  user: PublicUser;
+  /** Send back in X-CSRF-Token with every change. */
+  csrfToken: string;
+}
+
+export type DeliveryStatus = 'awaiting' | 'confirmed' | 'exception' | 'cancelled';
+
+/** One order in the employees' deliveries list. */
+export interface DeliveryListItem {
+  orderId: string;
+  stopNumber: number | null;
+  zone: string | null;
+  recipientName: string | null;
+  city: string;
+  deliveryDate: string | null;
+  status: DeliveryStatus;
+  confirmation: { id: string; confirmedAt: string; result: ConfirmationResult; receivedBy: string } | null;
+}
+
+export interface DeliveryListResponse {
+  items: DeliveryListItem[];
+  total: number;
 }
 
 // ---------- Shop employees section ----------

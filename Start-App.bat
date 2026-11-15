@@ -28,6 +28,11 @@ if not exist .wrangler\state\v3\d1 (
   call npm run db:setup:local || goto :failed
 )
 
+echo Updating the local database...
+call npm run db:migrate:local
+echo Checking sign-in accounts...
+call npm run users:demo
+
 echo Adding today's demo orders (only ones that are not there yet)...
 call npm run db:demo-today:local >nul 2>nul
 
@@ -53,7 +58,8 @@ goto :wait
 start "" http://localhost:5173
 echo The app is open at http://localhost:5173
 echo Close the two server windows to stop it.
-timeout /t 5 >nul
+echo Sign-in details are in demo-accounts.local.txt
+pause
 exit /b 0
 
 :failed

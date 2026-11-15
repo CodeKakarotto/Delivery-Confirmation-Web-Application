@@ -4,6 +4,7 @@ import { OUTCOME_LABELS } from '../../../shared/types.ts';
 import { ApiRequestError, errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { BackButton } from '../components/BackButton.tsx';
+import { useAuth } from '../lib/auth.tsx';
 import { Brand } from '../components/Layout.tsx';
 import { SavedConfirmationCard } from '../components/SavedConfirmationCard.tsx';
 import { FlagTag, Notice, Spinner } from '../components/ui.tsx';
@@ -21,7 +22,8 @@ export function ConfirmationDetailPage() {
     if (detail.data) setRetrievedAt(new Date().toISOString());
   }, [detail.data]);
 
-  const back = <BackButton fallback="/shop" />;
+  const { user } = useAuth();
+  const back = <BackButton fallback={user?.role === 'driver' ? '/driver/confirmations' : '/shop'} />;
   if (detail.error) {
     const notFound = detail.error instanceof ApiRequestError && detail.error.status === 404;
     return (
@@ -47,10 +49,13 @@ export function ConfirmationDetailPage() {
         </p>
       </div>
       <div className="page-head">
-        <h1>
-          Order {c.orderId}
-          <span className="h1-sub">confirmation</span>
-        </h1>
+        <div>
+          <h1>
+            Order {c.orderId}
+            <span className="h1-sub">confirmation</span>
+          </h1>
+          {c.confirmedBy && <p className="muted small confirmed-by">Confirmed by {c.confirmedBy}</p>}
+        </div>
         <div className="actions no-print">
           <button type="button" className="btn btn-primary" onClick={() => window.print()}>
             Print

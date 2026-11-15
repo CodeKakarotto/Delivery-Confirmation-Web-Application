@@ -3587,3 +3587,97 @@ button.home-card {
   flex-wrap: nowrap;
   flex: none;
 }
+
+/* ---------- Sign in ---------- */
+
+.login-page {
+  min-height: calc(100vh - 8rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2rem 1rem;
+}
+.login-brand .brand {
+  --brand-h: 64px;
+}
+.login-card {
+  width: min(420px, 100%);
+  padding: 1.5rem 1.5rem 1.25rem;
+  box-shadow: var(--shadow);
+}
+.login-card h1 {
+  margin-bottom: 1rem;
+}
+.password-row {
+  display: flex;
+  gap: 0.5rem;
+}
+.password-row .btn {
+  min-height: 3rem;
+}
+.login-help {
+  margin: 0.9rem 0 0;
+  text-align: center;
+}
+.confirmed-by {
+  margin: 0.15rem 0 0;
+}
+
+/* ---------- Driver dashboard: awaiting left, find right, recent below ---------- */
+
+.driver-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+  margin-bottom: 0.25rem;
+}
+.driver-find h2,
+.confirmed-card > .card-head-row h2 {
+  font-size: 1.2rem;
+  margin: 0 0 0.6rem;
+}
+@media (max-width: 860px) {
+  .driver-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Employees: deliveries list and search ---------- */
+
+.deliveries-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.day-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.day-stepper-label {
+  margin: 0;
+  font-size: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.search-card-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+.search-card .search-form input {
+  flex: 1 1 14rem;
+  width: auto;
+}
+.results-title {
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+}

@@ -5,7 +5,7 @@
 
 import { readdirSync } from 'node:fs';
 import { crc32, deflateSync } from 'node:zlib';
-import { randomUUID } from 'node:crypto';
+import { pbkdf2Sync, randomBytes, randomUUID } from 'node:crypto';
 import type { Env } from '../../src/env.ts';
 import { handleRequest } from '../../src/app.ts';
 import { SqliteD1 } from './d1.ts';
@@ -20,10 +20,30 @@ export const MIGRATIONS = readdirSync(new URL('migrations/', ROOT))
 export const ORIGIN = 'http://localhost:5173';
 export const BASE = 'http://localhost:5173';
 
+/** Test accounts (test passwords only; real accounts are created with scripts/create-user.ts). */
+export const TEST_USERS = {
+  driver1: { username: 'driver1', password: 'Test-Driver-One-2026!', role: 'driver', name: 'Dana Driver' },
+  driver2: { username: 'driver2', password: 'Test-Driver-Two-2026!', role: 'driver', name: 'Devon Driver' },
+  employee1: { username: 'employee1', password: 'Test-Employee-One-2026!', role: 'employee', name: 'Erin Employee' },
+} as const;
+export type TestUserKey = keyof typeof TEST_USERS;
+
+/** Same format the Worker stores; low iteration count only to keep the test suite fast. */
+export function testPasswordHash(password: string, iterations = 1000): string {
+  const salt = randomBytes(16);
+  const hash = pbkdf2Sync(password, salt, iterations, 32, 'sha256');
+  return ['pbkdf2-sha256', iterations, salt.toString('base64'), hash.toString('base64')].join('$');
+}
+
 export function createEnv(overrides: Partial<Env> = {}, opts: { seed?: boolean } = {}): { env: Env; db: SqliteD1 } {
   const db = new SqliteD1();
   for (const file of MIGRATIONS) db.execFile(new URL(`migrations/${file}`, ROOT));
   if (opts.seed !== false) db.execFile(new URL('seed/demo-seed.sql', ROOT));
+  const insertUser = db.sqlite.prepare(
+    `INSERT INTO users (username, display_name, role, password_hash, created_at, updated_at)
+     VALUES (?, ?, ?, ?, '2026-11-01T00:00:00.000Z', '2026-11-01T00:00:00.000Z')`,
+  );
+  for (const u of Object.values(TEST_USERS)) insertUser.run(u.username, u.name, u.role, testPasswordHash(u.password));
   const env: Env = {
     DB: db,
     APP_ENV: 'development',
@@ -41,10 +61,26 @@ export interface ApiResult<T = any> {
   bytes: Uint8Array;
 }
 
+/** Which test account a role name in a test means. 'shop' is the employee (older tests' name for it). */
+const ROLE_ACCOUNT: Record<string, TestUserKey> = { driver: 'driver1', driver1: 'driver1', driver2: 'driver2', shop: 'employee1', employee: 'employee1', employee1: 'employee1' };
+
 export class TestClient {
   env: Env;
   base: string;
   ip = '203.0.113.10';
+  /** Signed-in sessions per test account: the cookie and the CSRF token. */
+  sessions = new Map<TestUserKey, { cookie: string; csrf: string }>();
+
+  /** Signs in through the real login endpoint. */
+  async login(key: TestUserKey, now?: Date): Promise<ApiResult> {
+    const u = TEST_USERS[key];
+    const res = await this.request('POST', '/api/auth/login', { username: u.username, password: u.password }, { role: null, now });
+    if (res.status === 200) {
+      const cookie = (res.headers.get('Set-Cookie') ?? '').split(';')[0]!;
+      this.sessions.set(key, { cookie, csrf: res.body.csrfToken });
+    }
+    return res;
+  }
 
   constructor(env: Env, base = BASE) {
     this.env = env;
@@ -55,14 +91,26 @@ export class TestClient {
     method: string,
     path: string,
     body?: unknown,
-    opts: { origin?: string | null; contentType?: string; now?: Date; headers?: Record<string, string>; role?: string | null } = {},
+    opts: { origin?: string | null; contentType?: string; now?: Date; headers?: Record<string, string>; role?: string | null; csrf?: string | null } = {},
+    retried = false,
   ): Promise<ApiResult<T>> {
     const headers = new Headers(opts.headers ?? {});
     headers.set('CF-Connecting-IP', this.ip);
-    // Prototype role (stand-in for a login): by default, the role each part of the API is meant for.
+    // By default, sign in as the account each part of the API is meant for: drivers for /api/driver, the employee for
+    // /api/dashboard. `role: null` sends no session; any other name picks that account.
     const role = opts.role === undefined ? (path.startsWith('/api/driver') ? 'driver' : path.startsWith('/api/dashboard') ? 'shop' : null) : opts.role;
-    if (role) headers.set('X-Demo-Role', role);
-    const origin = opts.origin === undefined ? ORIGIN : opts.origin;
+    const account = role ? ROLE_ACCOUNT[role] : undefined;
+    if (account) {
+      if (!this.sessions.has(account)) {
+        const login = await this.login(account, opts.now);
+        if (login.status !== 200) throw new Error(`Test login failed: ${login.status} ${JSON.stringify(login.body)}`);
+      }
+      const session = this.sessions.get(account)!;
+      headers.append('Cookie', session.cookie);
+      const csrf = opts.csrf === undefined ? session.csrf : opts.csrf;
+      if (csrf && method !== 'GET') headers.set('X-CSRF-Token', csrf);
+    }
+    const origin = opts.origin === undefined ? new URL(this.base).origin : opts.origin;
     if (origin && method !== 'GET') headers.set('Origin', origin);
     let payload: string | undefined;
     if (body !== undefined) {
@@ -70,6 +118,11 @@ export class TestClient {
       headers.set('Content-Type', opts.contentType ?? 'application/json');
     }
     const res = await handleRequest(new Request(`${this.base}${path}`, { method, headers, body: payload }), this.env, opts.now);
+    if (res.status === 401 && account && !retried) {
+      // A test moved the clock past the session's lifetime: sign in again at that time and retry once.
+      this.sessions.delete(account);
+      return this.request<T>(method, path, body, opts, true);
+    }
     const bytes = new Uint8Array(await res.arrayBuffer());
     const type = res.headers.get('Content-Type') ?? '';
     const text = type.startsWith('application/json') ? new TextDecoder().decode(bytes) : '';

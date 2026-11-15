@@ -14,10 +14,17 @@ POST requests need a same-origin `Origin` header and a JSON body.
 | GET | `/api/health` | `{ "ok": true }` |
 | GET | `/api/config` | `{ appEnv, timeZone, authenticated: false, dataAvailable }` |
 
-## Roles (prototype)
+## Sign-in
 
-Driver endpoints need `X-Demo-Role: driver`; dashboard endpoints need `X-Demo-Role: shop`. Otherwise `403
-role_required`. A stand-in for logins, not security (docs/SECURITY.md).
+| Method | Path | Notes |
+| --- | --- | --- |
+| POST | `/api/auth/login` | `{ username, password }` → `{ user: { username, displayName, role }, csrfToken }` and the session cookie. `401 invalid_credentials` (same for every failure), `429 too_many_attempts` |
+| GET | `/api/auth/me` | The signed-in account and its `csrfToken`, or `401` |
+| POST | `/api/auth/logout` | Ends the session on the server and clears the cookie |
+
+All data endpoints need the session cookie (`401 unauthenticated`); POSTs also need `X-CSRF-Token`
+(`403 csrf_failed`). Driver endpoints need a driver account and employee-only endpoints an employee account
+(`403 role_required`).
 
 ## Driver
 
@@ -60,13 +67,17 @@ Rate limited (20/min). Body (unknown fields are rejected):
 
 `result` is decided by the server: `confirmed` for `delivered_to_recipient`, otherwise `needs_review`.
 
-## Dashboard (not access-controlled: local demonstration only)
+## Confirmations and shop views
+
+Calendar, confirmations list, record and signature: employees see all, drivers only their own (others answer 404).
+Day summary, deliveries list and orders: employees only.
 
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/api/dashboard/summary?date=YYYY-MM-DD` | Default today in the shop time zone. `{ date, isPast, expected, confirmed, needsReview, flagged, awaiting[] }` |
 | GET | `/api/dashboard/calendar` | Confirmations by shop-local month → week (Sun–Sat, split at month ends) → day, newest first, with `count`, `needsReview`, `flagged` at each level. Always includes today. `{ timeZone, today, currentWeekStart, months[] }` |
 | GET | `/api/dashboard/confirmations` | `?orderId=` (exact), `?day=YYYY-MM-DD` (shop-local day), `?result=confirmed\|needs_review`, `?flagged=1`, `?limit=1..200` (50; the UI uses 10), `?offset=`. `{ items, total }`, newest first |
+| GET | `/api/dashboard/deliveries` | Employees. `?date=` (default today, shop time zone) or `?q=` (part of an order ID or recipient name, any day), `?status=all\|awaiting\|confirmed\|exception\|cancelled`, `?limit=` (10), `?offset=`. `{ items: [{ orderId, stopNumber, zone, recipientName, city, deliveryDate, status, confirmation }], total }` |
 | GET | `/api/dashboard/orders/:orderId` | One order for the shop: `{ status: awaiting\|confirmed\|cancelled, delivery, confirmation: { id, confirmedAt, result } \| null }` |
 | GET | `/api/dashboard/confirmations/:id` | `{ confirmation }` with `delivery`, `outcomeDetail`, `note`, signature size and `attempts[]` |
 | GET | `/api/dashboard/confirmations/:id/signature` | `image/png`, `no-store`, sandboxed |

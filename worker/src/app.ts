@@ -5,6 +5,7 @@
 
 import type { AppConfig } from '../../shared/types.ts';
 import { loadSettings, type Env } from './env.ts';
+import * as auth from './handlers/auth.ts';
 import * as dashboard from './handlers/dashboard.ts';
 import * as driver from './handlers/driver.ts';
 import { ApiError, errorResponse, json, logEvent } from './http.ts';
@@ -17,17 +18,21 @@ export const router = new Router()
     const body: AppConfig & { dataAvailable: boolean } = {
       appEnv: ctx.settings.appEnv,
       timeZone: ctx.settings.timeZone,
-      authenticated: false,
+      authenticated: true,
       dataAvailable: !ctx.settings.isProduction && ctx.settings.demoHosts.has(ctx.url.hostname.toLowerCase()),
     };
     return json(body);
   })
-  // Drivers (prototype role, no login): today's awaiting orders, one order by its ID, and submitting its confirmation.
+  .add('POST', '/api/auth/login', auth.login)
+  .add('POST', '/api/auth/logout', auth.logout)
+  .add('GET', '/api/auth/me', auth.me)
+  // Drivers: today's awaiting orders, one order by its ID, and submitting its confirmation.
   .add('GET', '/api/driver/deliveries', driver.awaiting)
   .add('GET', '/api/driver/deliveries/:orderId', driver.lookup)
   .add('POST', '/api/driver/confirmations', driver.submit)
-  // Shop employees (prototype role, no login): view-only. Local demonstration only, see docs/SECURITY.md.
+  // Confirmations: employees see all, drivers only their own. Day summary, deliveries list and orders: employees only.
   .add('GET', '/api/dashboard/summary', dashboard.summary)
+  .add('GET', '/api/dashboard/deliveries', dashboard.deliveries)
   .add('GET', '/api/dashboard/calendar', dashboard.calendar)
   .add('GET', '/api/dashboard/orders/:orderId', dashboard.order)
   .add('GET', '/api/dashboard/confirmations', dashboard.list)
@@ -63,6 +68,7 @@ export async function handleRequest(request: Request, env: Env, now: Date = new 
     requestId,
     now,
     responseHeaders: new Headers(),
+    user: null,
   };
 
   try {
@@ -76,7 +82,9 @@ export async function handleRequest(request: Request, env: Env, now: Date = new 
       if (err.status >= 500 && err.code !== 'access_model_required') {
         logEvent('error', 'api_error', { code: err.code, status: err.status, requestId });
       }
-      return errorResponse(err, requestId);
+      const res = errorResponse(err, requestId);
+      ctx.responseHeaders.forEach((value, key) => res.headers.append(key, value));
+      return res;
     }
     // Unexpected failure: log only the error type (a message could quote customer data from a failed statement)
     // and return a generic message. The request ID lets the developer find the line.

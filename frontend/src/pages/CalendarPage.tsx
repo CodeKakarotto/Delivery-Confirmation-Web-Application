@@ -1,13 +1,12 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ORDER_ID_MAX, ORDER_ID_PATTERN } from '../../../shared/schemas.ts';
 import { localDateKey } from '../../../shared/shopTime.ts';
 import type { CalendarDay } from '../../../shared/types.ts';
 import { errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { ConfirmationRows, Pager } from '../components/ConfirmationRows.tsx';
 import { MonthCalendar } from '../components/MonthCalendar.tsx';
-import { EmptyState, Notice, Spinner } from '../components/ui.tsx';
+import { Notice, Spinner } from '../components/ui.tsx';
 import { fullDayLabel } from '../lib/calendar.ts';
 import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
@@ -15,12 +14,13 @@ import { useShopTimeZone } from '../lib/useShopConfig.ts';
 const PAGE_SIZE = 10;
 
 /**
- * The shop employees' page (view only): a single month calendar that shows the month, the current week and today,
- * with today's date underneath. Tapping a day shows that day's deliveries: those still awaiting confirmation (tap to
- * open) and those confirmed, each with its delivery time, 10 per page. The selection lives in the URL, so Back
- * returns to it.
+ * A single month calendar (current week highlighted, today circled, today's date underneath). Tapping a day shows
+ * that day below it.
+ * - employee (shop Dashboard): the day's figures, orders still awaiting (tap to open) and every confirmation.
+ * - driver (Confirmations tab): only the confirmations this driver saved.
+ * Confirmations show their delivery time, 10 per page. The selection lives in the URL, so Back returns to it.
  */
-export function ShopCalendarPage() {
+export function CalendarPage({ variant }: { variant: 'employee' | 'driver' }) {
   const timeZone = useShopTimeZone();
   const [params, setParams] = useSearchParams();
   const calendar = useApi(() => dashboardApi.calendar(), []);
@@ -28,9 +28,6 @@ export function ShopCalendarPage() {
   const selected = params.get('d') || today;
   const month = params.get('m') || selected.slice(0, 7);
   const page = Math.max(1, Number(params.get('p')) || 1);
-  const orderId = params.get('orderId') ?? '';
-  const [search, setSearch] = useState(orderId);
-  const [searchError, setSearchError] = useState<string | null>(null);
 
   const days = useMemo(() => {
     const map: Record<string, CalendarDay> = {};
@@ -47,63 +44,13 @@ export function ShopCalendarPage() {
     setParams(next, { replace });
   };
 
-  const onSearch = (e: FormEvent) => {
-    e.preventDefault();
-    const id = search.trim();
-    if (id && (id.length > ORDER_ID_MAX || !ORDER_ID_PATTERN.test(id))) {
-      setSearchError('Enter a complete order ID, e.g. MF-10482');
-      return;
-    }
-    setSearchError(null);
-    update({ orderId: id || null, p: null });
-  };
-
   return (
     <>
-      <div className="page-head dash-head">
-        <h1>Deliveries</h1>
-        <form className="search-form" role="search" onSubmit={onSearch} noValidate>
-          <label htmlFor="order-search" className="visually-hidden">
-            Find a confirmation by exact order ID
-          </label>
-          <input
-            id="order-search"
-            type="search"
-            placeholder="Find by order ID"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-            maxLength={ORDER_ID_MAX}
-            aria-invalid={Boolean(searchError)}
-            aria-describedby={searchError ? 'order-search-err' : undefined}
-          />
-          <button type="submit" className="btn btn-primary">
-            Find
-          </button>
-          {orderId && (
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => {
-                setSearch('');
-                update({ orderId: null, p: null });
-              }}
-            >
-              Clear
-            </button>
-          )}
-          {searchError && (
-            <p className="field-error search-error" id="order-search-err">
-              {searchError}
-            </p>
-          )}
-        </form>
+      <div className="page-head">
+        <h1>{variant === 'employee' ? 'Dashboard' : 'My confirmations'}</h1>
       </div>
 
-      {orderId ? (
-        <SearchResults orderId={orderId} page={page} timeZone={timeZone} onPage={(p) => update({ p: String(p) })} />
-      ) : (
+      {
         <div className="shop-cal-layout">
           <section className="card cal-panel" aria-label="Calendar">
             {calendar.error ? (
@@ -121,14 +68,23 @@ export function ShopCalendarPage() {
               />
             )}
           </section>
-          <DayPanel day={selected} today={today} page={page} timeZone={timeZone} onPage={(p) => update({ p: String(p) })} onToday={() => update({ d: null, m: null, p: null }, true)} />
+          <DayPanel
+            variant={variant}
+            day={selected}
+            today={today}
+            page={page}
+            timeZone={timeZone}
+            onPage={(p) => update({ p: String(p) })}
+            onToday={() => update({ d: null, m: null, p: null }, true)}
+          />
         </div>
-      )}
+      }
     </>
   );
 }
 
 function DayPanel({
+  variant,
   day,
   today,
   page,
@@ -136,6 +92,7 @@ function DayPanel({
   onPage,
   onToday,
 }: {
+  variant: 'employee' | 'driver';
   day: string;
   today: string;
   page: number;
@@ -143,7 +100,8 @@ function DayPanel({
   onPage: (p: number) => void;
   onToday: () => void;
 }) {
-  const summary = useApi(() => dashboardApi.summary(day), [day]);
+  // The day's figures and awaiting orders are shop-wide: employees only.
+  const summary = useApi(() => (variant === 'employee' ? dashboardApi.summary(day) : Promise.resolve(null)), [day, variant]);
   const list = useApi(() => dashboardApi.list({ day, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [day, page]);
   const s = summary.data;
   return (
@@ -159,7 +117,7 @@ function DayPanel({
         )}
       </div>
 
-      {summary.error ? (
+      {variant === 'driver' ? null : summary.error ? (
         <Notice tone="error" title="Could not load this day">{errorMessage(summary.error)}</Notice>
       ) : !s ? (
         <Spinner label="Loading the day" />
@@ -217,7 +175,7 @@ function DayPanel({
 
       <div className="card confirmed-card">
         <h3>
-          Confirmed deliveries
+          {variant === 'driver' ? 'My confirmed deliveries' : 'Confirmed deliveries'}
           {list.data && <span className="h1-sub">{list.data.total}</span>}
         </h3>
         {list.error ? (
@@ -228,31 +186,15 @@ function DayPanel({
           <p className="muted">No confirmations saved on this day.</p>
         ) : (
           <>
-            <ConfirmationRows items={list.data.items} timeZone={timeZone} />
+            <ConfirmationRows
+              items={list.data.items}
+              timeZone={timeZone}
+              linkBase={variant === 'driver' ? '/driver/confirmations' : '/shop/confirmations'}
+            />
             <Pager page={page} total={list.data.total} pageSize={PAGE_SIZE} onPage={onPage} />
           </>
         )}
       </div>
-    </section>
-  );
-}
-
-function SearchResults({ orderId, page, timeZone, onPage }: { orderId: string; page: number; timeZone: string; onPage: (p: number) => void }) {
-  const list = useApi(() => dashboardApi.list({ orderId, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [orderId, page]);
-  return (
-    <section className="card confirmed-card" aria-label="Search results">
-      {list.error ? (
-        <Notice tone="error" title="Could not search">{errorMessage(list.error)}</Notice>
-      ) : !list.data ? (
-        <Spinner label="Searching" />
-      ) : list.data.items.length === 0 ? (
-        <EmptyState title={`No saved confirmation for order ${orderId}.`}>Search needs the complete order ID; letter case does not matter.</EmptyState>
-      ) : (
-        <>
-          <ConfirmationRows items={list.data.items} timeZone={timeZone} showDate />
-          <Pager page={page} total={list.data.total} pageSize={PAGE_SIZE} onPage={onPage} />
-        </>
-      )}
     </section>
   );
 }
