@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useNavigate } from 'react-router';
+import { ROLE_LABEL, useRole } from '../lib/role.tsx';
 import { applyTheme, currentTheme, type Theme } from '../lib/theme.ts';
 
 /**
@@ -45,12 +46,40 @@ function ThemeToggle() {
   );
 }
 
-const NAV = [
-  { to: '/confirm', label: 'Confirm a delivery' },
-  { to: '/shop', label: 'Shop employees' },
-];
+const NAV = {
+  driver: [{ to: '/confirm', label: 'Confirm a delivery' }],
+  // Overview and Confirmations are the tabs inside the shop section.
+  shop: [{ to: '/shop', label: 'Shop employees' }],
+} as const;
+
+/** The chosen role and "Switch role" (prototype stand-in for the signed-in name and Sign out). */
+function RoleBadge() {
+  const { role, setRole } = useRole();
+  const navigate = useNavigate();
+  if (!role) return null;
+  return (
+    <span className="role-badge">
+      <span className="account-name">
+        {ROLE_LABEL[role]}
+        <span className="account-role">Prototype role</span>
+      </span>
+      <button
+        type="button"
+        className="btn btn-small"
+        onClick={() => {
+          setRole(null);
+          navigate('/');
+        }}
+      >
+        Switch role
+      </button>
+    </span>
+  );
+}
 
 export function AppLayout() {
+  const { role } = useRole();
+  const nav = role ? NAV[role] : [];
   return (
     <div className="app">
       <a className="skip-link" href="#main">
@@ -65,13 +94,14 @@ export function AppLayout() {
             <Brand />
           </NavLink>
           <nav className="mainnav" aria-label="Main">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <NavLink key={item.to} to={item.to} className={({ isActive }) => (isActive ? 'is-active' : '')}>
                 {item.label}
               </NavLink>
             ))}
           </nav>
           <div className="account">
+            <RoleBadge />
             <ThemeToggle />
           </div>
         </div>

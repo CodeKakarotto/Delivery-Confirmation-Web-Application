@@ -55,10 +55,13 @@ export class TestClient {
     method: string,
     path: string,
     body?: unknown,
-    opts: { origin?: string | null; contentType?: string; now?: Date; headers?: Record<string, string> } = {},
+    opts: { origin?: string | null; contentType?: string; now?: Date; headers?: Record<string, string>; role?: string | null } = {},
   ): Promise<ApiResult<T>> {
     const headers = new Headers(opts.headers ?? {});
     headers.set('CF-Connecting-IP', this.ip);
+    // Prototype role (stand-in for a login): by default, the role each part of the API is meant for.
+    const role = opts.role === undefined ? (path.startsWith('/api/driver') ? 'driver' : path.startsWith('/api/dashboard') ? 'shop' : null) : opts.role;
+    if (role) headers.set('X-Demo-Role', role);
     const origin = opts.origin === undefined ? ORIGIN : opts.origin;
     if (origin && method !== 'GET') headers.set('Origin', origin);
     let payload: string | undefined;

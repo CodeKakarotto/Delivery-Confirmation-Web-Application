@@ -14,7 +14,16 @@ POST requests need a same-origin `Origin` header and a JSON body.
 | GET | `/api/health` | `{ "ok": true }` |
 | GET | `/api/config` | `{ appEnv, timeZone, authenticated: false, dataAvailable }` |
 
+## Roles (prototype)
+
+Driver endpoints need `X-Demo-Role: driver`; dashboard endpoints need `X-Demo-Role: shop`. Otherwise `403
+role_required`. A stand-in for logins, not security (docs/SECURITY.md).
+
 ## Driver
+
+### `GET /api/driver/deliveries`
+Today's (shop time zone) orders that are not cancelled and not confirmed, by stop number:
+`{ date, items: [{ orderId, stopNumber, zone, recipientName, city }] }`. No street addresses. Rate limited (60/min).
 
 ### `GET /api/driver/deliveries/:orderId`
 Exact, case-insensitive order ID. Rate limited (60/min).

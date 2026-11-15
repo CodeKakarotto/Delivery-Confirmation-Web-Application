@@ -55,6 +55,12 @@ export interface DriverDelivery {
   deliveryInstructions: string | null;
 }
 
+/** Today's orders still awaiting confirmation, as listed on the driver page (no street addresses). */
+export interface DriverAwaitingResponse {
+  date: string;
+  items: AwaitingDelivery[];
+}
+
 export type DriverLookupResponse =
   | { status: 'ready'; delivery: DriverDelivery }
   /** Already confirmed: no customer details are returned. */

@@ -14,6 +14,12 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
 
 ## Features
 
+- **Roles (prototype stand-in for logins):** the home screen asks "I'm a driver" or "I'm a shop employee". Drivers
+  only get Confirm a Delivery; shop employees only get the view-only Overview and Confirmations. The server checks
+  the role on every request. It is **not** security (anyone can pick either role); real logins replace it.
+- **Driver home** (`/confirm`): today's deliveries still awaiting confirmation (stop #, zone, order ID, recipient,
+  city). Tap one to confirm it, or enter an order ID.
+
 - **Driver screen** (`/confirm`): open one order by its exact ID. The card shows, in this order:
   `#` → Zone → Order ID + Code 128 barcode → Deliver To (a **Delivered to recipient** bubble, then the Delivery
   Exception options) → Total Products → Delivery Instructions (with Received By and Customer Signature).

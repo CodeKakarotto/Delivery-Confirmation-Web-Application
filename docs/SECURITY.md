@@ -2,9 +2,14 @@
 
 ## The limitation
 
-The **Shop employees** section is a separate part of the app for shop staff, but without a login it is **not**
-restricted to them: anyone who can open the local demonstration can open it. Restricting it needs the access-model
-decision below. A sign-in was deliberately not added, because the project requires no login.
+**Prototype roles.** The home screen asks whether you are a driver or a shop employee. The choice is sent as
+`X-Demo-Role` and the Worker accepts each endpoint only for its role (`requireRole` in `worker/src/security.ts`):
+drivers use `/api/driver/*`, shop employees use the view-only `/api/dashboard/*`. This keeps the two parts apart,
+but it is **not** access control: anyone can choose either role. The final system will have logins; then
+`requireRole` reads the signed-in account's role instead, and the endpoints do not change.
+
+The driver page lists today's awaiting orders (stop, zone, order ID, recipient name, city; no street addresses) at
+the project's request. Without logins, anyone who can open the local demonstration as a "driver" can see that list.
 
 This prototype has **no login**: a project requirement. Without one, the server cannot know who is using it. Hiding a
 button or page does not change that. In particular:

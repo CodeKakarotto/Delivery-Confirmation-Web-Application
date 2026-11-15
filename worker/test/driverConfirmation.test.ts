@@ -64,9 +64,10 @@ describe('driver lookup (no login)', () => {
     assert.equal(res.body.error.code, 'order_cancelled');
   });
 
-  it('does not offer any endpoint that lists orders', async () => {
+  // The only order list a driver gets is today's awaiting deliveries without street addresses (roles.test.ts).
+  it('does not offer any other endpoint that lists orders or confirmations', async () => {
     const { client } = setup();
-    for (const path of ['/api/driver/deliveries', '/api/driver/deliveries/', '/api/deliveries', '/api/driver/confirmations']) {
+    for (const path of ['/api/deliveries', '/api/driver/confirmations', '/api/driver/orders']) {
       const res = await client.request('GET', path);
       // 404 (no such endpoint) or 405 (POST-only endpoint): either way, nothing is listed.
       assert.ok(res.status === 404 || res.status === 405, `${path}: ${res.status}`);

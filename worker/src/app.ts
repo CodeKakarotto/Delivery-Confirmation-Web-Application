@@ -22,10 +22,11 @@ export const router = new Router()
     };
     return json(body);
   })
-  // Driver (no login): one order at a time by its exact ID, and submitting its confirmation. No listing.
+  // Drivers (prototype role, no login): today's awaiting orders, one order by its ID, and submitting its confirmation.
+  .add('GET', '/api/driver/deliveries', driver.awaiting)
   .add('GET', '/api/driver/deliveries/:orderId', driver.lookup)
   .add('POST', '/api/driver/confirmations', driver.submit)
-  // Employee dashboard. NOT access-controlled (there is no login): local demonstration only, see docs/SECURITY.md.
+  // Shop employees (prototype role, no login): view-only. Local demonstration only, see docs/SECURITY.md.
   .add('GET', '/api/dashboard/summary', dashboard.summary)
   .add('GET', '/api/dashboard/calendar', dashboard.calendar)
   .add('GET', '/api/dashboard/orders/:orderId', dashboard.order)

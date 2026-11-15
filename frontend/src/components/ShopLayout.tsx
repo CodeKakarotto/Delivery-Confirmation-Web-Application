@@ -30,7 +30,7 @@ export function ShopLayout() {
             </span>
           </p>
         </div>
-        <nav className="shop-tabs" aria-label="Shop sections">
+        <nav className="shop-tabs" aria-label="Shop sections (view only)">
           {TABS.map((t) => (
             <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => (isActive ? 'is-active' : '')}>
               {t.label}

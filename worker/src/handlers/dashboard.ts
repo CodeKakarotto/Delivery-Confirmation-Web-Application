@@ -22,13 +22,14 @@ import type {
 import { findShopOrder, getConfirmationDetail, getSignature, listCalendarRows, listConfirmations, toDriverDelivery } from '../db/confirmations.ts';
 import { ApiError, json, SECURITY_HEADERS, validationError } from '../http.ts';
 import type { RequestContext } from '../router.ts';
-import { RATE_LIMITS, rateLimit, requireDemoAccess } from '../security.ts';
+import { RATE_LIMITS, rateLimit, requireDemoAccess, requireRole } from '../security.ts';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NOT_FOUND = () => new ApiError(404, 'not_found', 'Confirmation not found.');
 
 async function guard(ctx: RequestContext): Promise<void> {
   requireDemoAccess(ctx);
+  requireRole(ctx, 'shop');
   await rateLimit(ctx, RATE_LIMITS.dashboard);
 }
 

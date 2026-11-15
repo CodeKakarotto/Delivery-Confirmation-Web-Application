@@ -17,6 +17,12 @@ export class ApiRequestError extends Error {
 
 type Method = 'GET' | 'POST';
 
+/** Prototype role sent with every call (stand-in for a login; see lib/role.tsx). */
+let apiRole: string | null = null;
+export function setApiRole(role: string | null): void {
+  apiRole = role;
+}
+
 /**
  * Same-origin JSON API call. No credentials, tokens or customer data are stored in the browser; nothing is sent to
  * analytics or error-reporting services.
@@ -24,6 +30,7 @@ type Method = 'GET' | 'POST';
 export async function api<T>(method: Method, path: string, body?: unknown, opts: { signal?: AbortSignal } = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (apiRole) headers['X-Demo-Role'] = apiRole;
 
   let res: Response;
   try {

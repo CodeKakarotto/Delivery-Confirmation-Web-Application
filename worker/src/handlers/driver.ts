@@ -1,7 +1,7 @@
 /**
- * Driver endpoints (no login). The driver opens ONE order by its exact order ID (typed or read from the ticket) and
- * submits its confirmation. There is deliberately no endpoint that lists orders, and an order that is already
- * confirmed returns no customer details.
+ * Driver endpoints (prototype: role chosen on screen, no login). The driver sees today's awaiting orders (no street
+ * addresses), opens ONE order by its order ID and submits its confirmation. An order that is already confirmed returns
+ * no customer details.
  */
 
 import { confirmationSubmitSchema, crossFieldIssues, ORDER_ID_MAX, ORDER_ID_PATTERN, SUBMIT_MAX_BODY_BYTES } from '../../../shared/schemas.ts';
@@ -18,7 +18,9 @@ import {
 } from '../db/confirmations.ts';
 import { ApiError, isUniqueViolation, json, logEvent, readJson, validationError } from '../http.ts';
 import type { RequestContext } from '../router.ts';
-import { RATE_LIMITS, rateLimit, requireDemoAccess } from '../security.ts';
+import { localDateKey } from '../../../shared/shopTime.ts';
+import type { DriverAwaitingResponse } from '../../../shared/types.ts';
+import { RATE_LIMITS, rateLimit, requireDemoAccess, requireRole } from '../security.ts';
 import { validateSignature } from '../signature.ts';
 
 const ORDER_NOT_FOUND = () =>
@@ -38,6 +40,7 @@ export function resultFor(outcome: DeliveryOutcome): ConfirmationResult {
 
 export async function lookup(ctx: RequestContext): Promise<Response> {
   requireDemoAccess(ctx);
+  requireRole(ctx, 'driver');
   // Counted before anything else, so guessing order IDs is slowed down whether or not they exist.
   await rateLimit(ctx, RATE_LIMITS.lookup);
   const orderId = (ctx.params.orderId ?? '').trim();
@@ -65,6 +68,7 @@ function blankToNull(text: string | undefined): string | null {
 
 export async function submit(ctx: RequestContext): Promise<Response> {
   requireDemoAccess(ctx);
+  requireRole(ctx, 'driver');
   await rateLimit(ctx, RATE_LIMITS.submit);
   const input = await readJson(ctx.request, confirmationSubmitSchema, SUBMIT_MAX_BODY_BYTES);
   const cross = crossFieldIssues(input);
@@ -166,4 +170,28 @@ async function refuseSecond(
   await recordAttempt(ctx.db, { confirmationId: existing.id, kind, receivedBy, outcome, createdAt: ctx.now.toISOString() });
   logEvent('warn', 'confirmation_refused', { kind, requestId: ctx.requestId });
   throw ALREADY_CONFIRMED();
+}
+
+/** Today's (shop-local) orders that still need a confirmation, by stop number. No street addresses. */
+export async function awaiting(ctx: RequestContext): Promise<Response> {
+  requireDemoAccess(ctx);
+  requireRole(ctx, 'driver');
+  await rateLimit(ctx, RATE_LIMITS.lookup);
+  const date = localDateKey(ctx.now, ctx.settings.timeZone);
+  const res = await ctx.db
+    .prepare(
+      `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city
+         FROM deliveries d
+        WHERE d.delivery_date = ? AND d.cancelled_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM delivery_confirmations c WHERE c.delivery_id = d.id)
+        ORDER BY d.stop_number IS NULL, d.stop_number, d.order_id
+        LIMIT 200`,
+    )
+    .bind(date)
+    .all<{ order_id: string; stop_number: number | null; zone: string | null; recipient_name: string | null; city: string }>();
+  const body: DriverAwaitingResponse = {
+    date,
+    items: res.results.map((r) => ({ orderId: r.order_id, stopNumber: r.stop_number, zone: r.zone, recipientName: r.recipient_name, city: r.city })),
+  };
+  return json(body);
 }

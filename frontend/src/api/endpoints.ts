@@ -7,6 +7,7 @@ import type {
   ConfirmationSubmit,
   ConfirmationSubmitResponse,
   DashboardSummary,
+  DriverAwaitingResponse,
   DriverLookupResponse,
   ShopOrderResponse,
 } from '../../../shared/types.ts';
@@ -17,6 +18,8 @@ export const configApi = {
 };
 
 export const driverApi = {
+  /** Today's orders still awaiting confirmation (no street addresses). */
+  awaiting: () => api<DriverAwaitingResponse>('GET', '/api/driver/deliveries'),
   /** One order by its exact ID. The ID goes in the path (it is not customer data); nothing else does. */
   lookup: (orderId: string, signal?: AbortSignal) =>
     api<DriverLookupResponse>('GET', `/api/driver/deliveries/${encodeURIComponent(orderId)}`, undefined, { signal }),

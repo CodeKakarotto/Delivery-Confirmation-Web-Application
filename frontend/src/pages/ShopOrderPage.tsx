@@ -57,11 +57,6 @@ export function ShopOrderPage() {
           <div className="row-tags">{statusTag}</div>
         </div>
         <div className="actions">
-          {status === 'awaiting' && (
-            <Link to={`/confirm/${encodeURIComponent(delivery.orderId)}`} className="btn btn-primary">
-              Record confirmation
-            </Link>
-          )}
           {confirmation && (
             <Link to={`/shop/confirmations/${confirmation.id}`} className="btn btn-primary">
               Open confirmation record
@@ -77,7 +72,7 @@ export function ShopOrderPage() {
       )}
       <DeliveryCard
         delivery={delivery}
-        exception={<p className="muted small not-yet">{confirmation ? 'See the confirmation record.' : 'Not confirmed yet.'}</p>}
+        exception={<p className="muted small not-yet">{confirmation ? 'See the confirmation record.' : 'Not confirmed yet: the driver records it on delivery.'}</p>}
         receivedBy={<p className="muted">—</p>}
         signature={<p className="muted">{confirmation ? 'Saved with the confirmation record.' : 'No signature yet.'}</p>}
       />

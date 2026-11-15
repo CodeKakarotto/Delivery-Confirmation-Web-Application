@@ -3534,3 +3534,55 @@ a.cell-strong {
 .deliver-outcome > .deliver-exception {
   margin-top: 0;
 }
+
+/* ---------- Prototype roles and the driver's awaiting list ---------- */
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+button.home-card {
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+.home-card.is-current {
+  border-color: var(--evergreen);
+  box-shadow: inset 0 0 0 1px var(--evergreen), var(--shadow);
+}
+.home-note {
+  margin-top: 1rem;
+}
+.driver-awaiting h2 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+.driver-stop {
+  justify-content: flex-start;
+  min-height: 3.5rem;
+}
+.driver-stop-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.stop-chip {
+  flex: none;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  background: var(--primary-bg);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 720px) {
+  .role-badge .account-name {
+    display: none;
+  }
+}

@@ -95,3 +95,22 @@ export async function rateLimit(ctx: RequestContext, rule: RateLimitRule): Promi
     throw new ApiError(429, 'rate_limited', 'Too many requests. Wait a minute and try again.', undefined, { 'Retry-After': retryAfter });
   }
 }
+
+export type DemoRole = 'driver' | 'shop';
+
+/**
+ * PROTOTYPE STAND-IN FOR LOGINS. The screen the person chose ("I'm a driver" / "I'm a shop employee") is sent in the
+ * X-Demo-Role header, and each endpoint accepts only its own role. This keeps drivers and shop employees on their own
+ * parts of the app, but it is NOT security: anyone can choose either role. When logins are added, replace this
+ * function's body with the signed-in account's role (the route app's requireUser / requireEmployee); the endpoints
+ * that call it do not change.
+ */
+export function requireRole(ctx: RequestContext, role: DemoRole): void {
+  if (ctx.request.headers.get('X-Demo-Role') !== role) {
+    throw new ApiError(
+      403,
+      'role_required',
+      role === 'driver' ? 'This part of the app is for drivers.' : 'This part of the app is for shop employees.',
+    );
+  }
+}
