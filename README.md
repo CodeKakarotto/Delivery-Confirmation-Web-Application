@@ -33,7 +33,11 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
 
 ## Getting started
 
-Requires Node.js 22.18+ (see `.nvmrc`).
+**Windows, one click:** double-click `Start-App.bat`. The first time, it installs packages, creates `.dev.vars` and
+the demo database. It then starts the API and the website in two windows and opens http://localhost:5173. Close
+those two windows to stop the app.
+
+Manual steps (any OS). Requires Node.js 22.18+ (see `.nvmrc`).
 
 ```bash
 npm install
