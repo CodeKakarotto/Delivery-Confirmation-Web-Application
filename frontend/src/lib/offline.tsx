@@ -146,7 +146,7 @@ export function OutboxBanner() {
             <strong>
               {waiting.length === 1 ? '1 confirmation is' : `${waiting.length} confirmations are`} saved on this phone.
             </strong>{' '}
-            {syncing ? 'Sending now…' : 'It will send automatically when there is signal.'}
+            {syncing ? 'Submitting now…' : waiting.length === 1 ? 'It will submit automatically when you regain connection.' : 'They will submit automatically when you regain connection.'}
           </span>
           <button type="button" className="btn btn-small" onClick={() => void syncNow()} disabled={syncing}>
             Send now

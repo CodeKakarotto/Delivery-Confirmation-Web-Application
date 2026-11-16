@@ -95,7 +95,8 @@ export function DriverDashboardPage() {
           {list && <p className="muted small">{fullDayLabel(list.date)}. Tap an order to confirm it.</p>}
           {noSignal && phoneCopy && (
             <Notice tone="info" title="No signal">
-              Showing today’s deliveries saved on this phone. You can still confirm them; they will be sent when there is signal.
+              Showing today’s deliveries saved on this phone. You can still confirm them: each one is saved on this phone and will submit
+              automatically when you regain connection.
             </Notice>
           )}
           {awaiting.error && !list ? (

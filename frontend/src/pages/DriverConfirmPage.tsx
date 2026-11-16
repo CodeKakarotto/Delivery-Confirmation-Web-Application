@@ -52,8 +52,8 @@ export function DriverConfirmPage() {
             Saved on this phone
           </h1>
           <p>
-            There is no signal right now, so this confirmation for order <strong>{queued.payload.orderId}</strong> is kept on this phone. It
-            will be sent automatically as soon as there is signal. You can carry on with your next delivery.
+            Your confirmation for order <strong>{queued.payload.orderId}</strong> was saved on this phone. It will submit automatically when
+            you regain connection. You can carry on with your next delivery.
           </p>
           <p className="muted small">Do not sign out until it has been sent.</p>
           <Link to="/driver" className="btn btn-primary btn-block btn-large">
@@ -224,8 +224,8 @@ function ConfirmForm({ delivery, timeZone, offlineCopy = false }: { delivery: Dr
             Saved on this phone
           </h1>
           <p>
-            There is no signal right now, so this confirmation for order <strong>{delivery.orderId}</strong> is kept on this phone. It will be
-            sent automatically as soon as there is signal. You can carry on with your next delivery.
+            Your confirmation for order <strong>{delivery.orderId}</strong> was saved on this phone. It will submit automatically when you
+            regain connection. You can carry on with your next delivery.
           </p>
           <p className="muted small">Do not sign out until it has been sent.</p>
           <Link to="/driver" className="btn btn-primary btn-block btn-large">
@@ -315,8 +315,8 @@ function ConfirmForm({ delivery, timeZone, offlineCopy = false }: { delivery: Dr
       <p className="muted lead">Check the order details, then choose how it was handed over: delivered to the recipient (the customer signs) or a delivery exception (write an exception note).</p>
       {offlineCopy && (
         <Notice tone="info" title="No signal">
-          Showing the copy of this order saved on your phone. When you submit, the confirmation is kept on the phone and sent automatically
-          when there is signal.
+          Showing the copy of this order saved on your phone. When you submit, it will be saved on this phone and will submit automatically
+          when you regain connection.
         </Notice>
       )}
 
