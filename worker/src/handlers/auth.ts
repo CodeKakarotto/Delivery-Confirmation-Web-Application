@@ -72,10 +72,17 @@ export async function me(ctx: RequestContext): Promise<Response> {
   return json(body);
 }
 
+/**
+ * Signs out fully: ends EVERY session of this account (all devices and tabs), clears the cookie, and tells the browser
+ * to wipe this site's cookies, cache and storage (Clear-Site-Data), so nothing from the session can be restored.
+ */
 export async function logout(ctx: RequestContext): Promise<Response> {
   requireDemoAccess(ctx);
   const user = await requireUser(ctx);
-  await ctx.db.prepare('DELETE FROM sessions WHERE id = ?').bind(user.sessionId).run();
+  await ctx.db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id).run();
   logEvent('info', 'logout', { userId: user.id, requestId: ctx.requestId });
-  return json({ ok: true }, 200, { 'Set-Cookie': clearSessionCookie(ctx) });
+  return json({ ok: true }, 200, {
+    'Set-Cookie': clearSessionCookie(ctx),
+    'Clear-Site-Data': '"cache", "cookies", "storage"',
+  });
 }

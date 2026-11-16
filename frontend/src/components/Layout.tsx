@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router';
+import { NavLink, Outlet } from 'react-router';
 import { ROLE_LABEL, useAuth } from '../lib/auth.tsx';
 import { applyTheme, currentTheme, type Theme } from '../lib/theme.ts';
 
@@ -61,7 +61,6 @@ const NAV = {
 /** The signed-in account and Sign out (which ends the session on the server). */
 function AccountBadge() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   if (!user) return null;
   return (
     <span className="role-badge">
@@ -72,10 +71,7 @@ function AccountBadge() {
       <button
         type="button"
         className="btn btn-small"
-        onClick={async () => {
-          await logout();
-          navigate('/login', { replace: true });
-        }}
+        onClick={() => void logout()}
       >
         Sign out
       </button>

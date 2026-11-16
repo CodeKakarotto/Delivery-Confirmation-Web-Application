@@ -204,6 +204,24 @@ export interface DeliveryListResponse {
   total: number;
 }
 
+/** One day in the employees' month view. */
+export interface DeliveryDayCounts {
+  date: string;
+  total: number;
+  awaiting: number;
+  confirmed: number;
+  exception: number;
+  cancelled: number;
+}
+
+export interface DeliveryCalendarResponse {
+  /** YYYY-MM */
+  month: string;
+  /** Today in the shop's time zone. */
+  today: string;
+  days: DeliveryDayCounts[];
+}
+
 // ---------- Shop employees section ----------
 
 export interface CalendarCounts {

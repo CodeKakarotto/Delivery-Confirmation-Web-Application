@@ -33,6 +33,7 @@ export const router = new Router()
   // Confirmations: employees see all, drivers only their own. Day summary, deliveries list and orders: employees only.
   .add('GET', '/api/dashboard/summary', dashboard.summary)
   .add('GET', '/api/dashboard/deliveries', dashboard.deliveries)
+  .add('GET', '/api/dashboard/deliveries/calendar', dashboard.deliveryCalendar)
   .add('GET', '/api/dashboard/calendar', dashboard.calendar)
   .add('GET', '/api/dashboard/orders/:orderId', dashboard.order)
   .add('GET', '/api/dashboard/confirmations', dashboard.list)

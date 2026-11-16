@@ -3681,3 +3681,243 @@ button.home-card {
   font-size: 1.1rem;
   margin-bottom: 0.4rem;
 }
+
+/* ---------- Employees' deliveries calendar: Month / Week / Day ---------- */
+
+.view-switch button {
+  min-width: 4.5rem;
+}
+.dcal-card {
+  padding: 0.75rem;
+}
+.dcal-month {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 4px;
+  table-layout: fixed;
+}
+.dcal-month th {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0;
+}
+.dcal-month td {
+  padding: 0;
+  vertical-align: top;
+}
+.dcal-week.is-current-week td {
+  background: var(--leaf);
+  border-radius: var(--radius-control);
+}
+.dcal-day {
+  width: 100%;
+  min-height: 5.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  padding: 0.4rem 0.45rem;
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+.dcal-day:hover {
+  border-color: var(--fern);
+}
+.dcal-day.is-outside {
+  opacity: 0.5;
+}
+.dcal-num {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  width: 1.8rem;
+  height: 1.8rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+}
+.dcal-day.is-today .dcal-num {
+  background: var(--primary-bg);
+  color: #fff;
+}
+.dcal-counts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.dcal-total {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--evergreen-strong);
+  line-height: 1;
+}
+.dcal-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+}
+.dcal-pill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0.18rem 0.35rem;
+  border-radius: 999px;
+}
+.dcal-pill.is-ok {
+  background: var(--ok-wash);
+  color: var(--success);
+}
+.dcal-pill.is-warn {
+  background: var(--amber-wash);
+  color: var(--amber);
+}
+.dcal-pill.is-wait {
+  background: var(--leaf-strong);
+  color: var(--evergreen-strong);
+}
+.dcal-legend {
+  margin: 0.6rem 0.25rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Week: seven columns on wide screens, stacked days on narrower ones (never a sideways scroll). */
+.dcal-weekdays {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.dcal-weekday {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-card);
+  padding: 0.5rem;
+  min-width: 0;
+}
+.dcal-weekday.is-today {
+  border-color: var(--evergreen);
+  box-shadow: inset 0 0 0 1px var(--evergreen);
+}
+.week-day-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.2rem 0.3rem;
+  font: inherit;
+  text-align: left;
+  background: var(--leaf);
+  border: 0;
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  color: var(--evergreen-strong);
+}
+.week-day-head:hover {
+  background: var(--leaf-strong);
+}
+.week-day-title {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.week-day-count {
+  margin-left: auto;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.week-empty {
+  margin: 0.5rem 0.3rem 0.2rem;
+}
+.week-items {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+.week-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem 0.45rem;
+  border-radius: var(--radius-control);
+  border-left: 3px solid var(--leaf-strong);
+  background: var(--canvas);
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.85rem;
+  min-width: 0;
+}
+.week-item:hover {
+  background: var(--leaf);
+  color: inherit;
+}
+.week-item.is-confirmed {
+  border-left-color: var(--success);
+}
+.week-item.is-exception {
+  border-left-color: var(--amber);
+}
+.week-item.is-cancelled {
+  opacity: 0.6;
+}
+.week-item-time {
+  font-weight: 700;
+  color: var(--evergreen-strong);
+}
+.week-item-order {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.week-item-sub {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 1100px) {
+  .dcal-weekdays {
+    grid-template-columns: 1fr;
+  }
+  .week-items {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  .dcal-month {
+    border-spacing: 2px;
+  }
+  .dcal-day {
+    min-height: 3.6rem;
+    padding: 0.25rem;
+    align-items: center;
+  }
+  .dcal-num {
+    width: 1.6rem;
+    height: 1.6rem;
+    font-size: 0.85rem;
+  }
+  .dcal-total {
+    font-size: 0.95rem;
+  }
+  /* Phones: just the total under the date; the status details are in the day view. */
+  .dcal-pills {
+    display: none;
+  }
+}
+.dcal-weekday.is-today .week-day-head {
+  background: var(--primary-bg);
+  color: #fff;
+}

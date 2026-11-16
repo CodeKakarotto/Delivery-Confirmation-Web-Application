@@ -169,6 +169,20 @@ describe('sessions', () => {
     assert.equal((await withCookie(client, 'GET', '/api/auth/me', cookie)).status, 401);
   });
 
+  it('signs out fully: every session of the account ends, and the browser is told to wipe this site', async () => {
+    const { client } = setup();
+    const phone = await login(client, 'driver1', TEST_USERS.driver1.password);
+    const laptop = await login(client, 'driver1', TEST_USERS.driver1.password);
+    const other = await login(client, 'driver2', TEST_USERS.driver2.password);
+    const cookieOf = (r: { headers: Headers }) => (r.headers.get('Set-Cookie') ?? '').split(';')[0]!;
+    const out = await withCookie(client, 'POST', '/api/auth/logout', cookieOf(phone), NOW, phone.body.csrfToken);
+    assert.equal(out.status, 200);
+    assert.equal(out.headers.get('Clear-Site-Data'), '"cache", "cookies", "storage"');
+    assert.equal((await withCookie(client, 'GET', '/api/auth/me', cookieOf(phone))).status, 401);
+    assert.equal((await withCookie(client, 'GET', '/api/auth/me', cookieOf(laptop))).status, 401, 'other devices of the same account too');
+    assert.equal((await withCookie(client, 'GET', '/api/auth/me', cookieOf(other))).status, 200, 'other accounts stay signed in');
+  });
+
   it('requires the session’s anti-forgery token on every change', async () => {
     const { client, db } = setup();
     const missing = await client.request('POST', '/api/driver/confirmations', validSubmission(), { csrf: null });

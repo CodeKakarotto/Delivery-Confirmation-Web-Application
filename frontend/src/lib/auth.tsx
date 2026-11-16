@@ -50,16 +50,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: 'signed-in', user: r.user });
   }, []);
 
+  /**
+   * Signs out fully: the server ends every session of the account and tells the browser to wipe this site's cookies,
+   * cache and storage; then the page is replaced by a fresh sign-in page, so nothing from the session stays in memory
+   * and Back cannot show it again.
+   */
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
     } catch (err) {
-      // Already signed out on the server: fine. Anything else: still clear this screen.
+      // Already signed out on the server, or offline: still clear this browser.
       if (!(err instanceof ApiRequestError)) throw err;
     } finally {
       signedOut();
+      window.location.replace('/login');
     }
   }, [signedOut]);
+
+  // A page restored from the back/forward cache (e.g. Back after signing out) is reloaded, which re-checks the session.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener('pageshow', onShow);
+    return () => window.removeEventListener('pageshow', onShow);
+  }, []);
 
   return <AuthContext.Provider value={{ ...state, login, logout }}>{children}</AuthContext.Provider>;
 }

@@ -173,3 +173,38 @@ describe('employee deliveries list and search', () => {
     assert.equal((await client.request('GET', '/api/dashboard/deliveries?status=bogus')).status, 422);
   });
 });
+
+describe('employee deliveries calendar: month, week and day', () => {
+  it('counts each day’s deliveries by status for a month', async () => {
+    const { client } = setup();
+    await client.request('POST', '/api/driver/confirmations', validSubmission({ orderId: 'MF-10482' }), { now: NOW });
+    await client.request('POST', '/api/driver/confirmations', validSubmission({ orderId: 'MF-10483', outcome: 'left_at_door' }), { now: NOW });
+    const res = await client.request('GET', '/api/dashboard/deliveries/calendar?month=2026-11', undefined, { now: NOW });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('Cache-Control'), 'no-store');
+    assert.equal(res.body.month, '2026-11');
+    assert.equal(res.body.today, '2026-11-14');
+    const byDate = Object.fromEntries(res.body.days.map((d: { date: string }) => [d.date, d]));
+    assert.deepEqual(byDate['2026-11-14'], { date: '2026-11-14', total: 6, awaiting: 3, confirmed: 1, exception: 1, cancelled: 1 });
+    assert.deepEqual(byDate['2026-11-13'], { date: '2026-11-13', total: 2, awaiting: 2, confirmed: 0, exception: 0, cancelled: 0 });
+    assert.equal(res.body.days.length, 2, 'only days that have deliveries');
+  });
+
+  it('defaults to the current month, validates it, and is for employees only', async () => {
+    const { client } = setup();
+    assert.equal((await client.request('GET', '/api/dashboard/deliveries/calendar', undefined, { now: NOW })).body.month, '2026-11');
+    assert.equal((await client.request('GET', '/api/dashboard/deliveries/calendar?month=2026-13')).status, 422);
+    assert.equal((await client.request('GET', '/api/dashboard/deliveries/calendar', undefined, { role: 'driver' })).status, 403);
+  });
+
+  it('lists a whole week of deliveries for the week view', async () => {
+    const { client } = setup();
+    const res = await client.request('GET', '/api/dashboard/deliveries?from=2026-11-08&to=2026-11-14&limit=200', undefined, { now: NOW });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.total, 8);
+    assert.deepEqual([...new Set(res.body.items.map((i: { deliveryDate: string }) => i.deliveryDate))], ['2026-11-14', '2026-11-13']);
+    assert.equal((await client.request('GET', '/api/dashboard/deliveries?from=2026-11-14&to=2026-11-08')).status, 422);
+    assert.equal((await client.request('GET', '/api/dashboard/deliveries?from=2026-10-01&to=2026-11-30')).status, 422, 'at most 42 days');
+    assert.equal((await client.request('GET', '/api/dashboard/deliveries?from=2026-11-08')).status, 422, 'from needs to');
+  });
+});

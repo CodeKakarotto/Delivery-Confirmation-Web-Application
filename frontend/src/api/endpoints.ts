@@ -1,6 +1,7 @@
 import type {
   AppConfig,
   AuthResponse,
+  DeliveryCalendarResponse,
   DeliveryListResponse,
   DeliveryStatus,
   ConfirmationDetailResponse,
@@ -62,15 +63,21 @@ export const dashboardApi = {
     return api<ConfirmationListResponse>('GET', `/api/dashboard/confirmations?${p}`);
   },
   /** Employees: orders for a day, or matching ?q= (order ID or recipient name), 10 per page. */
-  deliveries: (q: { date?: string; q?: string; status?: DeliveryStatus | 'all'; limit?: number; offset?: number }) => {
+  deliveries: (q: { date?: string; from?: string; to?: string; q?: string; status?: DeliveryStatus | 'all'; limit?: number; offset?: number }) => {
     const p = new URLSearchParams();
     if (q.date) p.set('date', q.date);
+    if (q.from && q.to) {
+      p.set('from', q.from);
+      p.set('to', q.to);
+    }
     if (q.q) p.set('q', q.q);
     if (q.status && q.status !== 'all') p.set('status', q.status);
     if (q.limit) p.set('limit', String(q.limit));
     if (q.offset) p.set('offset', String(q.offset));
     return api<DeliveryListResponse>('GET', `/api/dashboard/deliveries?${p}`);
   },
+  /** Employees' month view: each day's deliveries by status. */
+  deliveryCalendar: (month: string) => api<DeliveryCalendarResponse>('GET', `/api/dashboard/deliveries/calendar?${new URLSearchParams({ month })}`),
   detail: (id: string) => api<ConfirmationDetailResponse>('GET', `/api/dashboard/confirmations/${encodeURIComponent(id)}`),
   signatureUrl: (id: string) => `/api/dashboard/confirmations/${encodeURIComponent(id)}/signature`,
 };

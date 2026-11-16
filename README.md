@@ -34,8 +34,8 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
 - **Shop employees** Dashboard (`/shop`, view only): a **single month calendar**. The current week's row is highlighted,
   today is circled, and today's date is written underneath (shop time zone, America/New_York). Each day shows how many
   deliveries were confirmed. Tapping a day shows its figures, the orders still awaiting (tap to open) and the confirmed
-  deliveries with their **delivery time**, 10 per page. **Deliveries** tab: every order by day, filter by status, 10 per
-  page. **Search** tab: part of an order ID or recipient name.
+  deliveries with their **delivery time**, 10 per page. **Deliveries** tab: a calendar with **Month** (each day's deliveries by
+  status), **Week** (all seven days with their deliveries) and **Day** (the list, 10 per page) views; filter by status. **Search** tab: part of an order ID or recipient name.
   - **Record and print** (`/shop/confirmations/:id`): the saved record in the same field order, with logo, barcode,
     signature and delivery time, and refused duplicate/conflicting attempts.
 

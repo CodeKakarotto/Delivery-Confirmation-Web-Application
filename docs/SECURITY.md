@@ -19,8 +19,10 @@ mirror it. A driver asking for another driver's record or signature gets 404.
   characters.
 - **Sessions**: random 256-bit token in an `HttpOnly`, `SameSite=Strict` cookie (`Secure` and `__Host-` prefixed over
   HTTPS); scripts cannot read it. Only the token's SHA-256 is stored. A new session on every sign-in. Sessions end
-  after **2 hours idle** or **12 hours** in total, on **Sign out** (deleted on the server), or when the account is
-  deactivated.
+  after **2 hours idle** or **12 hours** in total, or when the account is deactivated. **Sign out** is full: it ends
+  every session of the account (all devices and tabs), the browser is told to wipe this site's cookies, cache and
+  storage (`Clear-Site-Data`), the app reloads to a clean sign-in page, and pages restored by Back are reloaded, so
+  nothing from the session can be shown again.
 - **Forgery protection**: every change needs the session's anti-forgery token (`X-CSRF-Token`) and a same-site
   `Origin`; JSON-only bodies; no CORS.
 - **Guessing**: 5 wrong passwords lock a username for up to 15 minutes (also for usernames that do not exist, so the

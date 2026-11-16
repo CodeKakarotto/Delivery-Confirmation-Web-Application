@@ -14,6 +14,8 @@ import type {
   ConfirmationListResponse,
   ConfirmationResult,
   DashboardSummary,
+  DeliveryCalendarResponse,
+  DeliveryDayCounts,
   DeliveryListItem,
   DeliveryListResponse,
   ShopOrderResponse,
@@ -254,7 +256,17 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
   if (!STATUSES.includes(status)) throw validationError([{ path: 'status', message: `Must be one of: ${STATUSES.join(', ')}` }]);
   const dateRaw = q.get('date') || undefined;
   if (dateRaw !== undefined && !isValidDate(dateRaw)) throw validationError([{ path: 'date', message: 'Use YYYY-MM-DD' }]);
-  const date = dateRaw ?? (text ? undefined : localDateKey(ctx.now, ctx.settings.timeZone));
+  // A range of days (the week view): both ends, in order, at most 42 days.
+  const rangeFrom = q.get('from') || undefined;
+  const rangeTo = q.get('to') || undefined;
+  if ((rangeFrom === undefined) !== (rangeTo === undefined)) throw validationError([{ path: rangeFrom ? 'to' : 'from', message: 'Give both from and to' }]);
+  if (rangeFrom !== undefined && rangeTo !== undefined) {
+    if (!isValidDate(rangeFrom) || !isValidDate(rangeTo)) throw validationError([{ path: 'from', message: 'Use YYYY-MM-DD' }]);
+    const span = (Date.parse(`${rangeTo}T00:00:00Z`) - Date.parse(`${rangeFrom}T00:00:00Z`)) / 86_400_000;
+    if (span < 0 || span > 41) throw validationError([{ path: 'to', message: 'Use a range of 1 to 42 days, from before to' }]);
+  }
+  const range = rangeFrom && rangeTo ? { from: rangeFrom, to: rangeTo } : undefined;
+  const date = range ? undefined : (dateRaw ?? (text ? undefined : localDateKey(ctx.now, ctx.settings.timeZone)));
 
   // Fixed clauses with placeholders only; user text is always bound, with LIKE wildcards escaped.
   const where: string[] = [];
@@ -262,6 +274,10 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
   if (date) {
     where.push('d.delivery_date = ?');
     binds.push(date);
+  }
+  if (range) {
+    where.push('d.delivery_date BETWEEN ? AND ?');
+    binds.push(range.from, range.to);
   }
   if (text) {
     where.push(`(d.order_id LIKE ? ESCAPE '!' OR d.recipient_name LIKE ? ESCAPE '!')`);
@@ -274,7 +290,7 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
   if (status === 'cancelled') where.push('d.cancelled_at IS NOT NULL AND c.id IS NULL');
   const clause = where.length ? ` WHERE ${where.join(' AND ')}` : '';
   const from = 'FROM deliveries d LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id';
-  const limit = intParam(ctx, 'limit', 10, 1, 100);
+  const limit = intParam(ctx, 'limit', 10, 1, 200);
   const offset = intParam(ctx, 'offset', 0, 0, 100_000);
 
   type Row = {
@@ -317,5 +333,31 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
       }),
     ),
   };
+  return json(body);
+}
+
+/** Employees' month view: how many deliveries each day has, by status (days without deliveries are left out). */
+export async function deliveryCalendar(ctx: RequestContext): Promise<Response> {
+  await guard(ctx, 'employee');
+  const today = localDateKey(ctx.now, ctx.settings.timeZone);
+  const month = ctx.url.searchParams.get('month') || today.slice(0, 7);
+  if (!/^\d{4}-\d{2}$/.test(month) || !isValidDate(`${month}-01`)) throw validationError([{ path: 'month', message: 'Use YYYY-MM' }]);
+  const res = await ctx.db
+    .prepare(
+      `SELECT d.delivery_date AS date,
+              COUNT(*) AS total,
+              SUM(CASE WHEN c.id IS NULL AND d.cancelled_at IS NULL THEN 1 ELSE 0 END) AS awaiting,
+              SUM(CASE WHEN c.result = 'confirmed' THEN 1 ELSE 0 END) AS confirmed,
+              SUM(CASE WHEN c.result = 'needs_review' THEN 1 ELSE 0 END) AS exception,
+              SUM(CASE WHEN c.id IS NULL AND d.cancelled_at IS NOT NULL THEN 1 ELSE 0 END) AS cancelled
+         FROM deliveries d
+         LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id
+        WHERE d.delivery_date >= ? AND d.delivery_date <= ?
+        GROUP BY d.delivery_date
+        ORDER BY d.delivery_date`,
+    )
+    .bind(`${month}-01`, `${month}-31`)
+    .all<DeliveryDayCounts>();
+  const body: DeliveryCalendarResponse = { month, today, days: res.results };
   return json(body);
 }
