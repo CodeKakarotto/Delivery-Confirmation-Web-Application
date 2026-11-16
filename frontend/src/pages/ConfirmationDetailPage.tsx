@@ -5,7 +5,8 @@ import { ApiRequestError, errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { BackButton } from '../components/BackButton.tsx';
 import { CorrectionHistory } from '../components/CorrectionHistory.tsx';
-import { CorrectionForm, VoidForm } from '../components/CorrectionForms.tsx';
+import { CorrectionForm, UnvoidForm, VoidForm } from '../components/CorrectionForms.tsx';
+import { RecordActions, type RecordEdit } from '../components/RecordActions.tsx';
 import { Brand } from '../components/Layout.tsx';
 import { SavedConfirmationCard } from '../components/SavedConfirmationCard.tsx';
 import { FlagTag, Notice, Spinner } from '../components/ui.tsx';
@@ -23,7 +24,7 @@ export function ConfirmationDetailPage() {
   const detail = useApi(() => dashboardApi.detail(id), [id]);
   const timeZone = useShopTimeZone();
   const [retrievedAt, setRetrievedAt] = useState<string | null>(null);
-  const [editing, setEditing] = useState<'correct' | 'void' | null>(null);
+  const [editing, setEditing] = useState<RecordEdit | null>(null);
   useEffect(() => {
     if (detail.data) setRetrievedAt(new Date().toISOString());
   }, [detail.data]);
@@ -74,30 +75,25 @@ export function ConfirmationDetailPage() {
             {c.paper && <span className="tag tag-demo">Entered from paper</span>}
           </div>
         </div>
-        <div className="actions no-print">
-          {isEmployee && !c.voided && (
-            <>
-              <button type="button" className="btn" onClick={() => setEditing(editing === 'correct' ? null : 'correct')} aria-expanded={editing === 'correct'}>
-                Correct
-              </button>
-              <button type="button" className="btn btn-ghost-danger" onClick={() => setEditing(editing === 'void' ? null : 'void')} aria-expanded={editing === 'void'}>
-                Void
-              </button>
-            </>
-          )}
-          <button type="button" className="btn btn-primary" onClick={() => window.print()}>
-            Print
-          </button>
-        </div>
+        {isEmployee ? (
+          <RecordActions voided={Boolean(c.voided)} editing={editing} onEdit={setEditing} onPrint={() => window.print()} />
+        ) : (
+          <div className="actions no-print">
+            <button type="button" className="btn btn-primary" onClick={() => window.print()}>
+              Print
+            </button>
+          </div>
+        )}
       </div>
 
       {editing === 'correct' && <CorrectionForm confirmation={c} onDone={done} onCancel={() => setEditing(null)} />}
-      {editing === 'void' && <VoidForm confirmation={c} onDone={done} onCancel={() => setEditing(null)} />}
+      {editing === 'void' && !c.voided && <VoidForm confirmation={c} onDone={done} onCancel={() => setEditing(null)} />}
+      {editing === 'unvoid' && c.voided && <UnvoidForm confirmation={c} onDone={done} onCancel={() => setEditing(null)} />}
 
       {c.voided && (
         <Notice tone="error" title="This confirmation was voided">
           Voided by {c.voided.by ?? 'an employee'} on {shopDateTime(c.voided.at, timeZone)}. Reason: {c.voided.reason}. It no longer counts; the order
-          can be confirmed again.
+          can be confirmed again. If this was a mistake, use “Undo void”.
         </Notice>
       )}
       {c.attemptCount > 0 && (

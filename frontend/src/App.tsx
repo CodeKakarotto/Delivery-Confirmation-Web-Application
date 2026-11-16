@@ -13,6 +13,7 @@ import { NotFoundPage } from './pages/HomePage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
 import { ShopDeliveriesPage } from './pages/ShopDeliveriesPage.tsx';
 import { ShopOrderPage } from './pages/ShopOrderPage.tsx';
+import { ShopReportPage } from './pages/ShopReportPage.tsx';
 import { PaperEntryPage, PrintSlipsPage } from './pages/PaperSlipPages.tsx';
 import { ShopSearchPage } from './pages/ShopSearchPage.tsx';
 
@@ -56,6 +57,7 @@ const router = createBrowserRouter([
       { path: '/shop/confirmations/:id', element: employee(<ConfirmationDetailPage />) },
       { path: '/shop/orders/:orderId', element: employee(<ShopOrderPage />) },
       { path: '/shop/paper', element: employee(<PaperEntryPage />) },
+      { path: '/shop/report', element: employee(<ShopReportPage />) },
       { path: '/shop/paper/print', element: employee(<PrintSlipsPage />) },
       { path: '/driver/paper-slips', element: driver(<PrintSlipsPage />) },
       // Old links from earlier versions.

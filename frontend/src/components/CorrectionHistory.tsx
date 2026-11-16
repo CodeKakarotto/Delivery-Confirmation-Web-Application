@@ -16,7 +16,7 @@ export function CorrectionHistory({ items, timeZone }: { items: ConfirmationCorr
       {items.map((c, i) => (
         <li key={i} className={`correction is-${c.kind}`}>
           <p className="correction-head">
-            <strong>{c.kind === 'void' ? 'Voided' : 'Corrected'}</strong> by {c.by ?? 'an employee'} ·{' '}
+            <strong>{c.kind === 'void' ? 'Voided' : c.kind === 'unvoid' ? 'Void undone' : 'Corrected'}</strong> by {c.by ?? 'an employee'} ·{' '}
             <time dateTime={c.createdAt}>{shopDateTime(c.createdAt, timeZone)}</time>
           </p>
           {c.changes.length > 0 && (

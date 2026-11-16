@@ -44,6 +44,10 @@ export const router = new Router()
   // Employees: correct or void a confirmation (with a reason), or enter one from a paper slip.
   .add('POST', '/api/dashboard/confirmations/:id/corrections', dashboard.correct)
   .add('POST', '/api/dashboard/confirmations/:id/void', dashboard.voidConfirmation)
+  .add('POST', '/api/dashboard/confirmations/:id/unvoid', dashboard.unvoidConfirmation)
+  // Employees: the end-of-day report, on screen and as a spreadsheet file.
+  .add('GET', '/api/dashboard/report', dashboard.report)
+  .add('GET', '/api/dashboard/report.csv', dashboard.reportCsv)
   .add('POST', '/api/dashboard/paper-confirmations', dashboard.paperConfirmation);
 
 export async function handleRequest(request: Request, env: Env, now: Date = new Date()): Promise<Response> {

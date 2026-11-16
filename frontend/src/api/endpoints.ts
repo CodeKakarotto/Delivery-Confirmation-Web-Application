@@ -11,6 +11,7 @@ import type {
   ConfirmationSubmit,
   ConfirmationSubmitResponse,
   CorrectionRequest,
+  DailyReport,
   PaperConfirmationRequest,
   DashboardSummary,
   DriverAwaitingResponse,
@@ -91,6 +92,12 @@ export const dashboardApi = {
   /** Employees: void a confirmation (with a reason). */
   voidConfirmation: (id: string, reason: string) =>
     api<ConfirmationDetailResponse>('POST', `/api/dashboard/confirmations/${encodeURIComponent(id)}/void`, { reason }),
+  /** Employees: undo a void (with a reason). */
+  unvoidConfirmation: (id: string, reason: string) =>
+    api<ConfirmationDetailResponse>('POST', `/api/dashboard/confirmations/${encodeURIComponent(id)}/unvoid`, { reason }),
+  /** Employees: the end-of-day report; reportCsvUrl downloads it as a spreadsheet. */
+  report: (date?: string) => api<DailyReport>('GET', `/api/dashboard/report${date ? `?${new URLSearchParams({ date })}` : ''}`),
+  reportCsvUrl: (date: string) => `/api/dashboard/report.csv?${new URLSearchParams({ date })}`,
   /** Employees: enter a confirmation from a paper slip. */
   paperConfirm: (body: PaperConfirmationRequest) => api<ConfirmationSubmitResponse>('POST', '/api/dashboard/paper-confirmations', body),
   signatureUrl: (id: string) => `/api/dashboard/confirmations/${encodeURIComponent(id)}/signature`,

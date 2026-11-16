@@ -184,3 +184,59 @@ export function VoidForm({
     </form>
   );
 }
+
+/** Undo a void, with a required reason. Shown only on a voided record. */
+export function UnvoidForm({
+  confirmation: c,
+  onDone,
+  onCancel,
+}: {
+  confirmation: ConfirmationDetail;
+  onDone: (updated: ConfirmationDetail) => void;
+  onCancel: () => void;
+}) {
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const reasonId = useId();
+
+  const onSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (busy) return;
+    if (!reason.trim()) return setError('Write why you are undoing the void.');
+    setBusy(true);
+    setError(null);
+    try {
+      onDone((await dashboardApi.unvoidConfirmation(c.id, reason.trim())).confirmation);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="card edit-card no-print" onSubmit={onSubmit} noValidate aria-labelledby="unvoid-title">
+      <h2 id="unvoid-title">Undo the void</h2>
+      <p className="small">
+        The confirmation for order <strong>{c.orderId}</strong> will count again. The void and this undo both stay in the record’s history.
+      </p>
+      {error && <Notice tone="error">{error}</Notice>}
+      <div className="field">
+        <label htmlFor={reasonId}>
+          Reason for undoing the void
+          <RequiredMark />
+        </label>
+        <textarea id={reasonId} rows={2} maxLength={REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} />
+      </div>
+      <div className="actions">
+        <button type="submit" className="btn btn-primary" disabled={busy}>
+          {busy ? 'Saving…' : 'Undo void'}
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={onCancel} disabled={busy}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}

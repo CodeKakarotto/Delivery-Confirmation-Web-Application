@@ -55,6 +55,11 @@ Refused submissions for an already confirmed order: `confirmation_id → deliver
 Every correction and void: `kind`, `reason` (required), old and new `received_by` / `outcome` / `outcome_detail`, `by_user_id`,
 `created_at`. Never updated or deleted, so the original values stay visible.
 
+## Migration 0005: undo void
+Rebuilds `confirmation_corrections` so `kind` also allows `unvoid` (rows copied unchanged). Undoing a void clears
+`voided_at` / `voided_by_user_id` / `void_reason` on the confirmation and adds an `unvoid` row with the reason; the
+original void row stays.
+
 ## `rate_limits`
 `(bucket, window_start)` → `hits`. `bucket` = scope + HMAC of the client IP. Windows older than an hour are deleted.
 

@@ -99,3 +99,28 @@ describe('migration 0004 keeps existing data', () => {
     assert.equal((db.sqlite.prepare('SELECT COUNT(*) AS n FROM delivery_confirmations').get() as { n: number }).n, 2);
   });
 });
+
+describe('migration 0005 keeps the change history', () => {
+  it('copies every correction and void, and allows "unvoid"', () => {
+    const db = new SqliteD1();
+    for (const file of MIGRATIONS.filter((f) => f < '0005')) db.execFile(new URL(`migrations/${file}`, ROOT));
+    db.execFile(new URL('seed/demo-seed.sql', ROOT));
+    db.sqlite
+      .prepare(
+        `INSERT INTO delivery_confirmations (id, delivery_id, order_id, received_by, outcome, outcome_detail, result, idempotency_key, request_hash, confirmed_at)
+         SELECT '99999999-9999-4999-8999-999999999999', id, order_id, 'Porch', 'left_at_door', 'Porch', 'needs_review',
+           'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', ?, '2026-11-14T15:30:00.000Z' FROM deliveries WHERE order_id = 'MF-10482'`,
+      )
+      .run('e'.repeat(64));
+    db.sqlite.exec(`INSERT INTO confirmation_corrections (confirmation_id, kind, reason, old_received_by, new_received_by, created_at)
+                    VALUES ('99999999-9999-4999-8999-999999999999', 'correction', 'Typo', 'Prch', 'Porch', '2026-11-14T16:00:00.000Z')`);
+
+    db.execFile(new URL('migrations/0005_unvoid.sql', ROOT));
+
+    const row = db.sqlite.prepare('SELECT * FROM confirmation_corrections').get() as Record<string, unknown>;
+    assert.deepEqual([row.kind, row.reason, row.old_received_by, row.new_received_by], ['correction', 'Typo', 'Prch', 'Porch']);
+    db.sqlite.exec(`INSERT INTO confirmation_corrections (confirmation_id, kind, reason, created_at)
+                    VALUES ('99999999-9999-4999-8999-999999999999', 'unvoid', 'Restored', '2026-11-14T17:00:00.000Z')`);
+    assert.equal((db.sqlite.prepare('SELECT COUNT(*) AS n FROM confirmation_corrections').get() as { n: number }).n, 2);
+  });
+});

@@ -25,6 +25,8 @@ for the test runner by `frontend/test/register-tsx.mjs` (esbuild).
 | `frontend/test/authGate.test.tsx` | Pages shown only to signed-in accounts of the right role |
 | `worker/test/corrections.test.ts` | Corrections (reason required, old values kept, outcome rules, signature never changed), voids (order back to awaiting, re-confirmable, not counted), paper entries (marked paper, slip time, photo checks, rules, idempotent), offline copy endpoint |
 | `frontend/test/outbox.test.ts` | The phone outbox: retry on no signal or server errors, keep refused items for attention, stop at an ended session, order and per-driver, no duplicates; today's copy per driver and day |
+| `worker/test/unvoidReport.test.ts` | Undo void (only on voided records, reason required, counts again, refused after re-confirmation, employees only) and the end-of-day report (rows and totals, Missing on past days, CSV for Excel, formula escaping, date checks) |
+| `frontend/test/recordActions.test.tsx` | Record buttons (Undo void only on a voided record), "Void undone" in the history, the report table |
 | `frontend/test/correctionsUi.test.tsx` | Change history (old value crossed out → new, who, when, why; voids) and the blank paper slip layout |
 | `worker/test/barcode.test.ts` | Code 128 table, checksum, exact round-trip of order IDs |
 | `frontend/test/deliveryCard.test.tsx` | Required field order, barcode under the order ID encoding it exactly, exception inside Deliver To, Received By/Signature inside Delivery Instructions, "—"/"Not recorded", text escaping, saved/print view order |

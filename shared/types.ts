@@ -157,7 +157,8 @@ export interface ConfirmationDetail extends Omit<ConfirmationListItem, 'voided'>
 }
 
 export interface ConfirmationCorrection {
-  kind: 'correction' | 'void';
+  /** 'unvoid' = a void was undone. */
+  kind: 'correction' | 'void' | 'unvoid';
   reason: string;
   by: string | null;
   createdAt: string;
@@ -185,6 +186,34 @@ export interface PaperConfirmationRequest {
   /** Optional photo of the signed slip: data:image/jpeg;base64,… */
   slipPhoto?: string;
   idempotencyKey: string;
+}
+
+/** One order in the end-of-day report. */
+export interface DailyReportRow {
+  orderId: string;
+  stopNumber: number | null;
+  zone: string | null;
+  recipientName: string | null;
+  city: string;
+  /** awaiting = not confirmed yet today; missing = not confirmed on a past day. */
+  status: 'delivered' | 'exception' | 'awaiting' | 'missing' | 'cancelled';
+  receivedBy: string | null;
+  outcome: DeliveryOutcome | null;
+  outcomeDetail: string | null;
+  confirmedAt: string | null;
+  source: 'app' | 'paper' | null;
+  corrected: boolean;
+  flagged: boolean;
+  confirmationId: string | null;
+}
+
+/** The end-of-day report: every order scheduled for the day, with the day's totals. */
+export interface DailyReport {
+  date: string;
+  isPast: boolean;
+  /** scheduled excludes cancelled orders; awaiting includes missing ones on a past day. */
+  totals: { scheduled: number; delivered: number; exceptions: number; awaiting: number; cancelled: number };
+  rows: DailyReportRow[];
 }
 
 /** Today's awaiting orders with full details, kept on the driver's phone for confirming without signal. */

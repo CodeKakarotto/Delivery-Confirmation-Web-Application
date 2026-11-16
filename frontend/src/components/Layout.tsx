@@ -57,6 +57,7 @@ const NAV = {
     { to: '/shop/deliveries', label: 'Deliveries', end: false },
     { to: '/shop/search', label: 'Search', end: false },
     { to: '/shop/paper', label: 'Paper slips', end: false },
+    { to: '/shop/report', label: 'Daily report', end: false },
   ],
 } as const;
 

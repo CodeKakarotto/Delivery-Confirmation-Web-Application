@@ -5,6 +5,7 @@
 
 import { correctionSchema, isValidDate, ORDER_ID_MAX, ORDER_ID_PATTERN, PAPER_MAX_BODY_BYTES, paperConfirmationSchema, voidSchema } from '../../../shared/schemas.ts';
 import { localDateKey, localDayRangeUtc, monthKey, weekStartKey, weekWithinMonth } from '../../../shared/shopTime.ts';
+import { OUTCOME_LABELS } from '../../../shared/types.ts';
 import type {
   AwaitingDelivery,
   CalendarCounts,
@@ -14,8 +15,11 @@ import type {
   ConfirmationListResponse,
   ConfirmationResult,
   ConfirmationSubmitResponse,
+  DailyReport,
+  DailyReportRow,
   DashboardSummary,
   DeliveryCalendarResponse,
+  DeliveryOutcome,
   DeliveryDayCounts,
   DeliveryListItem,
   DeliveryListResponse,
@@ -562,4 +566,181 @@ async function sha256Hex(data: string | Uint8Array): Promise<string> {
   const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
   const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
   return [...digest].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ---------- Undo void and the end-of-day report (employees) ----------
+
+/** Undoes a void (with a reason): the record counts again. Refused if the order has been confirmed again since. */
+export async function unvoidConfirmation(ctx: RequestContext): Promise<Response> {
+  requireDemoAccess(ctx);
+  const user = await requireRole(ctx, 'employee');
+  await rateLimit(ctx, RATE_LIMITS.submit);
+  const id = (ctx.params.id ?? '').toLowerCase();
+  if (!UUID.test(id)) throw CONFIRMATION_NOT_FOUND();
+  const input = await readJson(ctx.request, voidSchema);
+  const reason = input.reason.trim();
+  if (!reason) throw validationError([{ path: 'reason', message: 'Write why the void is being undone' }]);
+  const current = await getConfirmationState(ctx.db, id);
+  if (!current) throw CONFIRMATION_NOT_FOUND();
+  if (!current.voided_at) throw new ApiError(409, 'not_voided', 'This confirmation is not voided.');
+  const now = ctx.now.toISOString();
+  try {
+    await ctx.db.batch([
+      ctx.db
+        .prepare(
+          `INSERT INTO confirmation_corrections (confirmation_id, kind, reason, by_user_id, created_at)
+           SELECT ?, 'unvoid', ?, ?, ? WHERE EXISTS (SELECT 1 FROM delivery_confirmations WHERE id = ? AND voided_at IS NOT NULL)`,
+        )
+        .bind(id, reason, user.id, now, id),
+      ctx.db
+        .prepare('UPDATE delivery_confirmations SET voided_at = NULL, voided_by_user_id = NULL, void_reason = NULL WHERE id = ? AND voided_at IS NOT NULL')
+        .bind(id),
+    ]);
+  } catch (err) {
+    // Only one active confirmation per order: the order was confirmed again after this one was voided.
+    if (isUniqueViolation(err, 'delivery_id')) {
+      throw new ApiError(
+        409,
+        'order_reconfirmed',
+        'This order has been confirmed again since this record was voided, so the void cannot be undone. Void the newer confirmation first if this one is the right one.',
+      );
+    }
+    throw err;
+  }
+  logEvent('info', 'confirmation_unvoided', { userId: user.id, requestId: ctx.requestId });
+  return detailResponse(ctx, id);
+}
+
+interface ReportRowDb {
+  order_id: string;
+  stop_number: number | null;
+  zone: string | null;
+  recipient_name: string | null;
+  city: string;
+  cancelled_at: string | null;
+  c_id: string | null;
+  received_by: string | null;
+  outcome: DeliveryOutcome | null;
+  outcome_detail: string | null;
+  result: ConfirmationResult | null;
+  confirmed_at: string | null;
+  source: 'app' | 'paper' | null;
+  corrected: number;
+  flagged: number;
+}
+
+async function buildReport(ctx: RequestContext): Promise<DailyReport> {
+  await guard(ctx, 'employee');
+  const today = localDateKey(ctx.now, ctx.settings.timeZone);
+  const date = ctx.url.searchParams.get('date') || today;
+  if (!isValidDate(date)) throw validationError([{ path: 'date', message: 'Use YYYY-MM-DD' }]);
+  const isPast = date < today;
+  const res = await ctx.db
+    .prepare(
+      `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city, d.cancelled_at,
+              c.id AS c_id, c.received_by, c.outcome, c.outcome_detail, c.result, c.confirmed_at, c.source,
+              EXISTS (SELECT 1 FROM confirmation_corrections k WHERE k.confirmation_id = c.id AND k.kind = 'correction') AS corrected,
+              EXISTS (SELECT 1 FROM confirmation_attempts a WHERE a.confirmation_id = c.id) AS flagged
+         FROM deliveries d
+         LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id AND c.voided_at IS NULL
+        WHERE d.delivery_date = ?
+        ORDER BY d.stop_number IS NULL, d.stop_number, d.order_id
+        LIMIT 1000`,
+    )
+    .bind(date)
+    .all<ReportRowDb>();
+  const totals = { scheduled: 0, delivered: 0, exceptions: 0, awaiting: 0, cancelled: 0 };
+  const rows = res.results.map((r): DailyReportRow => {
+    const status: DailyReportRow['status'] = r.c_id
+      ? r.result === 'confirmed'
+        ? 'delivered'
+        : 'exception'
+      : r.cancelled_at
+        ? 'cancelled'
+        : isPast
+          ? 'missing'
+          : 'awaiting';
+    if (status === 'cancelled') totals.cancelled++;
+    else {
+      totals.scheduled++;
+      if (status === 'delivered') totals.delivered++;
+      else if (status === 'exception') totals.exceptions++;
+      else totals.awaiting++;
+    }
+    return {
+      orderId: r.order_id,
+      stopNumber: r.stop_number,
+      zone: r.zone,
+      recipientName: r.recipient_name,
+      city: r.city,
+      status,
+      receivedBy: r.received_by,
+      outcome: r.outcome,
+      outcomeDetail: r.outcome_detail,
+      confirmedAt: r.confirmed_at,
+      source: r.source,
+      corrected: r.corrected === 1,
+      flagged: r.flagged === 1,
+      confirmationId: r.c_id,
+    };
+  });
+  return { date, isPast, totals, rows };
+}
+
+/** The end-of-day report: every order scheduled for a day (default today) with its result, and the day's totals. */
+export async function report(ctx: RequestContext): Promise<Response> {
+  return json(await buildReport(ctx));
+}
+
+const STATUS_WORDS: Record<DailyReportRow['status'], string> = {
+  delivered: 'Delivered to recipient',
+  exception: 'Exception',
+  awaiting: 'Awaiting',
+  missing: 'Missing',
+  cancelled: 'Cancelled',
+};
+
+/** One spreadsheet cell: formulas neutralised (a leading = + - @ gets an apostrophe), quoted when needed. */
+function csvCell(value: string | number | null): string {
+  let s = value === null ? '' : String(value);
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** The same report as a CSV file that opens in Excel (UTF-8 with a byte-order mark, Windows line endings). */
+export async function reportCsv(ctx: RequestContext): Promise<Response> {
+  const r = await buildReport(ctx);
+  const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: ctx.settings.timeZone });
+  const header = ['Date', 'Stop', 'Zone', 'Order ID', 'Recipient', 'City', 'Result', 'Received by', 'Delivery time', 'Exception note', 'Entered from', 'Corrected', 'Flagged'];
+  const lines = [header.map(csvCell).join(',')];
+  for (const row of r.rows) {
+    const result = row.status === 'exception' && row.outcome ? OUTCOME_LABELS[row.outcome] : STATUS_WORDS[row.status];
+    lines.push(
+      [
+        r.date,
+        row.stopNumber,
+        row.zone,
+        row.orderId,
+        row.recipientName,
+        row.city,
+        result,
+        row.receivedBy,
+        row.confirmedAt ? time.format(new Date(row.confirmedAt)) : null,
+        row.outcomeDetail,
+        row.source === 'paper' ? 'Paper slip' : row.source === 'app' ? 'App' : null,
+        row.confirmationId ? (row.corrected ? 'Yes' : 'No') : null,
+        row.confirmationId ? (row.flagged ? 'Yes' : 'No') : null,
+      ]
+        .map(csvCell)
+        .join(','),
+    );
+  }
+  return new Response(`﻿${lines.join('\r\n')}\r\n`, {
+    status: 200,
+    headers: {
+      ...SECURITY_HEADERS,
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="delivery-report-${r.date}.csv"`,
+    },
+  });
 }
