@@ -29,8 +29,10 @@ if not exist .wrangler\state\v3\d1 (
 )
 
 echo Backing up the database (keeps the last 30 copies in the backups folder)...
+set backup_ok=1
 call npm run db:backup:local
 if errorlevel 1 (
+  set backup_ok=0
   echo.
   echo WARNING: the backup did not work. The app will still start. Tell whoever looks after this computer.
   echo.
@@ -38,6 +40,12 @@ if errorlevel 1 (
 
 echo Updating the local database...
 call npm run db:migrate:local
+if "%backup_ok%"=="1" (
+  echo Removing deliveries older than 30 days...
+  call npm run db:retention:local
+) else (
+  echo Skipping the 30-day cleanup because the backup did not work.
+)
 echo Checking sign-in accounts...
 call npm run users:demo
 

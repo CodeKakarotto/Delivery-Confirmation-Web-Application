@@ -1,3 +1,4 @@
+import { DEFAULT_RETENTION_DAYS } from './db/retention.ts';
 import { DEFAULT_CLOSING_TIME, DEFAULT_SHOP_TIME_ZONE, isValidClockTime, isValidTimeZone } from '../../shared/shopTime.ts';
 
 /** Bindings and variables available to the Worker (see wrangler.jsonc and .dev.vars.example). */
@@ -15,6 +16,8 @@ export interface Env {
   SHOP_TIME_ZONE?: string;
   /** The shop's closing time, 24-hour "HH:MM" (default 18:00). After it, today's unconfirmed deliveries are missed. */
   SHOP_CLOSING_TIME?: string;
+  /** How many days of deliveries the database keeps (default 30). Older ones are deleted automatically. */
+  RETENTION_DAYS?: string;
 }
 
 export interface Settings {
@@ -28,6 +31,13 @@ export interface Settings {
   timeZone: string;
   /** Closing time, "HH:MM" (validated; falls back to 18:00). */
   closingTime: string;
+  /** Days of deliveries kept (validated 7–3650; falls back to 30). */
+  retentionDays: number;
+}
+
+function parseRetentionDays(value: string | undefined): number {
+  const n = Number(value?.trim());
+  return Number.isInteger(n) && n >= 7 && n <= 3650 ? n : DEFAULT_RETENTION_DAYS;
 }
 
 const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]', '::1'];
@@ -50,6 +60,7 @@ export function loadSettings(env: Env): Settings {
     demoHosts: isProduction ? new Set() : new Set([...LOOPBACK_HOSTS, ...extra]),
     appSecret: env.APP_SECRET && env.APP_SECRET.length >= 16 ? env.APP_SECRET : null,
     timeZone: env.SHOP_TIME_ZONE?.trim() && isValidTimeZone(env.SHOP_TIME_ZONE.trim()) ? env.SHOP_TIME_ZONE.trim() : DEFAULT_SHOP_TIME_ZONE,
+    retentionDays: parseRetentionDays(env.RETENTION_DAYS),
     closingTime: env.SHOP_CLOSING_TIME?.trim() && isValidClockTime(env.SHOP_CLOSING_TIME.trim()) ? env.SHOP_CLOSING_TIME.trim() : DEFAULT_CLOSING_TIME,
   };
 }

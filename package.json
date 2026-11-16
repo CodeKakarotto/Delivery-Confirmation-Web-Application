@@ -21,6 +21,7 @@
     "db:demo-today:local": "wrangler d1 execute DB --local --file=seed/demo-today.sql",
     "db:backup:local": "node scripts/backup-local.ts",
     "db:restore:local": "node scripts/restore-local.ts",
+    "db:retention:local": "node scripts/retention-local.ts",
     "users:create": "node scripts/create-user.ts",
     "users:demo": "node scripts/demo-accounts.ts"
   },

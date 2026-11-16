@@ -254,6 +254,8 @@ export interface AppConfig {
   authenticated: true;
   /** The shop's closing time, 24-hour "HH:MM". */
   closingTime: string;
+  /** Days of deliveries the database keeps; older ones are deleted automatically. */
+  retentionDays: number;
 }
 
 /** Deliveries that were never confirmed: earlier days, and today once the shop has closed. */

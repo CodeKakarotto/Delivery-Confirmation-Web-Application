@@ -8,3 +8,5 @@ APP_SECRET=replace-with-a-long-random-string
 # Optional: where automatic backups go (default: the backups folder here). Point it at a OneDrive / Google Drive /
 # USB folder so a copy also exists off this computer. Backups contain customer data: keep the folder private.
 # BACKUP_DIR=C:\Users\you\OneDrive\Delivery backups
+# Optional: days of deliveries the local database keeps (default 30). Older ones are deleted on every start.
+# RETENTION_DAYS=30

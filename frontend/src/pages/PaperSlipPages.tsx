@@ -10,7 +10,7 @@ import { Notice } from '../components/ui.tsx';
 import { useAuth } from '../lib/auth.tsx';
 import { prepareSlipPhoto } from '../lib/photo.ts';
 
-/** Two blank paper slips per page, for when the app cannot be used. */
+/** Two blank paper slips per page: print a stack ahead of time, for when the app cannot be used. */
 export function PrintSlipsPage() {
   const { user } = useAuth();
   return (
@@ -19,9 +19,14 @@ export function PrintSlipsPage() {
         <BackButton fallback={user?.role === 'employee' ? '/shop/paper' : '/driver'} />
         <div className="page-head">
           <h1>Blank paper slips</h1>
-          <button type="button" className="btn btn-primary" onClick={() => window.print()}>
-            Print
-          </button>
+          <div className="actions">
+            <a className="btn" href={SLIP_PDF} download>
+              Download PDF
+            </a>
+            <button type="button" className="btn btn-primary" onClick={() => window.print()}>
+              Print
+            </button>
+          </div>
         </div>
         <PaperSteps />
       </div>
@@ -33,28 +38,33 @@ export function PrintSlipsPage() {
   );
 }
 
-/** The paper backup in three steps, shown on both paper pages. */
+/** Where the blank slip PDF is served from (frontend/public): it opens and prints without the app. */
+export const SLIP_PDF = '/michaels-flowers-paper-slip.pdf';
+
+/** The paper backup, step by step: get ready while the app works, use paper if it is down, enter the slips after. */
 function PaperSteps({ onForm = false }: { onForm?: boolean }) {
   return (
     <section className="paper-steps" aria-labelledby="paper-steps-title">
-      <h2 id="paper-steps-title">If the app is down</h2>
+      <h2 id="paper-steps-title">Paper backup</h2>
       <ol>
         <li>
           <span className="paper-step-num" aria-hidden="true">1</span>
           <span>
-            <strong>Print the paper slips</strong> and hand them to the driver before they leave. One slip per delivery; the customer signs it.
+            <strong>Get ready now, while the app works.</strong> Print a stack of blank slips and keep some in every van and at the counter. Save the
+            PDF on the shop computer or a USB stick, so you can print more even when the app is down.
           </span>
         </li>
         <li>
           <span className="paper-step-num" aria-hidden="true">2</span>
           <span>
-            <strong>When the driver returns</strong>, fill in {onForm ? 'the form below' : 'the form on the Paper slips page'} from each driver’s slip.
+            <strong>If the app is down,</strong> drivers fill in one slip per delivery and the customer signs it.
           </span>
         </li>
         <li>
           <span className="paper-step-num" aria-hidden="true">3</span>
           <span>
-            <strong>Take a photo of the signed slip.</strong> It is required: it is the proof of the customer’s signature.
+            <strong>When the app is back,</strong> enter each slip {onForm ? 'below' : 'on the Paper slips page'} with a photo of it (required: it is the
+            proof of the customer’s signature).
           </span>
         </li>
       </ol>
@@ -154,9 +164,14 @@ export function PaperEntryPage() {
       <BackButton fallback="/shop" />
       <div className="page-head">
         <h1>Paper slips</h1>
-        <Link to="/shop/paper/print" className="btn btn-primary">
-          Print blank slips
-        </Link>
+        <div className="actions">
+          <a className="btn" href={SLIP_PDF} download>
+            Download PDF
+          </a>
+          <Link to="/shop/paper/print" className="btn btn-primary">
+            Print blank slips
+          </Link>
+        </div>
       </div>
       <PaperSteps onForm />
       <p className="muted">Copy the slip exactly; the record is marked “Entered from paper”.</p>

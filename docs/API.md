@@ -12,7 +12,7 @@ POST requests need a same-origin `Origin` header and a JSON body.
 | Method | Path | Response |
 | --- | --- | --- |
 | GET | `/api/health` | `{ "ok": true }` |
-| GET | `/api/config` | `{ appEnv, timeZone, closingTime, authenticated, dataAvailable }` |
+| GET | `/api/config` | `{ appEnv, timeZone, closingTime, retentionDays, authenticated, dataAvailable }` |
 
 ## Sign-in
 

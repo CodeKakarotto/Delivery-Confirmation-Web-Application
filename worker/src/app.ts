@@ -19,6 +19,7 @@ export const router = new Router()
       appEnv: ctx.settings.appEnv,
       timeZone: ctx.settings.timeZone,
       closingTime: ctx.settings.closingTime,
+      retentionDays: ctx.settings.retentionDays,
       authenticated: true,
       dataAvailable: !ctx.settings.isProduction && ctx.settings.demoHosts.has(ctx.url.hostname.toLowerCase()),
     };

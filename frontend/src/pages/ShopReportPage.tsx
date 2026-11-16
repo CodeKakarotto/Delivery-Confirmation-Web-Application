@@ -15,11 +15,13 @@ import { shopDateTime } from '../lib/time.ts';
  */
 export function ShopReportPage() {
   const timeZone = useShopTimeZone();
-  useShopConfig();
+  const retentionDays = useShopConfig()?.retentionDays ?? 30;
   const [params, setParams] = useSearchParams();
   const today = localDateKey(new Date(), timeZone);
   const date = params.get('date') || today;
   const report = useApi(() => dashboardApi.report(date), [date], { live: true });
+  // The database keeps the last N days (today included); nothing older is left to show.
+  const oldest = addDays(today, -(retentionDays - 1));
   const go = (d: string) => setParams(d === today ? {} : { date: d }, { replace: true });
 
   return (
@@ -40,7 +42,7 @@ export function ShopReportPage() {
         </div>
       </div>
       <div className="day-stepper no-print">
-        <button type="button" className="btn btn-ghost month-cal-nav" aria-label="Previous day" onClick={() => go(addDays(date, -1))}>
+        <button type="button" className="btn btn-ghost month-cal-nav" aria-label="Previous day" onClick={() => go(addDays(date, -1))} disabled={date <= oldest}>
           <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
             <path d="M12.5 4.5 7 10l5.5 5.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -56,6 +58,13 @@ export function ShopReportPage() {
           </button>
         )}
         <span className="muted small">Tip: print or download this at the end of each day, so there is always a copy outside the app.</span>
+      </div>
+      <div className="no-print">
+        <Notice tone="info" title={`Records are kept for ${retentionDays} days`}>
+          {date < oldest
+            ? `This day is older than ${retentionDays} days, so its records have been deleted. Use a downloaded copy instead.`
+            : `Deliveries older than ${retentionDays} days are deleted automatically, signatures included. Download for Excel each day to keep a copy for longer.`}
+        </Notice>
       </div>
       <section className="card report-card" aria-label="Report">
         {report.error ? (
