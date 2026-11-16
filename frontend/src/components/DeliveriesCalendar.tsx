@@ -3,18 +3,18 @@ import type { DeliveryDayCounts } from '../../../shared/types.ts';
 import { fullDayLabel } from '../lib/calendar.ts';
 import { monthGrid } from '../lib/monthGrid.ts';
 
-export type CalendarView = 'month' | 'week' | 'day';
+export type CalendarView = 'month' | 'week';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const weekdayShort = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' });
 
-/** Month / Week / Day buttons. */
+/** Month / Week buttons (the selected day's deliveries are always listed under the calendar). */
 export function ViewSwitch({ value, onChange }: { value: CalendarView; onChange: (v: CalendarView) => void }) {
   return (
     <div className="segmented view-switch" role="group" aria-label="Calendar view">
-      {(['month', 'week', 'day'] as const).map((v) => (
+      {(['month', 'week'] as const).map((v) => (
         <button key={v} type="button" aria-pressed={value === v} className={value === v ? 'is-active' : ''} onClick={() => onChange(v)}>
-          {v === 'month' ? 'Month' : v === 'week' ? 'Week' : 'Day'}
+          {v === 'month' ? 'Month' : 'Week'}
         </button>
       ))}
     </div>

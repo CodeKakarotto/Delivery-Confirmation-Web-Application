@@ -36,7 +36,7 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
   today is circled, and today's date is written underneath (shop time zone, America/New_York). Each day shows how many
   deliveries were confirmed. Tapping a day shows its figures, the orders still awaiting (tap to open) and the confirmed
   deliveries with their **delivery time**, 10 per page. **Deliveries** tab: a small calendar (**Month** or **Week**) where tapping
-  a day lists that day's deliveries underneath (10 per page, filter by status), plus a **Day** view. **Search** tab: part of an order ID or recipient name.
+  a day lists that day's deliveries underneath (10 per page, filter by status). **Search** tab: part of an order ID or recipient name.
   - **Record and print** (`/shop/confirmations/:id`): the saved record in the same field order, with logo, barcode,
     signature and delivery time, and refused duplicate/conflicting attempts.
 

@@ -32,14 +32,13 @@ function useDayCounts(months: string[]) {
 
 /**
  * Employees' deliveries: a small calendar (Month or Week) where tapping a day lists that day's deliveries right
- * underneath, 10 per page. Day view shows just the list. View, shown month, selected day, filter and page live in the
- * URL, so Back returns to them.
+ * underneath, 10 per page. View, shown month, selected day, filter and page live in the URL, so Back returns to them.
  */
 export function ShopDeliveriesPage() {
   const timeZone = useShopTimeZone();
   const [params, setParams] = useSearchParams();
   const today = localDateKey(new Date(), timeZone);
-  const view = (params.get('view') as CalendarView | null) ?? 'month';
+  const view: CalendarView = params.get('view') === 'week' ? 'week' : 'month';
   const selected = params.get('date') || today;
   const shownMonth = params.get('m') || selected.slice(0, 7);
   const status = (params.get('status') as Filter | null) ?? 'all';
@@ -56,19 +55,16 @@ export function ShopDeliveriesPage() {
   };
   const select = (d: string) => update({ date: d === today ? null : d, m: null, p: null }, false);
 
-  const months =
-    view === 'month' ? [shownMonth] : view === 'week' ? [...new Set([weekStart.slice(0, 7), addDays(weekStart, 6).slice(0, 7)])] : [];
+  const months = view === 'month' ? [shownMonth] : [...new Set([weekStart.slice(0, 7), addDays(weekStart, 6).slice(0, 7)])];
   const counts = useDayCounts(months);
 
   const title =
     view === 'month'
       ? monthLabel(shownMonth)
-      : view === 'week'
-        ? `${shortDate.format(noon(weekStart))} – ${shortDate.format(noon(addDays(weekStart, 6)))}, ${addDays(weekStart, 6).slice(0, 4)}`
-        : fullDayLabel(selected);
+      : `${shortDate.format(noon(weekStart))} – ${shortDate.format(noon(addDays(weekStart, 6)))}, ${addDays(weekStart, 6).slice(0, 4)}`;
   const step = (dir: 1 | -1) => {
     if (view === 'month') update({ m: addMonths(shownMonth, dir) });
-    else select(addDays(selected, view === 'week' ? 7 * dir : dir));
+    else select(addDays(selected, 7 * dir));
   };
   const onToday = view === 'month' ? shownMonth === today.slice(0, 7) && selected === today : selected === today;
 
@@ -101,8 +97,7 @@ export function ShopDeliveriesPage() {
           )}
         </div>
 
-        {view !== 'day' &&
-          (counts.error ? (
+        {counts.error ? (
             <Notice tone="error" title="Could not load the calendar" action={<button type="button" className="btn btn-small" onClick={counts.reload}>Try again</button>}>
               {errorMessage(counts.error)}
             </Notice>
@@ -117,10 +112,10 @@ export function ShopDeliveriesPage() {
                 <span className="dcal-dot is-ok" /> delivered <span className="dcal-dot is-warn" /> exception <span className="dcal-dot is-wait" /> awaiting
               </p>
             </div>
-          ))}
+          )}
       </div>
 
-      <DayList date={selected} today={today} status={status} page={page} timeZone={timeZone} showHeading={view !== 'day'} onStatus={(v) => update({ status: v === 'all' ? null : v, p: null })} onPage={(p) => update({ p: String(p) }, false)} />
+      <DayList date={selected} today={today} status={status} page={page} timeZone={timeZone} onStatus={(v) => update({ status: v === 'all' ? null : v, p: null })} onPage={(p) => update({ p: String(p) }, false)} />
     </>
   );
 }
@@ -132,7 +127,6 @@ function DayList({
   status,
   page,
   timeZone,
-  showHeading,
   onStatus,
   onPage,
 }: {
@@ -141,7 +135,6 @@ function DayList({
   status: Filter;
   page: number;
   timeZone: string;
-  showHeading: boolean;
   onStatus: (v: Filter) => void;
   onPage: (p: number) => void;
 }) {
@@ -149,7 +142,7 @@ function DayList({
   return (
     <section className="card confirmed-card day-list" aria-labelledby="day-list-title">
       <div className="day-list-head">
-        <h2 id="day-list-title" className={showHeading ? undefined : 'visually-hidden'}>
+        <h2 id="day-list-title">
           {fullDayLabel(date)}
           {date === today && <span className="tag tag-now">Today</span>}
           {list.data && <span className="h1-sub">{list.data.total}</span>}

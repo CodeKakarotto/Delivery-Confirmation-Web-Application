@@ -9,10 +9,10 @@ const days = {
 };
 
 describe('Deliveries calendar: Month / Week / Day switch', () => {
-  it('offers the three views and marks the current one', () => {
+  it('offers Month and Week only (no Day view) and marks the current one', () => {
     const html = renderToStaticMarkup(<ViewSwitch value="week" onChange={() => {}} />);
     const labels = [...html.matchAll(/<button[^>]*>([^<]+)<\/button>/g)].map((m) => m[1]);
-    assert.deepEqual(labels, ['Month', 'Week', 'Day']);
+    assert.deepEqual(labels, ['Month', 'Week']);
     assert.match(html, /aria-pressed="true"[^>]*>Week</);
   });
 });
