@@ -11,6 +11,7 @@ import { copyFileSync, existsSync, readdirSync, rmSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { backup, backupFolder, findLocalDatabase, PREFIX } from './backup-local.ts';
+import { localCutoff } from './retention-config.ts';
 
 const folder = backupFolder();
 const arg = process.argv[2];
@@ -59,7 +60,7 @@ if (!target) {
   console.error('No local database found. Run Start-App.bat once first, close it, then restore.');
   process.exit(1);
 }
-const safety = backup(target, folder);
+const safety = backup(target, folder, localCutoff());
 console.log(`Current data saved first: ${safety.file}`);
 for (const extra of ['-wal', '-shm']) rmSync(target + extra, { force: true });
 copyFileSync(chosen, target);

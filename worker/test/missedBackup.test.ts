@@ -5,6 +5,9 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { describe, it } from 'node:test';
 import { backup } from '../../scripts/backup-local.ts';
+
+/** A cutoff that keeps every delivery (for tests about the copies themselves). */
+const KEEP_ALL = '2000-01-01';
 import { createEnv, MIGRATIONS, TestClient, validSubmission } from './helpers/app.ts';
 
 const ROOT = new URL('../../', import.meta.url);
@@ -90,11 +93,11 @@ describe('automatic local backups', () => {
     try {
       const source = makeDatabase(dir);
       const folder = join(dir, 'backups');
-      const first = backup(source, folder, new Date(2026, 10, 14, 18, 5), 2);
+      const first = backup(source, folder, KEEP_ALL, new Date(2026, 10, 14, 18, 5), 2);
       assert.match(first.file, /delivery-confirmations-2026-11-14_1805\.sqlite$/);
       assert.ok(first.deliveries > 0);
-      backup(source, folder, new Date(2026, 10, 15, 8, 0), 2);
-      const third = backup(source, folder, new Date(2026, 10, 16, 8, 0), 2);
+      backup(source, folder, KEEP_ALL, new Date(2026, 10, 15, 8, 0), 2);
+      const third = backup(source, folder, KEEP_ALL, new Date(2026, 10, 16, 8, 0), 2);
       assert.deepEqual(third.removed, ['delivery-confirmations-2026-11-14_1805.sqlite']);
       assert.deepEqual(readdirSync(folder).sort(), ['delivery-confirmations-2026-11-15_0800.sqlite', 'delivery-confirmations-2026-11-16_0800.sqlite']);
       const copy = new DatabaseSync(third.file, { readOnly: true });
@@ -102,8 +105,33 @@ describe('automatic local backups', () => {
       copy.close();
       assert.equal(n, third.deliveries);
       // Two backups in the same minute do not overwrite each other.
-      const again = backup(source, folder, new Date(2026, 10, 16, 8, 0), 5);
+      const again = backup(source, folder, KEEP_ALL, new Date(2026, 10, 16, 8, 0), 5);
       assert.match(again.file, /_0800-2\.sqlite$/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('every copy holds only the last 30 days of deliveries, older copies included', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'mf-backup-'));
+    try {
+      const source = makeDatabase(dir);
+      const live = new DatabaseSync(source);
+      live.exec("UPDATE deliveries SET delivery_date = '2026-10-01' WHERE order_id = 'MF-10482'");
+      live.close();
+      const folder = join(dir, 'backups');
+      // An older copy made before the rule cut anything (it still has the October delivery).
+      const old = backup(source, folder, KEEP_ALL, new Date(2026, 10, 1, 8, 0));
+      const count = (file: string) => {
+        const db = new DatabaseSync(file, { readOnly: true });
+        const n = (db.prepare("SELECT COUNT(*) AS n FROM deliveries WHERE delivery_date < '2026-10-18'").get() as { n: number }).n;
+        db.close();
+        return n;
+      };
+      assert.equal(count(old.file), 1);
+      const now = backup(source, folder, '2026-10-18', new Date(2026, 10, 16, 8, 0));
+      assert.equal(count(now.file), 0, 'the new copy has nothing older than 30 days');
+      assert.equal(count(old.file), 0, 'the older copy was cut down too');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

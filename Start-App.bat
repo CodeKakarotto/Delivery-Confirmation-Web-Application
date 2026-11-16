@@ -28,7 +28,7 @@ if not exist .wrangler\state\v3\d1 (
   call npm run db:setup:local || goto :failed
 )
 
-echo Backing up the database (keeps the last 30 copies in the backups folder)...
+echo Backing up the database (7 copies kept, each with only the last 30 days of deliveries)...
 set backup_ok=1
 call npm run db:backup:local
 if errorlevel 1 (

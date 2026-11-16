@@ -70,7 +70,7 @@ These were not decided by the developer, on purpose:
    `confirmed`; every other outcome is saved as `needs_review`.
 4. **Zone source.** Neither app stores zones yet. Zones show as "—" unless an order has one.
 5. **Total products source.** The route app has no product count. Totals show as "Not recorded" unless set.
-6. **Signature retention and deletion.** Decided: the database keeps the last 30 days of deliveries (`RETENTION_DAYS`); older ones, signatures and slip photos included, are deleted automatically (nightly online, on every start locally after a successful backup). Backups keep older copies for as long as they are kept (newest 30): include them in any retention promise.
+6. **Signature retention and deletion.** Decided: the database keeps the last 30 days of deliveries (`RETENTION_DAYS`); older ones, signatures and slip photos included, are deleted automatically (nightly online, on every start locally after a successful backup). Backups follow the same rule: every copy is cut down to the last 30 days, and only the 7 newest copies are kept.
 7. **Photos.** None are collected any more (the paper-slip section was removed). Records entered from paper earlier keep their slip photo, shown only to employees with `no-store`, and are deleted with the record after 30 days.
 
 ## Controls in place
@@ -122,7 +122,7 @@ storage (only the light/dark theme choice). Customer data never goes in URLs; on
 ## Backups
 
 `scripts/backup-local.ts` copies the local database (with SQLite `VACUUM INTO`, checked with `PRAGMA integrity_check`)
-on every start of `Start-App.bat`; the newest 30 are kept. Backups hold the same personal data as the database
+on every start of `Start-App.bat`; the 7 newest copies are kept, and every copy is cut down to the last 30 days of deliveries (`RETENTION_DAYS`). Backups hold the same personal data as the database
 (names, addresses, signatures, slip photos): the `backups/` folder is git-ignored and must stay private. A
 `BACKUP_DIR` outside the computer (OneDrive, USB) protects against losing the machine. Restoring
 (`scripts/restore-local.ts`) refuses while the app is running and backs up the current data first.
