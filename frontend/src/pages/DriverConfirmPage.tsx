@@ -11,14 +11,60 @@ import { SignatureField } from '../components/SignatureField.tsx';
 import { Notice, ResultTag, Spinner } from '../components/ui.tsx';
 import { needsSignature, validateConfirmationForm, type ConfirmationFormState, type FormErrors } from '../lib/confirmationForm.ts';
 import { shopDateTime } from '../lib/time.ts';
+import { useOffline } from '../lib/offline.tsx';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
 import { useApi } from '../lib/useApi.ts';
+
+/** No signal (or the server could not be reached), as opposed to the server answering "no". */
+function isConnectionProblem(err: unknown): boolean {
+  return !(err instanceof ApiRequestError) || err.status === 0 || err.status >= 500;
+}
 
 /** Step 2 for the driver: check the delivery, record the hand-off and the customer's signature. */
 export function DriverConfirmPage() {
   const { orderId = '' } = useParams();
   const lookup = useApi(() => driverApi.lookup(orderId), [orderId]);
   const timeZone = useShopTimeZone();
+  const offline = useOffline();
+  // Without signal: the copy of today's deliveries kept on this phone (undefined = still looking).
+  const [cached, setCached] = useState<DriverDelivery | null | undefined>(undefined);
+  const noSignal = Boolean(lookup.error) && isConnectionProblem(lookup.error);
+  useEffect(() => {
+    if (!noSignal) return;
+    let current = true;
+    void offline.findToday(orderId).then((d) => current && setCached(d));
+    return () => {
+      current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noSignal, orderId]);
+
+  const queued = offline.items.find((i) => i.payload.orderId.toLowerCase() === orderId.toLowerCase() && i.state === 'waiting');
+  if (queued) {
+    return (
+      <div className="narrow">
+        <BackButton fallback="/driver" label="Back to my dashboard" always />
+        <section className="card saved-card" aria-labelledby="queued-title">
+          <div className="saved-mark is-queued" aria-hidden="true">
+            ⇪
+          </div>
+          <h1 id="queued-title" tabIndex={-1}>
+            Saved on this phone
+          </h1>
+          <p>
+            There is no signal right now, so this confirmation for order <strong>{queued.payload.orderId}</strong> is kept on this phone. It
+            will be sent automatically as soon as there is signal. You can carry on with your next delivery.
+          </p>
+          <p className="muted small">Do not sign out until it has been sent.</p>
+          <Link to="/driver" className="btn btn-primary btn-block btn-large">
+            Next delivery
+          </Link>
+        </section>
+      </div>
+    );
+  }
+  if (noSignal && cached === undefined) return <Spinner label="No signal: looking for the copy saved on this phone" />;
+  if (noSignal && cached) return <ConfirmForm key={cached.orderId} delivery={cached} timeZone={timeZone} offlineCopy />;
 
   if (lookup.loading && !lookup.data) {
     return (
@@ -71,11 +117,12 @@ export function DriverConfirmPage() {
   return <ConfirmForm key={data.delivery.orderId} delivery={data.delivery} timeZone={timeZone} />;
 }
 
-type Phase = 'editing' | 'submitting' | 'uncertain' | 'refused' | 'saved';
+type Phase = 'editing' | 'submitting' | 'uncertain' | 'refused' | 'saved' | 'queued';
 
 const EMPTY: ConfirmationFormState = { outcome: null, outcomeDetail: '', note: '', receivedBy: '', signature: null };
 
-function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZone: string }) {
+function ConfirmForm({ delivery, timeZone, offlineCopy = false }: { delivery: DriverDelivery; timeZone: string; offlineCopy?: boolean }) {
+  const offline = useOffline();
   const [form, setForm] = useState<ConfirmationFormState>(EMPTY);
   const [errors, setErrors] = useState<FormErrors>({});
   const [phase, setPhase] = useState<Phase>('editing');
@@ -92,7 +139,7 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
   const savedRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    if (phase === 'saved') savedRef.current?.focus();
+    if (phase === 'saved' || phase === 'queued') savedRef.current?.focus();
   }, [phase]);
 
   const locked = phase === 'submitting' || phase === 'uncertain' || phase === 'refused';
@@ -111,12 +158,19 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
       const res = await driverApi.submit(payload);
       setReceipt(res.confirmation);
       setPhase('saved');
+      void offline.forgetToday(payload.orderId);
     } catch (err) {
       setFailure(err);
       const e = err instanceof ApiRequestError ? err : null;
       if (!e || e.status === 0 || e.status >= 500 || e.status === 429) {
-        // The save may or may not have happened. Keep everything and offer a safe retry of the same submission.
-        setPhase('uncertain');
+        // No signal or a server problem: keep it on the phone and send it automatically later. The same request key
+        // is kept, so it can never be saved twice. If the phone cannot store it, fall back to a manual retry.
+        try {
+          await offline.queue(payload);
+          setPhase('queued');
+        } catch {
+          setPhase('uncertain');
+        }
       } else if (e.status === 422 && (e.code === 'validation_failed' || e.code === 'invalid_signature')) {
         // Nothing was saved: let the driver fix the fields.
         const issues = fieldIssues(e);
@@ -157,6 +211,30 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
       idempotencyKey: keyRef.current,
     });
   };
+
+  if (phase === 'queued') {
+    return (
+      <div className="narrow">
+        <BackButton fallback="/driver" label="Back to my dashboard" always />
+        <section className="card saved-card" aria-labelledby="queued-title">
+          <div className="saved-mark is-queued" aria-hidden="true">
+            ⇪
+          </div>
+          <h1 id="queued-title" ref={savedRef} tabIndex={-1}>
+            Saved on this phone
+          </h1>
+          <p>
+            There is no signal right now, so this confirmation for order <strong>{delivery.orderId}</strong> is kept on this phone. It will be
+            sent automatically as soon as there is signal. You can carry on with your next delivery.
+          </p>
+          <p className="muted small">Do not sign out until it has been sent.</p>
+          <Link to="/driver" className="btn btn-primary btn-block btn-large">
+            Next delivery
+          </Link>
+        </section>
+      </div>
+    );
+  }
 
   if (phase === 'saved' && receipt) {
     return (
@@ -235,6 +313,12 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
         <h1>Confirm delivery</h1>
       </div>
       <p className="muted lead">Check the order details, then choose how it was handed over: delivered to the recipient (the customer signs) or a delivery exception (write an exception note).</p>
+      {offlineCopy && (
+        <Notice tone="info" title="No signal">
+          Showing the copy of this order saved on your phone. When you submit, the confirmation is kept on the phone and sent automatically
+          when there is signal.
+        </Notice>
+      )}
 
       <div ref={summaryRef} tabIndex={-1} className="form-summary">
         {errorList.length > 0 && phase === 'editing' && (

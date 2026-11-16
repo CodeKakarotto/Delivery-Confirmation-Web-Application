@@ -4068,3 +4068,238 @@ button.home-card {
     font-size: 0.72rem;
   }
 }
+
+/* ---------- Offline outbox (drivers) ---------- */
+
+.outbox {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.outbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+}
+.outbox-waiting {
+  background: var(--amber-wash);
+  border-color: #f0d9a6;
+  color: #5c3c00;
+}
+.outbox-failed {
+  background: var(--error-wash);
+  border-color: #f6cbc5;
+  color: #7a1a12;
+}
+.outbox-icon {
+  flex: none;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.7);
+}
+.outbox-text {
+  flex: 1 1 14rem;
+}
+.saved-mark.is-queued {
+  background: var(--amber-wash);
+  color: var(--amber);
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+.paper-hint {
+  margin: 0.75rem 0 0;
+}
+
+/* ---------- Corrections and voids (employees) ---------- */
+
+.edit-card {
+  border-color: var(--leaf-strong);
+  box-shadow: var(--shadow);
+}
+.edit-card.is-danger {
+  border-color: #f3c7c2;
+}
+.edit-card h2,
+.corrections-card h2,
+.paper-card h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.3rem;
+}
+.edit-card select {
+  width: 100%;
+}
+.corrections {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+.correction {
+  border-left: 3px solid var(--amber);
+  background: var(--canvas);
+  border-radius: 0 var(--radius-control) var(--radius-control) 0;
+  padding: 0.55rem 0.8rem;
+}
+.correction.is-void {
+  border-left-color: var(--error);
+}
+.correction p {
+  margin: 0;
+}
+.correction-changes {
+  margin: 0.35rem 0;
+  padding-left: 1.1rem;
+}
+.correction-field {
+  color: var(--muted);
+  font-weight: 600;
+}
+.correction del {
+  color: var(--muted);
+}
+.correction ins {
+  text-decoration: none;
+  font-weight: 600;
+  color: var(--evergreen-strong);
+}
+
+/* ---------- Paper slips ---------- */
+
+.narrow-wide {
+  max-width: 760px;
+  margin: 0 auto;
+}
+.paper-outcomes {
+  display: grid;
+  gap: 0.35rem;
+}
+.paper-meta {
+  background: transparent;
+  border-top: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+.slip-photo {
+  margin: 0.5rem 0 0;
+}
+.slip-photo img,
+.slip-photo-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 28rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: #fff;
+}
+.slip-photo-preview {
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+.slips {
+  display: grid;
+  gap: 1.5rem;
+}
+.paper-slip {
+  background: #fff;
+  color: #000;
+  border: 1px solid #999;
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  display: grid;
+  gap: 0.55rem;
+}
+.paper-slip .brand {
+  --brand-h: 34px;
+}
+.paper-slip .brand-lettering-dark {
+  display: none;
+}
+.paper-slip .brand-lettering-light {
+  display: block;
+}
+.slip-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.slip-field {
+  display: grid;
+  gap: 0.15rem;
+}
+.slip-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #333;
+}
+.slip-line {
+  display: block;
+  height: 1.6rem;
+  border-bottom: 1px solid #555;
+}
+.slip-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin: 0.4rem 0 0.2rem;
+  font-size: 0.9rem;
+}
+.slip-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.slip-box {
+  display: inline-block;
+  width: 0.95rem;
+  height: 0.95rem;
+  border: 1.5px solid #333;
+  border-radius: 2px;
+}
+.slip-small {
+  font-size: 0.78rem;
+  color: #444;
+}
+.slip-sign {
+  display: block;
+  height: 4rem;
+  border: 1px dashed #777;
+  border-radius: 4px;
+}
+.slip-foot {
+  margin: 0.2rem 0 0;
+}
+@media print {
+  .slips-page .slips {
+    gap: 0;
+  }
+  .slips-page .paper-slip {
+    break-inside: avoid;
+    border: 1px solid #000;
+    margin-bottom: 6mm;
+    padding: 4mm 5mm;
+    gap: 2mm;
+  }
+  .slips-page .slip-line {
+    height: 6mm;
+  }
+  .slips-page .slip-sign {
+    height: 16mm;
+  }
+}
+.signature-saved img {
+  max-height: 16rem;
+  object-fit: contain;
+}

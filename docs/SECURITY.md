@@ -47,6 +47,17 @@ The app still serves delivery data only in the local demonstration, and still us
 
 Deploying it needs HTTPS, real accounts and a review of the decisions below.
 
+## Data kept on the driver's phone (offline mode)
+
+To work without signal, the driver's phone keeps (in the browser's IndexedDB, for this site only):
+- confirmations not sent yet, **including the customer signature**, until they are sent;
+- today's awaiting orders with names and addresses, replaced each day.
+
+Sent confirmations are deleted at once; yesterday's copy is deleted when the day changes; signing out wipes everything
+(Clear-Site-Data) and warns first if anything has not been sent. Refused confirmations are never deleted silently: they
+stay marked "needs attention" until the driver removes them. **The sponsor should approve this, and drivers' phones need a
+screen lock.**
+
 ## Decisions needed before real use
 
 These were not decided by the developer, on purpose:

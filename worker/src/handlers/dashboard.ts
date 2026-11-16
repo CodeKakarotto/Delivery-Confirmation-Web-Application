@@ -3,7 +3,7 @@
  * summary, the deliveries list and order lookups are for employees only.
  */
 
-import { isValidDate, ORDER_ID_MAX, ORDER_ID_PATTERN } from '../../../shared/schemas.ts';
+import { correctionSchema, isValidDate, ORDER_ID_MAX, ORDER_ID_PATTERN, PAPER_MAX_BODY_BYTES, paperConfirmationSchema, voidSchema } from '../../../shared/schemas.ts';
 import { localDateKey, localDayRangeUtc, monthKey, weekStartKey, weekWithinMonth } from '../../../shared/shopTime.ts';
 import type {
   AwaitingDelivery,
@@ -13,6 +13,7 @@ import type {
   ConfirmationDetailResponse,
   ConfirmationListResponse,
   ConfirmationResult,
+  ConfirmationSubmitResponse,
   DashboardSummary,
   DeliveryCalendarResponse,
   DeliveryDayCounts,
@@ -20,8 +21,23 @@ import type {
   DeliveryListResponse,
   ShopOrderResponse,
 } from '../../../shared/types.ts';
-import { findShopOrder, getConfirmationDetail, getSignature, listCalendarRows, listConfirmations, toDriverDelivery } from '../db/confirmations.ts';
-import { ApiError, json, SECURITY_HEADERS, validationError } from '../http.ts';
+import {
+  findConfirmationByDelivery,
+  findConfirmationByKey,
+  findDeliveryByOrderId,
+  findShopOrder,
+  getConfirmationDetail,
+  getConfirmationState,
+  getSignature,
+  getSlipPhoto,
+  insertConfirmation,
+  listCalendarRows,
+  listConfirmations,
+  toDriverDelivery,
+  toReceipt,
+} from '../db/confirmations.ts';
+import { validateSlipPhoto } from '../photo.ts';
+import { ApiError, isUniqueViolation, json, logEvent, readJson, SECURITY_HEADERS, validationError } from '../http.ts';
 import type { RequestContext } from '../router.ts';
 import { requireRole, requireUser } from '../auth.ts';
 import { RATE_LIMITS, rateLimit, requireDemoAccess } from '../security.ts';
@@ -123,7 +139,7 @@ export async function summary(ctx: RequestContext): Promise<Response> {
                 COALESCE(SUM(CASE WHEN c.result = 'needs_review' THEN 1 ELSE 0 END), 0) AS needs_review,
                 COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM confirmation_attempts a WHERE a.confirmation_id = c.id) THEN 1 ELSE 0 END), 0) AS flagged
            FROM deliveries d
-           LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id
+           LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id AND c.voided_at IS NULL
           WHERE d.delivery_date = ? AND d.cancelled_at IS NULL`,
       )
       .bind(date),
@@ -132,7 +148,7 @@ export async function summary(ctx: RequestContext): Promise<Response> {
         `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city
            FROM deliveries d
           WHERE d.delivery_date = ? AND d.cancelled_at IS NULL
-            AND NOT EXISTS (SELECT 1 FROM delivery_confirmations c WHERE c.delivery_id = d.id)
+            AND NOT EXISTS (SELECT 1 FROM delivery_confirmations c WHERE c.delivery_id = d.id AND c.voided_at IS NULL)
           ORDER BY d.stop_number IS NULL, d.stop_number, d.order_id
           LIMIT 500`,
       )
@@ -232,11 +248,12 @@ export async function order(ctx: RequestContext): Promise<Response> {
   if (!orderId || orderId.length > ORDER_ID_MAX || !ORDER_ID_PATTERN.test(orderId)) throw new ApiError(404, 'order_not_found', 'Order not found.');
   const found = await findShopOrder(ctx.db, orderId);
   if (!found) throw new ApiError(404, 'order_not_found', 'Order not found.');
-  const { delivery, confirmation } = found;
+  const { delivery, confirmation, voided } = found;
   const body: ShopOrderResponse = {
     status: confirmation ? 'confirmed' : delivery.cancelled_at ? 'cancelled' : 'awaiting',
     delivery: { ...toDriverDelivery(delivery), deliveryDate: delivery.delivery_date },
     confirmation: confirmation ? { id: confirmation.id, confirmedAt: confirmation.confirmed_at, result: confirmation.result } : null,
+    voidedConfirmations: voided,
   };
   return json(body);
 }
@@ -289,7 +306,7 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
   if (status === 'exception') where.push(`c.result = 'needs_review'`);
   if (status === 'cancelled') where.push('d.cancelled_at IS NOT NULL AND c.id IS NULL');
   const clause = where.length ? ` WHERE ${where.join(' AND ')}` : '';
-  const from = 'FROM deliveries d LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id';
+  const from = 'FROM deliveries d LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id AND c.voided_at IS NULL';
   const limit = intParam(ctx, 'limit', 10, 1, 200);
   const offset = intParam(ctx, 'offset', 0, 0, 100_000);
 
@@ -351,7 +368,7 @@ export async function deliveryCalendar(ctx: RequestContext): Promise<Response> {
               SUM(CASE WHEN c.result = 'needs_review' THEN 1 ELSE 0 END) AS exception,
               SUM(CASE WHEN c.id IS NULL AND d.cancelled_at IS NOT NULL THEN 1 ELSE 0 END) AS cancelled
          FROM deliveries d
-         LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id
+         LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id AND c.voided_at IS NULL
         WHERE d.delivery_date >= ? AND d.delivery_date <= ?
         GROUP BY d.delivery_date
         ORDER BY d.delivery_date`,
@@ -360,4 +377,189 @@ export async function deliveryCalendar(ctx: RequestContext): Promise<Response> {
     .all<DeliveryDayCounts>();
   const body: DeliveryCalendarResponse = { month, today, days: res.results };
   return json(body);
+}
+
+// ---------- Corrections, voids and paper entries (employees) ----------
+
+const CONFIRMATION_NOT_FOUND = () => new ApiError(404, 'not_found', 'Confirmation not found.');
+const VOIDED = () => new ApiError(409, 'voided', 'This confirmation was voided and can no longer be changed.');
+
+async function detailResponse(ctx: RequestContext, id: string): Promise<Response> {
+  const confirmation = await getConfirmationDetail(ctx.db, id);
+  if (!confirmation) throw CONFIRMATION_NOT_FOUND();
+  const body: ConfirmationDetailResponse = { confirmation };
+  return json(body);
+}
+
+/**
+ * Corrects the received-by name, the outcome or the exception note, with a required reason. The old and new values
+ * are kept in the history; the signature is never changed. Voided records cannot be changed.
+ */
+export async function correct(ctx: RequestContext): Promise<Response> {
+  requireDemoAccess(ctx);
+  const user = await requireRole(ctx, 'employee');
+  await rateLimit(ctx, RATE_LIMITS.submit);
+  const id = (ctx.params.id ?? '').toLowerCase();
+  if (!UUID.test(id)) throw CONFIRMATION_NOT_FOUND();
+  const input = await readJson(ctx.request, correctionSchema);
+  const reason = input.reason.trim();
+  if (!reason) throw validationError([{ path: 'reason', message: 'Write why the record is being corrected' }]);
+  const current = await getConfirmationState(ctx.db, id);
+  if (!current) throw CONFIRMATION_NOT_FOUND();
+  if (current.voided_at) throw VOIDED();
+
+  const receivedBy = input.receivedBy?.trim() || current.received_by;
+  const outcome = input.outcome ?? current.outcome;
+  let outcomeDetail = input.outcomeDetail !== undefined ? input.outcomeDetail.trim() || null : current.outcome_detail;
+  if (outcome === 'delivered_to_recipient') outcomeDetail = null; // the exception note belongs to exceptions only
+  if (outcome !== 'delivered_to_recipient' && !outcomeDetail) {
+    throw validationError([{ path: 'outcomeDetail', message: 'Write an exception note: where or how the delivery was left' }]);
+  }
+  if (outcome === 'delivered_to_recipient' && current.has_signature !== 1 && current.source !== 'paper') {
+    throw new ApiError(422, 'signature_required', 'A hand-off to the recipient needs the customer signature, and this record has none.', {
+      issues: [{ path: 'outcome', message: 'This record has no customer signature' }],
+    });
+  }
+  if (receivedBy === current.received_by && outcome === current.outcome && outcomeDetail === current.outcome_detail) {
+    throw validationError([{ path: 'reason', message: 'Change at least one detail' }]);
+  }
+
+  const now = ctx.now.toISOString();
+  await ctx.db.batch([
+    ctx.db
+      .prepare(
+        `INSERT INTO confirmation_corrections (confirmation_id, kind, reason, old_received_by, new_received_by, old_outcome,
+           new_outcome, old_outcome_detail, new_outcome_detail, by_user_id, created_at)
+         SELECT ?, 'correction', ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM delivery_confirmations WHERE id = ? AND voided_at IS NULL)`,
+      )
+      .bind(id, reason, current.received_by, receivedBy, current.outcome, outcome, current.outcome_detail, outcomeDetail, user.id, now, id),
+    ctx.db
+      .prepare('UPDATE delivery_confirmations SET received_by = ?, outcome = ?, outcome_detail = ?, result = ? WHERE id = ? AND voided_at IS NULL')
+      .bind(receivedBy, outcome, outcomeDetail, outcome === 'delivered_to_recipient' ? 'confirmed' : 'needs_review', id),
+  ]);
+  logEvent('info', 'confirmation_corrected', { userId: user.id, requestId: ctx.requestId });
+  return detailResponse(ctx, id);
+}
+
+/** Voids a confirmation (e.g. saved against the wrong order). It stays visible, stops counting, and the order can be confirmed again. */
+export async function voidConfirmation(ctx: RequestContext): Promise<Response> {
+  requireDemoAccess(ctx);
+  const user = await requireRole(ctx, 'employee');
+  await rateLimit(ctx, RATE_LIMITS.submit);
+  const id = (ctx.params.id ?? '').toLowerCase();
+  if (!UUID.test(id)) throw CONFIRMATION_NOT_FOUND();
+  const input = await readJson(ctx.request, voidSchema);
+  const reason = input.reason.trim();
+  if (!reason) throw validationError([{ path: 'reason', message: 'Write why the record is being voided' }]);
+  const current = await getConfirmationState(ctx.db, id);
+  if (!current) throw CONFIRMATION_NOT_FOUND();
+  if (current.voided_at) throw VOIDED();
+  const now = ctx.now.toISOString();
+  await ctx.db.batch([
+    ctx.db
+      .prepare(
+        `INSERT INTO confirmation_corrections (confirmation_id, kind, reason, old_received_by, old_outcome, old_outcome_detail, by_user_id, created_at)
+         SELECT ?, 'void', ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM delivery_confirmations WHERE id = ? AND voided_at IS NULL)`,
+      )
+      .bind(id, reason, current.received_by, current.outcome, current.outcome_detail, user.id, now, id),
+    ctx.db
+      .prepare('UPDATE delivery_confirmations SET voided_at = ?, voided_by_user_id = ?, void_reason = ? WHERE id = ? AND voided_at IS NULL')
+      .bind(now, user.id, reason, id),
+  ]);
+  logEvent('info', 'confirmation_voided', { userId: user.id, requestId: ctx.requestId });
+  return detailResponse(ctx, id);
+}
+
+/** An employee types in a confirmation from a paper slip (when the app could not be used). Marked "entered from paper". */
+export async function paperConfirmation(ctx: RequestContext): Promise<Response> {
+  requireDemoAccess(ctx);
+  const user = await requireRole(ctx, 'employee');
+  await rateLimit(ctx, RATE_LIMITS.submit);
+  const input = await readJson(ctx.request, paperConfirmationSchema, PAPER_MAX_BODY_BYTES);
+  const outcomeDetail = input.outcomeDetail?.trim() || null;
+  if (input.outcome !== 'delivered_to_recipient' && !outcomeDetail) {
+    throw validationError([{ path: 'outcomeDetail', message: 'Write the exception note from the slip' }]);
+  }
+  const deliveredMs = Date.parse(input.deliveredAt);
+  if (!Number.isFinite(deliveredMs) || deliveredMs > ctx.now.getTime() + 5 * 60_000 || deliveredMs < ctx.now.getTime() - 60 * 86_400_000) {
+    throw validationError([{ path: 'deliveredAt', message: 'Enter the delivery time from the slip (within the last 60 days)' }]);
+  }
+  const reference = input.paperReference.trim();
+  if (!reference) throw validationError([{ path: 'paperReference', message: 'Say where the signed paper slip is filed' }]);
+  const photo = input.slipPhoto ? validateSlipPhoto(input.slipPhoto) : null;
+  const requestHash = await sha256Hex(
+    JSON.stringify(['paper', input.orderId.toLowerCase(), input.receivedBy, input.outcome, outcomeDetail, input.deliveredAt, reference, photo ? await sha256Hex(photo.bytes) : null]),
+  );
+
+  const replay = await findConfirmationByKey(ctx.db, input.idempotencyKey);
+  if (replay) {
+    if (replay.request_hash !== requestHash) throw new ApiError(422, 'idempotency_key_reused', 'This form was already used for a different entry. Reload the page.');
+    return json({ confirmation: toReceipt(replay), replayed: true } satisfies ConfirmationSubmitResponse, 200);
+  }
+  const delivery = await findDeliveryByOrderId(ctx.db, input.orderId);
+  if (!delivery) throw new ApiError(404, 'order_not_found', 'No order with this order ID was found.');
+  if (delivery.cancelled_at) throw new ApiError(409, 'order_cancelled', 'This order was cancelled and cannot be confirmed.');
+  if (await findConfirmationByDelivery(ctx.db, delivery.id)) {
+    throw new ApiError(409, 'already_confirmed', 'This order already has a confirmation. Void it first if it is wrong.');
+  }
+  const id = crypto.randomUUID();
+  const confirmedAt = ctx.now.toISOString();
+  const result: ConfirmationResult = input.outcome === 'delivered_to_recipient' ? 'confirmed' : 'needs_review';
+  try {
+    await insertConfirmation(ctx.db, {
+      id,
+      deliveryId: delivery.id,
+      receivedBy: input.receivedBy,
+      outcome: input.outcome,
+      outcomeDetail,
+      note: null,
+      signature: null,
+      signatureWidth: null,
+      signatureHeight: null,
+      result,
+      idempotencyKey: input.idempotencyKey,
+      requestHash,
+      confirmedAt,
+      confirmedByUserId: null,
+      paper: { enteredByUserId: user.id, reportedDeliveredAt: new Date(deliveredMs).toISOString(), reference, photo: photo?.bytes ?? null },
+    });
+  } catch (err) {
+    if (isUniqueViolation(err, 'delivery_id')) throw new ApiError(409, 'already_confirmed', 'This order already has a confirmation.');
+    if (isUniqueViolation(err, 'idempotency_key')) {
+      const again = await findConfirmationByKey(ctx.db, input.idempotencyKey);
+      if (again) return json({ confirmation: toReceipt(again), replayed: true } satisfies ConfirmationSubmitResponse, 200);
+    }
+    throw err;
+  }
+  logEvent('info', 'paper_confirmation_entered', { userId: user.id, requestId: ctx.requestId });
+  const body: ConfirmationSubmitResponse = {
+    confirmation: { id, orderId: delivery.order_id, receivedBy: input.receivedBy, outcome: input.outcome, outcomeDetail, note: null, result, confirmedAt },
+    replayed: false,
+  };
+  return json(body, 201);
+}
+
+/** The photo of a signed paper slip. Never cached, never sniffed, sandboxed if opened directly. */
+export async function slipPhoto(ctx: RequestContext): Promise<Response> {
+  const userId = await guard(ctx, 'own');
+  const id = ctx.params.id ?? '';
+  if (!UUID.test(id)) throw NOT_FOUND();
+  const bytes = await getSlipPhoto(ctx.db, id.toLowerCase(), userId);
+  if (!bytes) throw NOT_FOUND();
+  return new Response(bytes, {
+    status: 200,
+    headers: {
+      ...SECURITY_HEADERS,
+      'Content-Type': 'image/jpeg',
+      'Content-Disposition': 'inline; filename="paper-slip.jpg"',
+      'Content-Security-Policy': "default-src 'none'; sandbox",
+      'Cross-Origin-Resource-Policy': 'same-origin',
+    },
+  });
+}
+
+async function sha256Hex(data: string | Uint8Array): Promise<string> {
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : new Uint8Array(data);
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return [...digest].map((b) => b.toString(16).padStart(2, '0')).join('');
 }

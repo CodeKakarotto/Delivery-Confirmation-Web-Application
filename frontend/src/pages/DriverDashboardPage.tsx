@@ -1,11 +1,14 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ORDER_ID_MAX, ORDER_ID_PATTERN } from '../../../shared/schemas.ts';
-import { errorMessage } from '../api/client.ts';
+import { localDateKey } from '../../../shared/shopTime.ts';
+import type { DriverDelivery } from '../../../shared/types.ts';
+import { ApiRequestError, errorMessage } from '../api/client.ts';
 import { dashboardApi, driverApi } from '../api/endpoints.ts';
 import { ConfirmationRows, Pager } from '../components/ConfirmationRows.tsx';
 import { Field, Notice, Spinner } from '../components/ui.tsx';
 import { useAuth } from '../lib/auth.tsx';
+import { OutboxBanner, useOffline } from '../lib/offline.tsx';
 import { fullDayLabel } from '../lib/calendar.ts';
 import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
@@ -24,10 +27,40 @@ export function DriverDashboardPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get('p')) || 1);
-  const awaiting = useApi(() => driverApi.awaiting({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [page]);
-  const recent = useApi(() => dashboardApi.list({ limit: RECENT }), []);
+  const offline = useOffline();
+  const awaiting = useApi(() => driverApi.awaiting({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [page, offline.sentVersion]);
+  const recent = useApi(() => dashboardApi.list({ limit: RECENT }), [offline.sentVersion]);
   const [orderId, setOrderId] = useState('');
   const [error, setError] = useState<string | undefined>();
+
+  // While there is signal, keep a copy of today's deliveries on the phone (for opening orders without signal).
+  useEffect(() => {
+    if (!awaiting.data) return;
+    driverApi
+      .offline()
+      .then((r) => offline.saveToday(r.items))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [awaiting.data]);
+
+  // No signal: show the copy kept on the phone instead.
+  const noSignal = Boolean(awaiting.error) && !(awaiting.error instanceof ApiRequestError && awaiting.error.status > 0 && awaiting.error.status < 500);
+  const [phoneCopy, setPhoneCopy] = useState<DriverDelivery[] | null>(null);
+  useEffect(() => {
+    if (!noSignal) return setPhoneCopy(null);
+    void offline.listToday().then(setPhoneCopy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noSignal, offline.items.length]);
+  const waitingOrders = new Set(offline.items.filter((i) => i.state === 'waiting').map((i) => i.payload.orderId.toLowerCase()));
+  const list =
+    awaiting.data ??
+    (phoneCopy
+      ? {
+          date: localDateKey(new Date(), timeZone),
+          total: phoneCopy.length,
+          items: phoneCopy.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+        }
+      : null);
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -46,27 +79,36 @@ export function DriverDashboardPage() {
         </h1>
       </div>
 
+      <OutboxBanner />
+
       <div className="driver-grid">
         <section className="card awaiting-card driver-awaiting" aria-labelledby="awaiting-title">
           <div className="card-head-row">
             <h2 id="awaiting-title">
               Awaiting delivery
-              {awaiting.data && <span className="h1-sub">{awaiting.data.total}</span>}
+              {list && <span className="h1-sub">{list.total}</span>}
             </h2>
             <button type="button" className="btn btn-small btn-ghost" onClick={awaiting.reload} disabled={awaiting.loading}>
               Refresh
             </button>
           </div>
-          {awaiting.data && <p className="muted small">{fullDayLabel(awaiting.data.date)}. Tap an order to confirm it.</p>}
-          {awaiting.error ? (
-            <Notice tone="error" title="Could not load today’s deliveries" action={<button type="button" className="btn btn-small" onClick={awaiting.reload}>Try again</button>}>
-              {errorMessage(awaiting.error)}
+          {list && <p className="muted small">{fullDayLabel(list.date)}. Tap an order to confirm it.</p>}
+          {noSignal && phoneCopy && (
+            <Notice tone="info" title="No signal">
+              Showing today’s deliveries saved on this phone. You can still confirm them; they will be sent when there is signal.
             </Notice>
-          ) : !awaiting.data ? (
+          )}
+          {awaiting.error && !list ? (
+            <Notice tone="error" title="Could not load today’s deliveries" action={<button type="button" className="btn btn-small" onClick={awaiting.reload}>Try again</button>}>
+              {noSignal
+                ? 'There is no signal and no copy of today’s deliveries on this phone yet. Open this page once with signal (for example at the shop) before you leave.'
+                : errorMessage(awaiting.error)}
+            </Notice>
+          ) : !list ? (
             <Spinner label="Loading today’s deliveries" />
-          ) : awaiting.data.total === 0 ? (
+          ) : list.total === 0 ? (
             <p className="muted">Every delivery scheduled for today is confirmed.</p>
-          ) : awaiting.data.items.length === 0 ? (
+          ) : list.items.length === 0 ? (
             <p className="muted">
               No deliveries on this page.{' '}
               <button type="button" className="link-button" onClick={() => setParams({}, { replace: true })}>
@@ -75,7 +117,7 @@ export function DriverDashboardPage() {
             </p>
           ) : (
             <ul className={`plain-list awaiting-list${awaiting.loading ? ' is-loading' : ''}`} aria-busy={awaiting.loading}>
-              {awaiting.data.items.map((a) => (
+              {list.items.map((a) => (
                 <li key={a.orderId}>
                   <Link to={`/confirm/${encodeURIComponent(a.orderId)}`} className="awaiting-row driver-stop">
                     <span className="stop-chip" aria-label={a.stopNumber ? `Stop ${a.stopNumber}` : 'No stop number'}>
@@ -87,6 +129,7 @@ export function DriverDashboardPage() {
                         Zone {a.zone ?? '—'} · {a.recipientName ?? 'No recipient name'}, {a.city}
                       </span>
                     </span>
+                    {waitingOrders.has(a.orderId.toLowerCase()) && <span className="tag tag-warn">Saved on phone</span>}
                     <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" className="row-chevron">
                       <path d="M7.5 5.5 12 10l-4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
@@ -95,8 +138,8 @@ export function DriverDashboardPage() {
               ))}
             </ul>
           )}
-          {awaiting.data && (
-            <Pager page={page} total={awaiting.data.total} pageSize={PAGE_SIZE} onPage={(p) => setParams(p > 1 ? { p: String(p) } : {})} />
+          {list && (
+            <Pager page={page} total={list.total} pageSize={PAGE_SIZE} onPage={(p) => setParams(p > 1 ? { p: String(p) } : {})} />
           )}
         </section>
 
@@ -124,6 +167,9 @@ export function DriverDashboardPage() {
           <button type="submit" className="btn btn-primary btn-block btn-large">
             Open delivery
           </button>
+          <p className="muted small paper-hint">
+            App not working at all? Use a <Link to="/driver/paper-slips">paper slip</Link> and bring it back to the shop.
+          </p>
         </form>
       </div>
 
@@ -133,7 +179,11 @@ export function DriverDashboardPage() {
           <Link to="/driver/confirmations">All my confirmations</Link>
         </div>
         {recent.error ? (
-          <Notice tone="error" title="Could not load your confirmations">{errorMessage(recent.error)}</Notice>
+          noSignal ? (
+            <p className="muted">No signal: your recent confirmations will show again when there is signal.</p>
+          ) : (
+            <Notice tone="error" title="Could not load your confirmations">{errorMessage(recent.error)}</Notice>
+          )
         ) : !recent.data ? (
           <Spinner label="Loading your confirmations" />
         ) : recent.data.items.length === 0 ? (

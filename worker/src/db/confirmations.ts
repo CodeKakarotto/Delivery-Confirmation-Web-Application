@@ -3,6 +3,7 @@
 import type {
   OrderProduct,
   ConfirmationAttempt,
+  ConfirmationCorrection,
   ConfirmationListItem,
   ConfirmationReceipt,
   ConfirmationResult,
@@ -46,7 +47,7 @@ export interface ConfirmationRow {
   confirmed_at: string;
 }
 
-const DELIVERY_COLUMNS = `d.id, d.order_id, d.recipient_name, d.address_line, d.city, d.state, d.postal_code, d.address_notes,
+export const DELIVERY_COLUMNS = `d.id, d.order_id, d.recipient_name, d.address_line, d.city, d.state, d.postal_code, d.address_notes,
   d.delivery_notes, d.zone, d.total_products, d.products, d.stop_number, d.delivery_date, d.cancelled_at`;
 
 /** Columns of a confirmation, never including the signature bytes. */
@@ -109,7 +110,10 @@ export async function findDeliveryByOrderId(db: D1Database, orderId: string): Pr
 }
 
 export async function findConfirmationByDelivery(db: D1Database, deliveryId: number): Promise<ConfirmationRow | null> {
-  return db.prepare(`SELECT ${CONFIRMATION_COLUMNS} FROM delivery_confirmations c WHERE c.delivery_id = ?`).bind(deliveryId).first<ConfirmationRow>();
+  return db
+    .prepare(`SELECT ${CONFIRMATION_COLUMNS} FROM delivery_confirmations c WHERE c.delivery_id = ? AND c.voided_at IS NULL`)
+    .bind(deliveryId)
+    .first<ConfirmationRow>();
 }
 
 export async function findConfirmationByKey(db: D1Database, key: string): Promise<ConfirmationRow | null> {
@@ -131,8 +135,10 @@ export interface NewConfirmation {
   idempotencyKey: string;
   requestHash: string;
   confirmedAt: string;
-  /** The signed-in driver account. */
-  confirmedByUserId: number;
+  /** The signed-in driver account (null for paper entries, which an employee types in). */
+  confirmedByUserId: number | null;
+  /** Paper entries only. */
+  paper?: { enteredByUserId: number; reportedDeliveredAt: string; reference: string; photo: Uint8Array | null };
 }
 
 /**
@@ -145,8 +151,9 @@ export async function insertConfirmation(db: D1Database, c: NewConfirmation): Pr
     .prepare(
       `INSERT INTO delivery_confirmations
          (id, delivery_id, order_id, stop_number, zone, received_by, outcome, outcome_detail, note, signature_png,
-          signature_width, signature_height, result, idempotency_key, request_hash, confirmed_at, confirmed_by_user_id)
-       SELECT ?, d.id, d.order_id, d.stop_number, d.zone, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+          signature_width, signature_height, result, idempotency_key, request_hash, confirmed_at, confirmed_by_user_id,
+          source, entered_by_user_id, reported_delivered_at, paper_reference, slip_photo)
+       SELECT ?, d.id, d.order_id, d.stop_number, d.zone, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
          FROM deliveries d
         WHERE d.id = ? AND d.cancelled_at IS NULL`,
     )
@@ -164,6 +171,11 @@ export async function insertConfirmation(db: D1Database, c: NewConfirmation): Pr
       c.requestHash,
       c.confirmedAt,
       c.confirmedByUserId,
+      c.paper ? 'paper' : 'app',
+      c.paper?.enteredByUserId ?? null,
+      c.paper?.reportedDeliveredAt ?? null,
+      c.paper?.reference ?? null,
+      c.paper?.photo ?? null,
       c.deliveryId,
     )
     .run();
@@ -194,12 +206,18 @@ interface ListRow {
   confirmed_at: string;
   attempt_count: number;
   conflict_count: number;
+  source: 'app' | 'paper';
+  corrected: number;
+  voided: number;
 }
 
 const LIST_SELECT = `
   SELECT c.id, c.order_id, c.stop_number, c.zone, d.recipient_name, c.received_by, c.outcome, c.result, c.confirmed_at,
          (SELECT COUNT(*) FROM confirmation_attempts a WHERE a.confirmation_id = c.id) AS attempt_count,
-         (SELECT COUNT(*) FROM confirmation_attempts a WHERE a.confirmation_id = c.id AND a.kind = 'conflict') AS conflict_count
+         (SELECT COUNT(*) FROM confirmation_attempts a WHERE a.confirmation_id = c.id AND a.kind = 'conflict') AS conflict_count,
+         c.source,
+         EXISTS (SELECT 1 FROM confirmation_corrections k WHERE k.confirmation_id = c.id AND k.kind = 'correction') AS corrected,
+         c.voided_at IS NOT NULL AS voided
     FROM delivery_confirmations c
     JOIN deliveries d ON d.id = c.delivery_id`;
 
@@ -216,6 +234,9 @@ function toListItem(r: ListRow): ConfirmationListItem {
     confirmedAt: r.confirmed_at,
     attemptCount: r.attempt_count,
     hasConflict: r.conflict_count > 0,
+    source: r.source,
+    corrected: r.corrected === 1,
+    voided: r.voided === 1,
   };
 }
 
@@ -279,6 +300,13 @@ interface DetailRow extends ListRow {
   products: string | null;
   delivery_date: string | null;
   confirmed_by: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+  voided_by: string | null;
+  reported_delivered_at: string | null;
+  paper_reference: string | null;
+  entered_by: string | null;
+  has_photo: number;
 }
 
 export async function getConfirmationDetail(db: D1Database, id: string, userId?: number) {
@@ -287,6 +315,12 @@ export async function getConfirmationDetail(db: D1Database, id: string, userId?:
       `SELECT c.id, c.order_id, c.stop_number, c.zone, d.recipient_name, c.received_by, c.outcome, c.result, c.confirmed_at,
               (SELECT COUNT(*) FROM confirmation_attempts a WHERE a.confirmation_id = c.id) AS attempt_count,
               (SELECT COUNT(*) FROM confirmation_attempts a WHERE a.confirmation_id = c.id AND a.kind = 'conflict') AS conflict_count,
+              c.source,
+              EXISTS (SELECT 1 FROM confirmation_corrections k WHERE k.confirmation_id = c.id AND k.kind = 'correction') AS corrected,
+              c.voided_at IS NOT NULL AS voided, c.voided_at, c.void_reason,
+              (SELECT u.display_name FROM users u WHERE u.id = c.voided_by_user_id) AS voided_by,
+              c.reported_delivered_at, c.paper_reference, c.slip_photo IS NOT NULL AS has_photo,
+              (SELECT u.display_name FROM users u WHERE u.id = c.entered_by_user_id) AS entered_by,
               c.outcome_detail, c.note, c.signature_width, c.signature_height,
               d.address_line, d.city, d.state, d.postal_code, d.address_notes, d.delivery_notes, d.total_products, d.products, d.delivery_date,
               (SELECT u.display_name FROM users u WHERE u.id = c.confirmed_by_user_id) AS confirmed_by
@@ -324,6 +358,12 @@ export async function getConfirmationDetail(db: D1Database, id: string, userId?:
     signatureWidth: row.signature_width,
     signatureHeight: row.signature_height,
     confirmedBy: row.confirmed_by,
+    corrections: await listCorrections(db, id),
+    voided: row.voided_at ? { at: row.voided_at, by: row.voided_by, reason: row.void_reason ?? '' } : null,
+    paper:
+      row.source === 'paper'
+        ? { reportedDeliveredAt: row.reported_delivered_at ?? '', reference: row.paper_reference ?? '', enteredBy: row.entered_by, hasPhoto: row.has_photo === 1 }
+        : null,
     attempts: attempts.results.map(
       (a): ConfirmationAttempt => ({ kind: a.kind, receivedBy: a.received_by, outcome: a.outcome, createdAt: a.created_at }),
     ),
@@ -348,7 +388,7 @@ export async function listCalendarRows(db: D1Database, userId?: number): Promise
       `SELECT c.confirmed_at, c.result,
               EXISTS (SELECT 1 FROM confirmation_attempts a WHERE a.confirmation_id = c.id) AS flagged
          FROM delivery_confirmations c
-        WHERE ? IS NULL OR c.confirmed_by_user_id = ?`,
+        WHERE c.voided_at IS NULL AND (? IS NULL OR c.confirmed_by_user_id = ?)`,
     )
     .bind(userId ?? null, userId ?? null)
     .all<{ confirmed_at: string; result: ConfirmationResult; flagged: number }>();
@@ -359,5 +399,58 @@ export async function findShopOrder(db: D1Database, orderId: string) {
   const delivery = await findDeliveryByOrderId(db, orderId);
   if (!delivery) return null;
   const confirmation = await findConfirmationByDelivery(db, delivery.id);
-  return { delivery, confirmation };
+  const voided = await db
+    .prepare(
+      `SELECT id, confirmed_at, voided_at, void_reason FROM delivery_confirmations
+        WHERE delivery_id = ? AND voided_at IS NOT NULL ORDER BY voided_at DESC`,
+    )
+    .bind(delivery.id)
+    .all<{ id: string; confirmed_at: string; voided_at: string; void_reason: string }>();
+  return {
+    delivery,
+    confirmation,
+    voided: voided.results.map((v) => ({ id: v.id, confirmedAt: v.confirmed_at, voidedAt: v.voided_at, reason: v.void_reason })),
+  };
+}
+
+/** Corrections and voids of one confirmation, oldest first, with what changed. */
+export async function listCorrections(db: D1Database, confirmationId: string): Promise<ConfirmationCorrection[]> {
+  const res = await db
+    .prepare(
+      `SELECT k.kind, k.reason, k.created_at, k.old_received_by, k.new_received_by, k.old_outcome, k.new_outcome,
+              k.old_outcome_detail, k.new_outcome_detail, (SELECT u.display_name FROM users u WHERE u.id = k.by_user_id) AS by_name
+         FROM confirmation_corrections k WHERE k.confirmation_id = ? ORDER BY k.created_at, k.id`,
+    )
+    .bind(confirmationId)
+    .all<Record<string, string | null>>();
+  return res.results.map((k) => {
+    const changes: ConfirmationCorrection['changes'] = [];
+    if (k.kind === 'correction') {
+      if (k.old_received_by !== k.new_received_by) changes.push({ field: 'receivedBy', from: k.old_received_by, to: k.new_received_by });
+      if (k.old_outcome !== k.new_outcome) changes.push({ field: 'outcome', from: k.old_outcome, to: k.new_outcome });
+      if (k.old_outcome_detail !== k.new_outcome_detail) changes.push({ field: 'outcomeDetail', from: k.old_outcome_detail, to: k.new_outcome_detail });
+    }
+    return { kind: k.kind as 'correction' | 'void', reason: k.reason ?? '', by: k.by_name, createdAt: k.created_at ?? '', changes };
+  });
+}
+
+/** The current state of a confirmation, for corrections and voids. */
+export async function getConfirmationState(db: D1Database, id: string) {
+  return db
+    .prepare(
+      `SELECT id, received_by, outcome, outcome_detail, source, voided_at, signature_png IS NOT NULL AS has_signature
+         FROM delivery_confirmations WHERE id = ?`,
+    )
+    .bind(id)
+    .first<{ id: string; received_by: string; outcome: DeliveryOutcome; outcome_detail: string | null; source: 'app' | 'paper'; voided_at: string | null; has_signature: number }>();
+}
+
+export async function getSlipPhoto(db: D1Database, id: string, userId?: number): Promise<Uint8Array<ArrayBuffer> | null> {
+  const row = await db
+    .prepare('SELECT slip_photo FROM delivery_confirmations WHERE id = ? AND slip_photo IS NOT NULL AND (? IS NULL OR confirmed_by_user_id = ?)')
+    .bind(id, userId ?? null, userId ?? null)
+    .first<{ slip_photo: ArrayBuffer | Uint8Array | number[] }>();
+  if (!row) return null;
+  const v = row.slip_photo;
+  return v instanceof Uint8Array ? new Uint8Array(v) : new Uint8Array(v as ArrayBuffer | number[]);
 }

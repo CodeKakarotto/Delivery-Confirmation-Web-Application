@@ -28,6 +28,7 @@ export const router = new Router()
   .add('GET', '/api/auth/me', auth.me)
   // Drivers: today's awaiting orders, one order by its ID, and submitting its confirmation.
   .add('GET', '/api/driver/deliveries', driver.awaiting)
+  .add('GET', '/api/driver/offline', driver.offline)
   .add('GET', '/api/driver/deliveries/:orderId', driver.lookup)
   .add('POST', '/api/driver/confirmations', driver.submit)
   // Confirmations: employees see all, drivers only their own. Day summary, deliveries list and orders: employees only.
@@ -38,7 +39,12 @@ export const router = new Router()
   .add('GET', '/api/dashboard/orders/:orderId', dashboard.order)
   .add('GET', '/api/dashboard/confirmations', dashboard.list)
   .add('GET', '/api/dashboard/confirmations/:id', dashboard.detail)
-  .add('GET', '/api/dashboard/confirmations/:id/signature', dashboard.signature);
+  .add('GET', '/api/dashboard/confirmations/:id/signature', dashboard.signature)
+  .add('GET', '/api/dashboard/confirmations/:id/slip-photo', dashboard.slipPhoto)
+  // Employees: correct or void a confirmation (with a reason), or enter one from a paper slip.
+  .add('POST', '/api/dashboard/confirmations/:id/corrections', dashboard.correct)
+  .add('POST', '/api/dashboard/confirmations/:id/void', dashboard.voidConfirmation)
+  .add('POST', '/api/dashboard/paper-confirmations', dashboard.paperConfirmation);
 
 export async function handleRequest(request: Request, env: Env, now: Date = new Date()): Promise<Response> {
   const url = new URL(request.url);

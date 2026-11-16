@@ -55,3 +55,47 @@ describe('migration 0003 keeps existing data', () => {
     );
   });
 });
+
+describe('migration 0004 keeps existing data', () => {
+  it('copies every confirmation and refused attempt, and allows a new confirmation once one is voided', () => {
+    const db = new SqliteD1();
+    for (const file of MIGRATIONS.filter((f) => f < '0004')) db.execFile(new URL(`migrations/${file}`, ROOT));
+    db.execFile(new URL('seed/demo-seed.sql', ROOT));
+    const sig = new Uint8Array(100).fill(9);
+    db.sqlite
+      .prepare(
+        `INSERT INTO delivery_confirmations (id, delivery_id, order_id, received_by, outcome, signature_png, signature_width,
+           signature_height, result, idempotency_key, request_hash, confirmed_at)
+         SELECT '55555555-5555-4555-8555-555555555555', id, order_id, 'Avery Demo', 'delivered_to_recipient', ?, 600, 200,
+           'confirmed', '66666666-6666-4666-8666-666666666666', ?, '2026-11-14T15:30:00.000Z' FROM deliveries WHERE order_id = 'MF-10482'`,
+      )
+      .run(sig, 'c'.repeat(64));
+    db.sqlite.exec(`INSERT INTO confirmation_attempts (confirmation_id, kind, received_by, outcome, created_at)
+                    VALUES ('55555555-5555-4555-8555-555555555555', 'duplicate', 'Avery Demo', 'delivered_to_recipient', '2026-11-14T16:00:00.000Z')`);
+
+    db.execFile(new URL('migrations/0004_corrections_paper.sql', ROOT));
+
+    const c = db.sqlite.prepare('SELECT * FROM delivery_confirmations').get() as Record<string, unknown>;
+    assert.equal(c.received_by, 'Avery Demo');
+    assert.equal(c.source, 'app');
+    assert.equal(c.voided_at, null);
+    assert.deepEqual(new Uint8Array(c.signature_png as Uint8Array), sig);
+    assert.equal((db.sqlite.prepare('SELECT COUNT(*) AS n FROM confirmation_attempts').get() as { n: number }).n, 1);
+
+    // Still one ACTIVE confirmation per order...
+    const second = () =>
+      db.sqlite
+        .prepare(
+          `INSERT INTO delivery_confirmations (id, delivery_id, order_id, received_by, outcome, signature_png, signature_width,
+             signature_height, result, idempotency_key, request_hash, confirmed_at)
+           SELECT '77777777-7777-4777-8777-777777777777', id, order_id, 'Avery', 'delivered_to_recipient', ?, 600, 200,
+             'confirmed', '88888888-8888-4888-8888-888888888888', ?, '2026-11-14T17:00:00.000Z' FROM deliveries WHERE order_id = 'MF-10482'`,
+        )
+        .run(sig, 'd'.repeat(64));
+    assert.throws(second, /UNIQUE constraint failed: delivery_confirmations\.delivery_id/);
+    // ...but after voiding the first, the order can be confirmed again.
+    db.sqlite.exec(`UPDATE delivery_confirmations SET voided_at = '2026-11-14T16:30:00.000Z', void_reason = 'Wrong order'`);
+    second();
+    assert.equal((db.sqlite.prepare('SELECT COUNT(*) AS n FROM delivery_confirmations').get() as { n: number }).n, 2);
+  });
+});

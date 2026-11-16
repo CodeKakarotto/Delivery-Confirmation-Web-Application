@@ -45,6 +45,16 @@ Refused submissions for an already confirmed order: `confirmation_id → deliver
 
 `delivery_confirmations.confirmed_by_user_id` (0002) → users: the driver account that saved it.
 
+## Migration 0004: corrections, voids, paper entries
+`delivery_confirmations` gains `source` (`app`|`paper`), `entered_by_user_id`, `reported_delivered_at` (time on the slip),
+`paper_reference` (where the slip is filed), `slip_photo` (JPEG ≤600 KB), `voided_at`, `voided_by_user_id`, `void_reason`.
+"One confirmation per order" becomes **one active (not voided) confirmation per order** (partial unique index
+`ux_confirmations_active_delivery`). The table is rebuilt and every row and refused attempt copied (tested).
+
+## `confirmation_corrections` (0004)
+Every correction and void: `kind`, `reason` (required), old and new `received_by` / `outcome` / `outcome_detail`, `by_user_id`,
+`created_at`. Never updated or deleted, so the original values stay visible.
+
 ## `rate_limits`
 `(bucket, window_start)` → `hits`. `bucket` = scope + HMAC of the client IP. Windows older than an hour are deleted.
 

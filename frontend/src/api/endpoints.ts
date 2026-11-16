@@ -10,8 +10,11 @@ import type {
   ConfirmationResult,
   ConfirmationSubmit,
   ConfirmationSubmitResponse,
+  CorrectionRequest,
+  PaperConfirmationRequest,
   DashboardSummary,
   DriverAwaitingResponse,
+  DriverOfflineResponse,
   DriverLookupResponse,
   ShopOrderResponse,
 } from '../../../shared/types.ts';
@@ -28,6 +31,8 @@ export const configApi = {
 };
 
 export const driverApi = {
+  /** Today's awaiting orders with full details, kept on the phone for confirming without signal. */
+  offline: () => api<DriverOfflineResponse>('GET', '/api/driver/offline'),
   /** Today's orders still awaiting confirmation (no street addresses). */
   awaiting: (page: { limit: number; offset: number }) =>
     api<DriverAwaitingResponse>('GET', `/api/driver/deliveries?${new URLSearchParams({ limit: String(page.limit), offset: String(page.offset) })}`),
@@ -79,5 +84,14 @@ export const dashboardApi = {
   /** Employees' month view: each day's deliveries by status. */
   deliveryCalendar: (month: string) => api<DeliveryCalendarResponse>('GET', `/api/dashboard/deliveries/calendar?${new URLSearchParams({ month })}`),
   detail: (id: string) => api<ConfirmationDetailResponse>('GET', `/api/dashboard/confirmations/${encodeURIComponent(id)}`),
+  slipPhotoUrl: (id: string) => `/api/dashboard/confirmations/${encodeURIComponent(id)}/slip-photo`,
+  /** Employees: correct a confirmation (with a reason). */
+  correct: (id: string, body: CorrectionRequest) =>
+    api<ConfirmationDetailResponse>('POST', `/api/dashboard/confirmations/${encodeURIComponent(id)}/corrections`, body),
+  /** Employees: void a confirmation (with a reason). */
+  voidConfirmation: (id: string, reason: string) =>
+    api<ConfirmationDetailResponse>('POST', `/api/dashboard/confirmations/${encodeURIComponent(id)}/void`, { reason }),
+  /** Employees: enter a confirmation from a paper slip. */
+  paperConfirm: (body: PaperConfirmationRequest) => api<ConfirmationSubmitResponse>('POST', '/api/dashboard/paper-confirmations', body),
   signatureUrl: (id: string) => `/api/dashboard/confirmations/${encodeURIComponent(id)}/signature`,
 };

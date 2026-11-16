@@ -68,6 +68,18 @@ Rate limited (20/min). Body (unknown fields are rejected):
 
 `result` is decided by the server: `confirmed` for `delivered_to_recipient`, otherwise `needs_review`.
 
+## Offline, corrections and paper slips
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/driver/offline` | Drivers. Today's awaiting orders with full details, kept on the phone for confirming without signal |
+| POST | `/api/dashboard/confirmations/:id/corrections` | Employees. `{ receivedBy?, outcome?, outcomeDetail?, reason }`: at least one change and a reason. The signature is never changed; a record without one cannot become `delivered_to_recipient` (`422 signature_required`). Voided records: `409 voided` |
+| POST | `/api/dashboard/confirmations/:id/void` | Employees. `{ reason }`. The record stays visible (`voided`), stops counting, and the order can be confirmed again |
+| POST | `/api/dashboard/paper-confirmations` | Employees. `{ orderId, receivedBy, outcome, outcomeDetail?, deliveredAt (ISO, the time on the slip), paperReference, slipPhoto? (JPEG data URL ≤600 KB), idempotencyKey }`. Saved as `source: 'paper'` |
+| GET | `/api/dashboard/confirmations/:id/slip-photo` | The photo of the signed slip (`image/jpeg`, `no-store`) |
+
+Records now include `source`, `corrected`, `voided`, and (detail) `corrections[]` with old and new values, `voided` and `paper`.
+
 ## Confirmations and shop views
 
 Calendar, confirmations list, record and signature: employees see all, drivers only their own (others answer 404).

@@ -35,7 +35,7 @@ export function ShopOrderPage() {
       </>
     );
   }
-  const { status, delivery, confirmation } = order.data;
+  const { status, delivery, confirmation, voidedConfirmations } = order.data;
   const statusTag =
     status === 'confirmed' ? (
       <ResultTag result={confirmation!.result} />
@@ -62,12 +62,28 @@ export function ShopOrderPage() {
               Open confirmation record
             </Link>
           )}
+          {status === 'awaiting' && (
+            <Link to={`/shop/paper?order=${encodeURIComponent(delivery.orderId)}`} className="btn">
+              Enter from paper slip
+            </Link>
+          )}
         </div>
       </div>
       {status === 'cancelled' && <Notice tone="warn" title="This order was cancelled">It cannot be confirmed.</Notice>}
       {confirmation && (
         <Notice tone="ok" title="Confirmed">
           Delivered {shopDateTime(confirmation.confirmedAt, timeZone)}.
+        </Notice>
+      )}
+      {voidedConfirmations.length > 0 && (
+        <Notice tone="info" title="Voided confirmations">
+          <ul className="attempt-list">
+            {voidedConfirmations.map((v) => (
+              <li key={v.id}>
+                <Link to={`/shop/confirmations/${v.id}`}>Saved {shopDateTime(v.confirmedAt, timeZone)}</Link>, voided {shopDateTime(v.voidedAt, timeZone)}: {v.reason}
+              </li>
+            ))}
+          </ul>
         </Notice>
       )}
       <DeliveryCard

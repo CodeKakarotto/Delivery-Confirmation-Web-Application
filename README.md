@@ -40,6 +40,17 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
   - **Record and print** (`/shop/confirmations/:id`): the saved record in the same field order, with logo, barcode,
     signature and delivery time, and refused duplicate/conflicting attempts.
 
+## When something goes wrong
+
+| Problem | What the app does |
+| --- | --- |
+| **No signal at the door** (or the server has a problem) | The confirmation is **saved on the phone** and sent automatically when there is signal ("Saved on this phone"; a banner shows how many are waiting). Open the driver dashboard once with signal before leaving: today's deliveries are kept on the phone so orders can be opened without signal. Signing out warns if anything has not been sent. |
+| **Signal drops while saving** | Entries and the signature stay; sending again can never save twice. |
+| **A confirmation is wrong** | Employees can **Correct** it (received by, outcome, exception note) or **Void** it (e.g. wrong order), always with a reason. The original values stay visible under "Changes"; a voided order goes back to Awaiting. |
+| **The app cannot be used at all** | Drivers use a **printed paper slip** (Driver dashboard → "paper slip", or Paper slips → Print blank slips). Employees type it in with **Paper slips → Enter from paper slip**, optionally with a photo of the signed slip; the record is marked "Entered from paper". |
+
+Limitation: the offline copy works while the app is open on the phone; reloading the page without signal is not supported yet.
+
 ## Getting started
 
 **Windows, one click:** double-click `Start-App.bat`. The first time, it installs packages, creates `.dev.vars` and

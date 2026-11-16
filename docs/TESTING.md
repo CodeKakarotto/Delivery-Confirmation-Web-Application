@@ -23,6 +23,9 @@ for the test runner by `frontend/test/register-tsx.mjs` (esbuild).
 | `worker/test/auth.test.ts` | Sign-in: cookie flags (HttpOnly, SameSite=Strict, Secure/__Host- on HTTPS), generic errors, lockout after 5 failures, per-device limit, deactivated accounts, hashes only, nothing secret in logs, idle and absolute expiry, sign-out, anti-forgery token, old role header ignored |
 | `worker/test/roles.test.ts` | Sign-in required everywhere; only drivers confirm; employee-only views; drivers see only their own confirmations and signatures; signature served with the cookie alone; awaiting list (5 per page); employees' deliveries list and search (wildcards escaped) |
 | `frontend/test/authGate.test.tsx` | Pages shown only to signed-in accounts of the right role |
+| `worker/test/corrections.test.ts` | Corrections (reason required, old values kept, outcome rules, signature never changed), voids (order back to awaiting, re-confirmable, not counted), paper entries (marked paper, slip time, photo checks, rules, idempotent), offline copy endpoint |
+| `frontend/test/outbox.test.ts` | The phone outbox: retry on no signal or server errors, keep refused items for attention, stop at an ended session, order and per-driver, no duplicates; today's copy per driver and day |
+| `frontend/test/correctionsUi.test.tsx` | Change history (old value crossed out → new, who, when, why; voids) and the blank paper slip layout |
 | `worker/test/barcode.test.ts` | Code 128 table, checksum, exact round-trip of order IDs |
 | `frontend/test/deliveryCard.test.tsx` | Required field order, barcode under the order ID encoding it exactly, exception inside Deliver To, Received By/Signature inside Delivery Instructions, "—"/"Not recorded", text escaping, saved/print view order |
 | `frontend/test/confirmationForm.test.tsx` | Client validation: outcome, "Other" detail, Received By, drawn signature required |

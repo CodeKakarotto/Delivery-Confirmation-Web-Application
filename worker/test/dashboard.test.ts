@@ -39,7 +39,7 @@ describe('employee dashboard: list and search', () => {
     const item = res.body.items.find((i: { orderId: string }) => i.orderId === 'MF-10482');
     assert.deepEqual(
       Object.keys(item).sort(),
-      ['attemptCount', 'confirmedAt', 'hasConflict', 'id', 'orderId', 'outcome', 'receivedBy', 'recipientName', 'result', 'stopNumber', 'zone'],
+      ['attemptCount', 'confirmedAt', 'corrected', 'hasConflict', 'id', 'orderId', 'outcome', 'receivedBy', 'recipientName', 'result', 'source', 'stopNumber', 'voided', 'zone'],
     );
     assert.equal(item.receivedBy, 'Avery Demo');
     assert.equal(item.result, 'confirmed');

@@ -119,6 +119,12 @@ export interface ConfirmationListItem {
   /** Number of refused duplicate/conflicting submissions for the same order. */
   attemptCount: number;
   hasConflict: boolean;
+  /** 'app' = confirmed by the driver; 'paper' = entered later from a paper slip. */
+  source: 'app' | 'paper';
+  /** Changed by an employee afterwards (see the record's history). */
+  corrected: boolean;
+  /** Voided by an employee: no longer counts. */
+  voided: boolean;
 }
 
 export interface ConfirmationListResponse {
@@ -133,7 +139,7 @@ export interface ConfirmationAttempt {
   createdAt: string;
 }
 
-export interface ConfirmationDetail extends ConfirmationListItem {
+export interface ConfirmationDetail extends Omit<ConfirmationListItem, 'voided'> {
   delivery: DriverDelivery & { deliveryDate: string | null };
   outcomeDetail: string | null;
   note: string | null;
@@ -143,6 +149,48 @@ export interface ConfirmationDetail extends ConfirmationListItem {
   attempts: ConfirmationAttempt[];
   /** Display name of the driver account that saved it (null for records from before accounts). */
   confirmedBy: string | null;
+  /** Every correction and void, oldest first: the original values stay visible here. */
+  corrections: ConfirmationCorrection[];
+  voided: { at: string; by: string | null; reason: string } | null;
+  /** Paper entries: the time on the slip, where it is filed, who typed it in, whether a photo is attached. */
+  paper: { reportedDeliveredAt: string; reference: string; enteredBy: string | null; hasPhoto: boolean } | null;
+}
+
+export interface ConfirmationCorrection {
+  kind: 'correction' | 'void';
+  reason: string;
+  by: string | null;
+  createdAt: string;
+  changes: Array<{ field: 'receivedBy' | 'outcome' | 'outcomeDetail'; from: string | null; to: string | null }>;
+}
+
+/** An employee's correction: at least one field and always a reason. The signature can never be changed. */
+export interface CorrectionRequest {
+  receivedBy?: string;
+  outcome?: DeliveryOutcome;
+  outcomeDetail?: string;
+  reason: string;
+}
+
+/** An employee entering a confirmation from a paper slip. */
+export interface PaperConfirmationRequest {
+  orderId: string;
+  receivedBy: string;
+  outcome: DeliveryOutcome;
+  outcomeDetail?: string;
+  /** The delivery time written on the slip (ISO-8601). */
+  deliveredAt: string;
+  /** Where the signed paper slip is filed. */
+  paperReference: string;
+  /** Optional photo of the signed slip: data:image/jpeg;base64,… */
+  slipPhoto?: string;
+  idempotencyKey: string;
+}
+
+/** Today's awaiting orders with full details, kept on the driver's phone for confirming without signal. */
+export interface DriverOfflineResponse {
+  date: string;
+  items: DriverDelivery[];
 }
 
 export interface ConfirmationDetailResponse {
@@ -272,4 +320,6 @@ export interface ShopOrderResponse {
   status: ShopOrderStatus;
   delivery: DriverDelivery & { deliveryDate: string | null };
   confirmation: { id: string; confirmedAt: string; result: ConfirmationResult } | null;
+  /** Earlier confirmations of this order that an employee voided. */
+  voidedConfirmations: Array<{ id: string; confirmedAt: string; voidedAt: string; reason: string }>;
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router';
 import { ROLE_LABEL, useAuth } from '../lib/auth.tsx';
+import { useOffline } from '../lib/offline.tsx';
 import { applyTheme, currentTheme, type Theme } from '../lib/theme.ts';
 
 /**
@@ -55,12 +56,15 @@ const NAV = {
     { to: '/shop', label: 'Dashboard', end: true },
     { to: '/shop/deliveries', label: 'Deliveries', end: false },
     { to: '/shop/search', label: 'Search', end: false },
+    { to: '/shop/paper', label: 'Paper slips', end: false },
   ],
 } as const;
 
 /** The signed-in account and Sign out (which ends the session on the server). */
 function AccountBadge() {
   const { user, logout } = useAuth();
+  const { items } = useOffline();
+  const unsent = items.length;
   if (!user) return null;
   return (
     <span className="role-badge">
@@ -71,7 +75,18 @@ function AccountBadge() {
       <button
         type="button"
         className="btn btn-small"
-        onClick={() => void logout()}
+        onClick={() => {
+          // Signing out wipes this phone, including confirmations that have not been sent yet.
+          if (
+            unsent > 0 &&
+            !window.confirm(
+              `${unsent === 1 ? '1 confirmation has' : `${unsent} confirmations have`} not been sent yet and will be lost if you sign out now. Get signal first and wait until it says "All sent". Sign out anyway?`,
+            )
+          ) {
+            return;
+          }
+          void logout();
+        }}
       >
         Sign out
       </button>

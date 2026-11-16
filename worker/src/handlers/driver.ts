@@ -15,11 +15,13 @@ import {
   toDriverDelivery,
   toReceipt,
   type ConfirmationRow,
+  type DeliveryRow,
+  DELIVERY_COLUMNS,
 } from '../db/confirmations.ts';
 import { ApiError, isUniqueViolation, json, logEvent, readJson, validationError } from '../http.ts';
 import type { RequestContext } from '../router.ts';
 import { localDateKey } from '../../../shared/shopTime.ts';
-import type { DriverAwaitingResponse } from '../../../shared/types.ts';
+import type { DriverAwaitingResponse, DriverOfflineResponse } from '../../../shared/types.ts';
 import { requireRole } from '../auth.ts';
 import { RATE_LIMITS, rateLimit, requireDemoAccess } from '../security.ts';
 import { validateSignature } from '../signature.ts';
@@ -184,7 +186,7 @@ export async function awaiting(ctx: RequestContext): Promise<Response> {
   const offset = pageParam(ctx, 'offset', 0, 0, 10_000);
   const date = localDateKey(ctx.now, ctx.settings.timeZone);
   const awaitingWhere = `d.delivery_date = ? AND d.cancelled_at IS NULL
-          AND NOT EXISTS (SELECT 1 FROM delivery_confirmations c WHERE c.delivery_id = d.id)`;
+          AND NOT EXISTS (SELECT 1 FROM delivery_confirmations c WHERE c.delivery_id = d.id AND c.voided_at IS NULL)`;
   const [rows, count] = await ctx.db.batch<AwaitingRow | { n: number }>([
     ctx.db
       .prepare(
@@ -220,4 +222,27 @@ function pageParam(ctx: RequestContext, name: string, fallback: number, min: num
     throw validationError([{ path: name, message: `Must be a whole number from ${min} to ${max}` }]);
   }
   return Number(raw);
+}
+
+/**
+ * Today's awaiting orders WITH full details, for the driver's phone to keep so an order can be opened and confirmed
+ * where there is no signal. The app deletes this copy when the day changes and on sign-out.
+ */
+export async function offline(ctx: RequestContext): Promise<Response> {
+  requireDemoAccess(ctx);
+  await requireRole(ctx, 'driver');
+  await rateLimit(ctx, RATE_LIMITS.lookup);
+  const date = localDateKey(ctx.now, ctx.settings.timeZone);
+  const res = await ctx.db
+    .prepare(
+      `SELECT ${DELIVERY_COLUMNS} FROM deliveries d
+        WHERE d.delivery_date = ? AND d.cancelled_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM delivery_confirmations c WHERE c.delivery_id = d.id AND c.voided_at IS NULL)
+        ORDER BY d.stop_number IS NULL, d.stop_number, d.order_id
+        LIMIT 200`,
+    )
+    .bind(date)
+    .all<DeliveryRow>();
+  const body: DriverOfflineResponse = { date, items: res.results.map(toDriverDelivery) };
+  return json(body);
 }

@@ -4,6 +4,7 @@ import { AppLayout } from './components/Layout.tsx';
 import { RequireAuth } from './components/RequireAuth.tsx';
 import { Spinner } from './components/ui.tsx';
 import { AuthProvider, ROLE_HOME, useAuth } from './lib/auth.tsx';
+import { OfflineProvider } from './lib/offline.tsx';
 import { CalendarPage } from './pages/CalendarPage.tsx';
 import { ConfirmationDetailPage } from './pages/ConfirmationDetailPage.tsx';
 import { DriverConfirmPage } from './pages/DriverConfirmPage.tsx';
@@ -12,6 +13,7 @@ import { NotFoundPage } from './pages/HomePage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
 import { ShopDeliveriesPage } from './pages/ShopDeliveriesPage.tsx';
 import { ShopOrderPage } from './pages/ShopOrderPage.tsx';
+import { PaperEntryPage, PrintSlipsPage } from './pages/PaperSlipPages.tsx';
 import { ShopSearchPage } from './pages/ShopSearchPage.tsx';
 
 const driver = (page: ReactNode) => <RequireAuth role="driver">{page}</RequireAuth>;
@@ -53,6 +55,9 @@ const router = createBrowserRouter([
       { path: '/shop/confirmations', element: <Navigate to="/shop" replace /> },
       { path: '/shop/confirmations/:id', element: employee(<ConfirmationDetailPage />) },
       { path: '/shop/orders/:orderId', element: employee(<ShopOrderPage />) },
+      { path: '/shop/paper', element: employee(<PaperEntryPage />) },
+      { path: '/shop/paper/print', element: employee(<PrintSlipsPage />) },
+      { path: '/driver/paper-slips', element: driver(<PrintSlipsPage />) },
       // Old links from earlier versions.
       { path: '/dashboard', element: <Navigate to="/" replace /> },
       { path: '/dashboard/confirmations/:id', element: <LegacyRecordRedirect /> },
@@ -64,7 +69,9 @@ const router = createBrowserRouter([
 export function App() {
   return (
     <AuthProvider>
-      <RouterProvider router={router} />
+      <OfflineProvider>
+        <RouterProvider router={router} />
+      </OfflineProvider>
     </AuthProvider>
   );
 }
