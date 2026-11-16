@@ -71,11 +71,16 @@ export function ShopOrderPage() {
         </Notice>
       )}
       {voidedConfirmations.length > 0 && (
-        <Notice tone="info" title="Voided confirmations">
-          <ul className="attempt-list">
+        <Notice tone="warn" title={confirmation ? 'Earlier confirmations were voided' : 'This order’s confirmation was voided'}>
+          <ul className="attempt-list voided-list">
             {voidedConfirmations.map((v) => (
               <li key={v.id}>
-                <Link to={`/shop/confirmations/${v.id}`}>Saved {shopDateTime(v.confirmedAt, timeZone)}</Link>, voided {shopDateTime(v.voidedAt, timeZone)}: {v.reason}
+                <span>
+                  Voided {shopDateTime(v.voidedAt, timeZone)}. Reason: {v.reason}
+                </span>
+                <Link to={`/shop/confirmations/${v.id}`} className="btn btn-small">
+                  {confirmation ? 'Open record' : 'Open record: changes and Undo void'}
+                </Link>
               </li>
             ))}
           </ul>

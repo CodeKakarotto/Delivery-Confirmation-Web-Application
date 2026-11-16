@@ -368,12 +368,15 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
     confirmed_at: string | null;
     result: ConfirmationResult | null;
     received_by: string | null;
+    voided_id: string | null;
   };
   const [rows, count] = await ctx.db.batch<Row | { n: number }>([
     ctx.db
       .prepare(
         `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city, d.delivery_date, d.cancelled_at,
-                c.id AS c_id, c.confirmed_at, c.result, c.received_by
+                c.id AS c_id, c.confirmed_at, c.result, c.received_by,
+                (SELECT v.id FROM delivery_confirmations v WHERE v.delivery_id = d.id AND v.voided_at IS NOT NULL
+                  ORDER BY v.voided_at DESC LIMIT 1) AS voided_id
            ${from}${clause}
           ORDER BY d.delivery_date DESC, d.stop_number IS NULL, d.stop_number, d.order_id
           LIMIT ? OFFSET ?`,
@@ -393,6 +396,7 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
         deliveryDate: r.delivery_date,
         status: r.c_id ? (r.result === 'confirmed' ? 'confirmed' : 'exception') : r.cancelled_at ? 'cancelled' : 'awaiting',
         confirmation: r.c_id ? { id: r.c_id, confirmedAt: r.confirmed_at!, result: r.result!, receivedBy: r.received_by! } : null,
+        voidedConfirmationId: r.c_id ? null : r.voided_id,
       }),
     ),
   };

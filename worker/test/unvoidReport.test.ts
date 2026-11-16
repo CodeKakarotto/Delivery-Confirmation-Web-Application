@@ -50,6 +50,28 @@ describe('undo a void (employees)', () => {
     assert.equal(summary.body.confirmed, 1);
   });
 
+  it('the Deliveries list keeps a voided order reachable, and an undone void puts it back as delivered', async () => {
+    const { client } = setup();
+    const saved = await client.request('POST', '/api/driver/confirmations', validSubmission(), { now: NOW });
+    const id = saved.body.confirmation.id as string;
+    await post(client, `/api/dashboard/confirmations/${id}/corrections`, { receivedBy: 'Avery D.', reason: 'Spelling' });
+    const row = async () =>
+      (await client.request('GET', '/api/dashboard/deliveries?date=2026-11-14', undefined, { role: 'employee', now: NOW })).body.items.find(
+        (i: { orderId: string }) => i.orderId === 'MF-10482',
+      );
+    await post(client, `/api/dashboard/confirmations/${id}/void`, { reason: 'Wrong order' });
+    assert.deepEqual([(await row()).status, (await row()).voidedConfirmationId], ['awaiting', id], 'still listed, tagged and linked to its record');
+    await post(client, `/api/dashboard/confirmations/${id}/unvoid`, { reason: 'Mistake' });
+    const back = await row();
+    assert.deepEqual([back.status, back.confirmation.id, back.voidedConfirmationId], ['confirmed', id, null], 'delivered again');
+    const detail = await client.request('GET', `/api/dashboard/confirmations/${id}`, undefined, { role: 'employee' });
+    assert.deepEqual(
+      detail.body.confirmation.corrections.map((k: { kind: string }) => k.kind),
+      ['correction', 'void', 'unvoid'],
+      'every change stays in the history, in order',
+    );
+  });
+
   it('refuses when the order was confirmed again after the void', async () => {
     const { client, db } = setup();
     const id = await voided(client);

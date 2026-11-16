@@ -4959,3 +4959,13 @@ button.account-dropdown-item {
     display: table-row;
   }
 }
+
+/* Order page: each voided record with a clear way back to it. */
+.voided-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.35rem 0;
+}

@@ -4,12 +4,14 @@ import { fullDayLabel } from '../lib/calendar.ts';
 import { shopTime } from '../lib/time.ts';
 import { ResultTag } from './ui.tsx';
 
-/** Employees' list of orders: confirmed ones open their record, the others open the order. */
+/** Employees' list of orders: confirmed (and voided) ones open their record, the others open the order. */
 export function DeliveryRows({ items, timeZone, showDate = false }: { items: DeliveryListItem[]; timeZone: string; showDate?: boolean }) {
   return (
     <ul className="conf-rows">
       {items.map((d) => {
-        const to = d.confirmation ? `/shop/confirmations/${d.confirmation.id}` : `/shop/orders/${encodeURIComponent(d.orderId)}`;
+        // A voided order opens its voided record, which keeps the full change history and the "Undo void" button.
+        const record = d.confirmation?.id ?? d.voidedConfirmationId;
+        const to = record ? `/shop/confirmations/${record}` : `/shop/orders/${encodeURIComponent(d.orderId)}`;
         return (
           <li key={d.orderId}>
             <Link to={to} className="conf-row">
@@ -29,6 +31,7 @@ export function DeliveryRows({ items, timeZone, showDate = false }: { items: Del
                 )}
               </span>
               <span className="row-tags conf-tags">
+                {d.status === 'awaiting' && d.voidedConfirmationId && <span className="tag tag-not-verified">Voided</span>}
                 {d.status === 'awaiting' && <span className="tag tag-quiet">Awaiting</span>}
                 {d.status === 'cancelled' && <span className="tag tag-status-cancelled">Cancelled</span>}
                 {d.confirmation && <ResultTag result={d.confirmation.result} />}

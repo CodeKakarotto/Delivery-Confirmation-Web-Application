@@ -285,6 +285,8 @@ export interface DeliveryListItem {
   deliveryDate: string | null;
   status: DeliveryStatus;
   confirmation: { id: string; confirmedAt: string; result: ConfirmationResult; receivedBy: string } | null;
+  /** With no active confirmation: the most recently voided one (its record has the history and "Undo void"). */
+  voidedConfirmationId: string | null;
 }
 
 export interface DeliveryListResponse {
