@@ -2,6 +2,8 @@ import { Link } from 'react-router';
 import { OUTCOME_LABELS, type DailyReport, type DailyReportRow } from '../../../shared/types.ts';
 import { fullDayLabel } from '../lib/calendar.ts';
 import { shopTime } from '../lib/time.ts';
+import { PAGE_SIZE, useLocalPage } from '../lib/paging.ts';
+import { Pager } from './ConfirmationRows.tsx';
 
 const STATUS: Record<DailyReportRow['status'], { label: string; tag: string }> = {
   delivered: { label: 'Delivered to recipient', tag: 'tag-ok' },
@@ -14,6 +16,8 @@ const STATUS: Record<DailyReportRow['status'], { label: string; tag: string }> =
 /** The end-of-day report: the day's totals and one line per order (on screen and on paper). */
 export function DailyReportTable({ report: r, timeZone }: { report: DailyReport; timeZone?: string }) {
   const notDone = r.isPast ? 'Missing' : 'Awaiting';
+  const [page, setPage] = useLocalPage(r.rows.length, r.date);
+  const first = (page - 1) * PAGE_SIZE;
   return (
     <>
       <h2 className="report-day">{fullDayLabel(r.date)}</h2>
@@ -51,10 +55,12 @@ export function DailyReportTable({ report: r, timeZone }: { report: DailyReport;
             </tr>
           </thead>
           <tbody>
-            {r.rows.map((row) => {
+            {r.rows.map((row, i) => {
               const s = STATUS[row.status];
+              // Rows of other pages stay in the table (hidden on screen) so a printout always has the whole day.
+              const onPage = i >= first && i < first + PAGE_SIZE;
               return (
-                <tr key={row.orderId}>
+                <tr key={row.orderId} className={onPage ? undefined : 'report-row-off'}>
                   <td data-label="#" className="num">
                     {row.stopNumber ?? '—'}
                   </td>
@@ -93,6 +99,9 @@ export function DailyReportTable({ report: r, timeZone }: { report: DailyReport;
           </tbody>
         </table>
       )}
+      <div className="no-print">
+        <Pager page={page} total={r.rows.length} pageSize={PAGE_SIZE} onPage={setPage} />
+      </div>
     </>
   );
 }

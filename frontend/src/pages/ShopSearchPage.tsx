@@ -8,8 +8,8 @@ import { EmptyState, Notice, Spinner } from '../components/ui.tsx';
 import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
 import { localDateKey } from '../../../shared/shopTime.ts';
+import { PAGE_SIZE } from '../lib/paging.ts';
 
-const PAGE_SIZE = 10;
 
 /** Employees: find deliveries on any day by order ID or recipient name (part of either is enough). */
 export function ShopSearchPage() {

@@ -13,8 +13,8 @@ import { fullDayLabel, monthLabel } from '../lib/calendar.ts';
 import { addMonths } from '../lib/monthGrid.ts';
 import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
+import { PAGE_SIZE } from '../lib/paging.ts';
 
-const PAGE_SIZE = 10;
 type Filter = DeliveryStatus | 'all';
 const shortDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const noon = (d: string) => new Date(`${d}T12:00:00Z`);

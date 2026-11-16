@@ -13,9 +13,9 @@ import { fullDayLabel } from '../lib/calendar.ts';
 import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
 import { CallShop } from '../components/CallShop.tsx';
+import { PAGE_SIZE } from '../lib/paging.ts';
 
-const PAGE_SIZE = 5;
-const RECENT = 5;
+const RECENT = PAGE_SIZE;
 
 /**
  * Driver dashboard: today's awaiting deliveries on the left (5 per page; tap one to confirm it), "Can't find the

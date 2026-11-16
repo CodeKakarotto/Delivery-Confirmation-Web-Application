@@ -13,8 +13,8 @@ import { Notice, Spinner } from '../components/ui.tsx';
 import { fullDayLabel } from '../lib/calendar.ts';
 import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
+import { PAGE_SIZE, pageOf, useLocalPage } from '../lib/paging.ts';
 
-const PAGE_SIZE = 10;
 
 /**
  * A single month calendar (current week highlighted, today circled, today's date underneath). Tapping a day shows
@@ -123,6 +123,7 @@ function DayPanel({
   const { sentVersion } = useOffline();
   const list = useApi(() => dashboardApi.list({ day, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [day, page, sentVersion], { live: true });
   const s = summary.data;
+  const [awaitingPage, setAwaitingPage] = useLocalPage(s?.awaiting.length ?? 0, day);
   return (
     <section className="day-panel" aria-labelledby="day-title">
       <div className="day-panel-head">
@@ -168,7 +169,7 @@ function DayPanel({
                 <span className="h1-sub">{s.awaiting.length}</span>
               </h3>
               <ul className="plain-list awaiting-list">
-                {s.awaiting.map((a) => (
+                {pageOf(s.awaiting, awaitingPage).map((a) => (
                   <li key={a.orderId}>
                     <Link to={`/shop/orders/${encodeURIComponent(a.orderId)}`} className="awaiting-row">
                       <span>
@@ -187,6 +188,7 @@ function DayPanel({
                   </li>
                 ))}
               </ul>
+              <Pager page={awaitingPage} total={s.awaiting.length} pageSize={PAGE_SIZE} onPage={setAwaitingPage} />
             </div>
           )}
         </>

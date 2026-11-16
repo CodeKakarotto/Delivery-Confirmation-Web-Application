@@ -4949,3 +4949,13 @@ button.account-dropdown-item {
   margin-top: 0.25rem;
   cursor: pointer;
 }
+
+/* End-of-day report: 10 rows per page on screen, every row on paper. */
+.report-row-off {
+  display: none;
+}
+@media print {
+  .report-row-off {
+    display: table-row;
+  }
+}

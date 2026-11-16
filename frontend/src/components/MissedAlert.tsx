@@ -3,6 +3,8 @@ import type { MissedDeliveries } from '../../../shared/types.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { fullDayLabel } from '../lib/calendar.ts';
 import { useApi } from '../lib/useApi.ts';
+import { PAGE_SIZE, pageOf, useLocalPage } from '../lib/paging.ts';
+import { Pager } from './ConfirmationRows.tsx';
 
 /** "18:00" → "6:00 PM". */
 export function clockLabel(hhmm: string): string {
@@ -56,28 +58,37 @@ export function MissedAlertView({ data }: { data: MissedDeliveries }) {
         </div>
       </div>
       {data.days.map((day, i) => (
-        <details key={day.date} className="missed-day" open={i === 0 && data.total <= 5}>
-          <summary>
-            <svg className="missed-chevron" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
-              <path d="M7.5 5.5 12 10l-4.5 4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="missed-day-label">{day.date === data.today ? `Today, ${fullDayLabel(day.date)}` : fullDayLabel(day.date)}</span>
-            <span className="missed-count">{day.orders.length} missed</span>
-          </summary>
-          <ul className="plain-list missed-list">
-            {day.orders.map((o) => (
-              <li key={o.orderId}>
-                <Link to={`/shop/orders/${encodeURIComponent(o.orderId)}`} className="missed-order">
-                  <span className="cell-strong">{o.orderId}</span>
-                  <span className="cell-sub">
-                    # {o.stopNumber ?? '—'} · Zone {o.zone ?? '—'} · {o.recipientName ?? 'No recipient name'}, {o.city}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </details>
+        <MissedDay key={day.date} day={day} today={data.today} open={i === 0 && data.total <= 5} />
       ))}
     </section>
+  );
+}
+
+/** One day of missed orders, folded until tapped; 10 orders per page. */
+function MissedDay({ day, today, open }: { day: MissedDeliveries['days'][number]; today: string; open: boolean }) {
+  const [page, setPage] = useLocalPage(day.orders.length, day.date);
+  return (
+    <details className="missed-day" open={open}>
+      <summary>
+        <svg className="missed-chevron" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+          <path d="M7.5 5.5 12 10l-4.5 4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <span className="missed-day-label">{day.date === today ? `Today, ${fullDayLabel(day.date)}` : fullDayLabel(day.date)}</span>
+        <span className="missed-count">{day.orders.length} missed</span>
+      </summary>
+      <ul className="plain-list missed-list">
+        {pageOf(day.orders, page).map((o) => (
+          <li key={o.orderId}>
+            <Link to={`/shop/orders/${encodeURIComponent(o.orderId)}`} className="missed-order">
+              <span className="cell-strong">{o.orderId}</span>
+              <span className="cell-sub">
+                # {o.stopNumber ?? '—'} · Zone {o.zone ?? '—'} · {o.recipientName ?? 'No recipient name'}, {o.city}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <Pager page={page} total={day.orders.length} pageSize={PAGE_SIZE} onPage={setPage} />
+    </details>
   );
 }
