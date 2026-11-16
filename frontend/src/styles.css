@@ -213,6 +213,9 @@ a:hover {
   flex: 1;
 }
 .mainnav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   padding: 0.55rem 0.8rem;
   text-decoration: none;
   /* Neutral dark gray (no green tint): 7.56:1 on white. */
@@ -4352,5 +4355,119 @@ button.home-card {
   }
   .report-figures {
     grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ---------- Navigation sections ---------- */
+
+.nav-section {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+/* A thin divider between sections (not before the first). */
+.nav-section + .nav-section::before {
+  content: '';
+  width: 1px;
+  height: 1.4rem;
+  margin: 0 0.45rem;
+  background: var(--rule);
+  flex: none;
+}
+.mainnav a svg {
+  flex: none;
+  opacity: 0.85;
+}
+/* Backup: a calm amber tone, so it reads as "for when something is wrong". */
+.mainnav .nav-backup a {
+  color: var(--amber);
+}
+.mainnav .nav-backup a:hover,
+.mainnav .nav-backup a.is-active {
+  color: var(--amber);
+  background: var(--amber-wash);
+}
+.mainnav .nav-backup a.is-active::after {
+  background: var(--amber);
+}
+/* Search: at the end, shaped like a search box. */
+.mainnav .nav-search {
+  margin-left: auto;
+}
+.mainnav .nav-search::before {
+  display: none;
+}
+.mainnav .nav-search a {
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  border-radius: 999px;
+  padding: 0.45rem 1rem 0.45rem 0.8rem;
+  color: var(--muted);
+  min-width: 10.5rem;
+}
+.mainnav .nav-search a:hover,
+.mainnav .nav-search a.is-active {
+  border-color: var(--fern);
+  color: var(--evergreen);
+  background: var(--leaf);
+}
+.mainnav .nav-search a.is-active::after {
+  display: none;
+}
+@media (max-width: 1100px) {
+  .mainnav .nav-search a {
+    min-width: 0;
+  }
+}
+@media (max-width: 720px) {
+  .mainnav .nav-search {
+    margin-left: 0.4rem;
+  }
+}
+:root[data-theme='dark'] .mainnav .nav-backup a {
+  color: #f0c46c;
+}
+:root[data-theme='dark'] .mainnav .nav-backup a:hover,
+:root[data-theme='dark'] .mainnav .nav-backup a.is-active {
+  color: #f0c46c;
+  background: rgba(240, 196, 108, 0.12);
+}
+:root[data-theme='dark'] .mainnav .nav-search a {
+  background: transparent;
+}
+.mainnav .nav-section {
+  flex: none;
+}
+.mainnav .nav-search a {
+  min-width: 7.5rem;
+}
+/* Narrower screens: the three extra sections become icons; the name stays for screen readers and on hover. */
+@media (max-width: 1180px) {
+  .mainnav :is(.nav-report, .nav-backup, .nav-search) .nav-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .mainnav :is(.nav-report, .nav-backup, .nav-search) a {
+    min-width: 0;
+    padding: 0.55rem 0.65rem;
+  }
+  .mainnav :is(.nav-report, .nav-backup, .nav-search) svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+@media (max-width: 720px) {
+  .mainnav a {
+    padding: 0.55rem 0.6rem;
+  }
+  .mainnav .nav-section + .nav-section::before {
+    margin: 0 0.2rem;
+  }
+  .mainnav .nav-search {
+    margin-left: auto;
   }
 }

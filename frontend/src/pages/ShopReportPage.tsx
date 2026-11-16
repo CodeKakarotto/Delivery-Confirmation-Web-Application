@@ -29,7 +29,7 @@ export function ShopReportPage() {
         <p className="print-note">Printed {shopDateTime(new Date().toISOString(), timeZone)} from the confirmation database.</p>
       </div>
       <div className="page-head no-print">
-        <h1>Daily report</h1>
+        <h1>End-of-day report</h1>
         <div className="actions">
           <a className="btn" href={dashboardApi.reportCsvUrl(date)} download>
             Download for Excel

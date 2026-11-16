@@ -47,19 +47,58 @@ function ThemeToggle() {
   );
 }
 
-const NAV = {
+type NavIcon = 'report' | 'paper' | 'search';
+type NavItem = { to: string; label: string; end: boolean; icon?: NavIcon; title?: string };
+/** Sections of the menu, shown with a thin divider between them. Search always sits at the end. */
+type NavSection = { kind: 'main' | 'report' | 'backup' | 'search'; items: NavItem[] };
+
+const NAV: Record<'driver' | 'employee', NavSection[]> = {
   driver: [
-    { to: '/driver', label: 'Dashboard', end: true },
-    { to: '/driver/confirmations', label: 'Confirmations', end: false },
+    {
+      kind: 'main',
+      items: [
+        { to: '/driver', label: 'Dashboard', end: true },
+        { to: '/driver/confirmations', label: 'Confirmations', end: false },
+      ],
+    },
   ],
   employee: [
-    { to: '/shop', label: 'Dashboard', end: true },
-    { to: '/shop/deliveries', label: 'Deliveries', end: false },
-    { to: '/shop/search', label: 'Search', end: false },
-    { to: '/shop/paper', label: 'Paper slips', end: false },
-    { to: '/shop/report', label: 'Daily report', end: false },
+    {
+      kind: 'main',
+      items: [
+        { to: '/shop', label: 'Dashboard', end: true },
+        { to: '/shop/deliveries', label: 'Deliveries', end: false },
+      ],
+    },
+    { kind: 'report', items: [{ to: '/shop/report', label: 'End of day', end: false, icon: 'report', title: 'End-of-day report: print or download the day’s results' }] },
+    { kind: 'backup', items: [{ to: '/shop/paper', label: 'Paper slips', end: false, icon: 'paper', title: 'Backup: when the app cannot be used' }] },
+    { kind: 'search', items: [{ to: '/shop/search', label: 'Search', end: false, icon: 'search', title: 'Search: find an order by its ID' }] },
   ],
-} as const;
+};
+
+function NavGlyph({ icon }: { icon: NavIcon }) {
+  const common = { viewBox: '0 0 20 20', width: 16, height: 16, 'aria-hidden': true, fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
+  if (icon === 'search')
+    return (
+      <svg {...common}>
+        <circle cx="8.5" cy="8.5" r="5" />
+        <path d="m12.3 12.3 4.2 4.2" />
+      </svg>
+    );
+  if (icon === 'paper')
+    return (
+      <svg {...common}>
+        <path d="M5 2.5h6.5L15 6v11.5H5z" />
+        <path d="M11.5 2.5V6H15M7.5 10h5M7.5 13h3.5" />
+      </svg>
+    );
+  return (
+    <svg {...common}>
+      <rect x="4" y="3.5" width="12" height="14" rx="1.5" />
+      <path d="M7.5 3.5V2.5h5v1M7 13.5v-2M10 13.5V9M13 13.5v-3.5" />
+    </svg>
+  );
+}
 
 /** The signed-in account and Sign out (which ends the session on the server). */
 function AccountBadge() {
@@ -112,10 +151,15 @@ export function AppLayout() {
             <Brand />
           </NavLink>
           <nav className="mainnav" aria-label="Main">
-            {nav.map((item) => (
-              <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => (isActive ? 'is-active' : '')}>
-                {item.label}
-              </NavLink>
+            {nav.map((section) => (
+              <div key={section.kind} className={`nav-section nav-${section.kind}`}>
+                {section.items.map((item) => (
+                  <NavLink key={item.to} to={item.to} end={item.end} title={item.title} className={({ isActive }) => (isActive ? 'is-active' : '')}>
+                    {item.icon && <NavGlyph icon={item.icon} />}
+                    <span className="nav-label">{item.label}</span>
+                  </NavLink>
+                ))}
+              </div>
             ))}
           </nav>
           <div className="account">
