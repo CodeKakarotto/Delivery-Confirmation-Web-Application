@@ -4942,3 +4942,10 @@ button.account-dropdown-item {
 .missed-day summary:hover .missed-day-label {
   text-decoration: underline;
 }
+
+/* Paper slip entry: a big, friendly button instead of the browser's file picker. */
+.photo-btn {
+  display: inline-flex;
+  margin-top: 0.25rem;
+  cursor: pointer;
+}

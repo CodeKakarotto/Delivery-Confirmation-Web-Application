@@ -21,7 +21,7 @@ export function PrintSlipsPage() {
           <h1>Blank paper slips</h1>
           <div className="actions">
             <a className="btn" href={SLIP_PDF} download>
-              Download PDF
+              Save a copy (PDF)
             </a>
             <button type="button" className="btn btn-primary" onClick={() => window.print()}>
               Print
@@ -41,31 +41,23 @@ export function PrintSlipsPage() {
 /** Where the blank slip PDF is served from (frontend/public): it opens and prints without the app. */
 export const SLIP_PDF = '/michaels-flowers-paper-slip.pdf';
 
-/** The paper backup, step by step: get ready while the app works, use paper if it is down, enter the slips after. */
+/** The paper backup in three plain steps (written for people who are not "tech people"). */
 function PaperSteps({ onForm = false }: { onForm?: boolean }) {
   return (
     <section className="paper-steps" aria-labelledby="paper-steps-title">
-      <h2 id="paper-steps-title">Paper backup</h2>
+      <h2 id="paper-steps-title">App not working? Use paper.</h2>
       <ol>
         <li>
           <span className="paper-step-num" aria-hidden="true">1</span>
-          <span>
-            <strong>Get ready now, while the app works.</strong> Print a stack of blank slips and keep some in every van and at the counter. Save the
-            PDF on the shop computer or a USB stick, so you can print more even when the app is down.
-          </span>
+          <span>Keep a few blank slips in every van.</span>
         </li>
         <li>
           <span className="paper-step-num" aria-hidden="true">2</span>
-          <span>
-            <strong>If the app is down,</strong> drivers fill in one slip per delivery and the customer signs it.
-          </span>
+          <span>The driver fills in a slip, and the customer signs it.</span>
         </li>
         <li>
           <span className="paper-step-num" aria-hidden="true">3</span>
-          <span>
-            <strong>When the app is back,</strong> enter each slip {onForm ? 'below' : 'on the Paper slips page'} with a photo of it (required: it is the
-            proof of the customer’s signature).
-          </span>
+          <span>{onForm ? 'Back at the shop, type the slip in below and take a picture of it.' : 'Back at the shop, type each slip in on the Paper slips page.'}</span>
         </li>
       </ol>
     </section>
@@ -99,7 +91,8 @@ export function PaperEntryPage() {
   const [detail, setDetail] = useState('');
   const [receivedBy, setReceivedBy] = useState('');
   const [deliveredAt, setDeliveredAt] = useState(nowLocalInput());
-  const [reference, setReference] = useState('Paper slip filed at the shop');
+  // Where the signed paper slip is kept; the shop does not need to type it.
+  const reference = 'Paper slip filed at the shop';
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -133,8 +126,7 @@ export function PaperEntryPage() {
     const when = new Date(deliveredAt);
     if (!deliveredAt || Number.isNaN(when.getTime())) found.deliveredAt = 'Enter the date and time from the slip';
     else if (when.getTime() > Date.now() + 5 * 60_000) found.deliveredAt = 'The time on the slip cannot be in the future';
-    if (!reference.trim()) found.paperReference = 'Say where the signed slip is filed';
-    if (!photo) found.slipPhoto = 'Take or choose a photo of the signed slip';
+    if (!photo) found.slipPhoto = 'Take a picture of the signed slip';
     setIssues(found);
     if (Object.keys(found).length) return;
     setBusy(true);
@@ -164,17 +156,11 @@ export function PaperEntryPage() {
       <BackButton fallback="/shop" />
       <div className="page-head">
         <h1>Paper slips</h1>
-        <div className="actions">
-          <a className="btn" href={SLIP_PDF} download>
-            Download PDF
-          </a>
-          <Link to="/shop/paper/print" className="btn btn-primary">
-            Print blank slips
-          </Link>
-        </div>
+        <Link to="/shop/paper/print" className="btn btn-primary">
+          Print blank slips
+        </Link>
       </div>
       <PaperSteps onForm />
-      <p className="muted">Copy the slip exactly; the record is marked “Entered from paper”.</p>
       {error && <Notice tone="error">{error}</Notice>}
       <form className="card paper-form" onSubmit={onSubmit} noValidate>
         <div className={`field${issues.orderId ? ' field-invalid' : ''}`}>
@@ -213,7 +199,7 @@ export function PaperEntryPage() {
 
         <div className={`field${issues.receivedBy ? ' field-invalid' : ''}`}>
           <label htmlFor={ids.name}>
-            Received by
+            Who received it?
             <RequiredMark />
           </label>
           <input id={ids.name} value={receivedBy} maxLength={RECEIVED_BY_MAX} onChange={(e) => setReceivedBy(e.target.value)} />
@@ -222,43 +208,46 @@ export function PaperEntryPage() {
 
         <div className={`field${issues.deliveredAt ? ' field-invalid' : ''}`}>
           <label htmlFor={ids.when}>
-            Delivery date and time on the slip
+            When was it delivered?
             <RequiredMark />
           </label>
           <input id={ids.when} type="datetime-local" value={deliveredAt} onChange={(e) => setDeliveredAt(e.target.value)} />
           {issues.deliveredAt && <p className="field-error">{issues.deliveredAt}</p>}
         </div>
 
-        <div className={`field${issues.paperReference ? ' field-invalid' : ''}`}>
-          <label htmlFor={ids.ref}>
-            Where the signed slip is filed
-            <RequiredMark />
-          </label>
-          <input id={ids.ref} value={reference} maxLength={200} onChange={(e) => setReference(e.target.value)} />
-          {issues.paperReference && <p className="field-error">{issues.paperReference}</p>}
-        </div>
-
         <div className={`field${issues.slipPhoto ? ' field-invalid' : ''}`}>
           <label htmlFor={ids.photo}>
-            Photo of the signed slip
+            Picture of the signed slip
             <RequiredMark />
           </label>
-          <p className="field-hint">Lay the slip flat and make sure the signature can be read.</p>
-          <input id={ids.photo} type="file" accept="image/*" capture="environment" onChange={(e) => void onPhoto(e.target.files?.[0])} />
-          {photoBusy && <p className="field-hint">Preparing the photo…</p>}
+          <p className="field-hint">Make sure the signature shows clearly.</p>
+          <input
+            id={ids.photo}
+            className="visually-hidden"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => void onPhoto(e.target.files?.[0])}
+          />
+          {!photo && (
+            <label htmlFor={ids.photo} className="btn btn-large photo-btn">
+              Take a picture
+            </label>
+          )}
+          {photoBusy && <p className="field-hint">Getting the picture ready…</p>}
           {issues.slipPhoto && <p className="field-error">{issues.slipPhoto}</p>}
           {photo && (
             <div className="slip-photo-preview">
               <img src={photo} alt="Photo of the signed slip, ready to save" />
               <button type="button" className="btn btn-small btn-ghost-danger" onClick={() => setPhoto(null)}>
-                Remove photo
+                Take it again
               </button>
             </div>
           )}
         </div>
 
         <button type="submit" className="btn btn-primary btn-block btn-large" disabled={busy || photoBusy}>
-          {busy ? 'Saving…' : 'Save from paper slip'}
+          {busy ? 'Saving…' : 'Save slip'}
         </button>
       </form>
     </div>
