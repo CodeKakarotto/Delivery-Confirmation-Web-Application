@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { localDateKey } from '../../../shared/shopTime.ts';
-import type { CalendarDay } from '../../../shared/types.ts';
 import { errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { ConfirmationRows, Pager } from '../components/ConfirmationRows.tsx';
 import { MonthCalendar } from '../components/MonthCalendar.tsx';
+import { DayLegend } from '../components/DayBadges.tsx';
+import { marksMap, type DayMarks } from '../lib/dayMarks.ts';
+import { useOffline } from '../lib/offline.tsx';
 import { Notice, Spinner } from '../components/ui.tsx';
 import { fullDayLabel } from '../lib/calendar.ts';
 import { useApi } from '../lib/useApi.ts';
@@ -23,17 +25,29 @@ const PAGE_SIZE = 10;
 export function CalendarPage({ variant }: { variant: 'employee' | 'driver' }) {
   const timeZone = useShopTimeZone();
   const [params, setParams] = useSearchParams();
-  const calendar = useApi(() => dashboardApi.calendar(), []);
-  const today = calendar.data?.today ?? localDateKey(new Date(), timeZone);
-  const selected = params.get('d') || today;
+  const { sentVersion } = useOffline();
+  const localToday = localDateKey(new Date(), timeZone);
+  const selected = params.get('d') || localToday;
   const month = params.get('m') || selected.slice(0, 7);
   const page = Math.max(1, Number(params.get('p')) || 1);
 
-  const days = useMemo(() => {
-    const map: Record<string, CalendarDay> = {};
-    for (const m of calendar.data?.months ?? []) for (const w of m.weeks) for (const d of w.days) map[d.date] = d;
+  // Employees: every order by its delivery day (delivered / missed / still to deliver), like the end-of-day report.
+  // Drivers: only the deliveries they confirmed themselves.
+  const shopMonth = useApi(
+    () => (variant === 'employee' ? dashboardApi.deliveryCalendar(month) : Promise.resolve(null)),
+    [variant, month],
+    { live: true },
+  );
+  const mine = useApi(() => (variant === 'driver' ? dashboardApi.calendar() : Promise.resolve(null)), [variant, sentVersion], { live: true });
+  const calendar = variant === 'employee' ? shopMonth : mine;
+  const today = shopMonth.data?.today ?? mine.data?.today ?? localToday;
+
+  const marks = useMemo(() => {
+    if (shopMonth.data) return marksMap(Object.fromEntries(shopMonth.data.days.map((d) => [d.date, d])), today);
+    const map: Record<string, DayMarks> = {};
+    for (const m of mine.data?.months ?? []) for (const w of m.weeks) for (const d of w.days) map[d.date] = { delivered: d.count, missed: 0, toDeliver: 0 };
     return map;
-  }, [calendar.data]);
+  }, [shopMonth.data, mine.data, today]);
 
   const update = (changes: Record<string, string | null>, replace = false) => {
     const next = new URLSearchParams(params);
@@ -62,11 +76,12 @@ export function CalendarPage({ variant }: { variant: 'employee' | 'driver' }) {
                 month={month}
                 today={today}
                 selected={selected}
-                days={days}
+                marks={marks}
                 onSelect={(date) => update({ d: date === today ? null : date, m: null, p: null }, true)}
                 onMonth={(m) => update({ m }, true)}
               />
             )}
+            <DayLegend deliveredOnly={variant === 'driver'} />
           </section>
           <DayPanel
             variant={variant}
@@ -101,8 +116,9 @@ function DayPanel({
   onToday: () => void;
 }) {
   // The day's figures and awaiting orders are shop-wide: employees only.
-  const summary = useApi(() => (variant === 'employee' ? dashboardApi.summary(day) : Promise.resolve(null)), [day, variant]);
-  const list = useApi(() => dashboardApi.list({ day, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [day, page]);
+  const summary = useApi(() => (variant === 'employee' ? dashboardApi.summary(day) : Promise.resolve(null)), [day, variant], { live: true });
+  const { sentVersion } = useOffline();
+  const list = useApi(() => dashboardApi.list({ day, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [day, page, sentVersion], { live: true });
   const s = summary.data;
   return (
     <section className="day-panel" aria-labelledby="day-title">

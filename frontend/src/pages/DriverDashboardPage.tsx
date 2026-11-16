@@ -29,8 +29,8 @@ export function DriverDashboardPage() {
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get('p')) || 1);
   const offline = useOffline();
-  const awaiting = useApi(() => driverApi.awaiting({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [page, offline.sentVersion]);
-  const recent = useApi(() => dashboardApi.list({ limit: RECENT }), [offline.sentVersion]);
+  const awaiting = useApi(() => driverApi.awaiting({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [page, offline.sentVersion], { live: true });
+  const recent = useApi(() => dashboardApi.list({ limit: RECENT }), [offline.sentVersion], { live: true });
   const [orderId, setOrderId] = useState('');
   const [error, setError] = useState<string | undefined>();
 

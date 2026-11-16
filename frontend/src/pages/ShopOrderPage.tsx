@@ -12,7 +12,7 @@ import { useShopTimeZone } from '../lib/useShopConfig.ts';
 /** One order opened from the shop's awaiting list: its details and whether it has been confirmed. */
 export function ShopOrderPage() {
   const { orderId = '' } = useParams();
-  const order = useApi(() => dashboardApi.order(orderId), [orderId]);
+  const order = useApi(() => dashboardApi.order(orderId), [orderId], { live: true });
   const timeZone = useShopTimeZone();
   const back = <BackButton fallback="/shop" />;
 

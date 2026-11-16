@@ -32,9 +32,13 @@ describe('Month view', () => {
   });
 
   it('shows each day’s deliveries by status, in words for screen readers', () => {
-    assert.match(html, /aria-label="Saturday, November 14, 2026: 6 deliveries, 1 delivered, 1 exception, 3 awaiting, 1 cancelled"/);
-    assert.match(html, /aria-label="Friday, November 13, 2026: 2 deliveries, 2 awaiting"/);
+    assert.match(html, /aria-label="Saturday, November 14, 2026: 6 deliveries, 1 delivered to recipient, 1 exception \(delivered\), 3 missed, 1 cancelled"/);
+    assert.match(html, /aria-label="Friday, November 13, 2026: 2 deliveries, 2 missed"/);
     assert.match(html, /aria-label="Monday, November 2, 2026: no deliveries"/);
+  });
+
+  it('colors the numbers: exceptions count as delivered (green), unconfirmed past orders are missed (red)', () => {
+    assert.match(html, /November 14, 2026:[^>]*>(?:(?!<\/button>).)*day-badge is-delivered">2<(?:(?!<\/button>).)*day-badge is-missed">3</);
   });
 });
 

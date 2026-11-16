@@ -7,6 +7,7 @@ import { dashboardApi } from '../api/endpoints.ts';
 import { Pager } from '../components/ConfirmationRows.tsx';
 import { DeliveriesMonth, DeliveriesWeek, ViewSwitch, type CalendarView } from '../components/DeliveriesCalendar.tsx';
 import { DeliveryRows } from '../components/DeliveryRows.tsx';
+import { DayLegend } from '../components/DayBadges.tsx';
 import { EmptyState, Notice, Segmented, Spinner } from '../components/ui.tsx';
 import { fullDayLabel, monthLabel } from '../lib/calendar.ts';
 import { addMonths } from '../lib/monthGrid.ts';
@@ -21,13 +22,13 @@ const noon = (d: string) => new Date(`${d}T12:00:00Z`);
 /** Each day's counts for the months a view shows (a week can cross into a second month). */
 function useDayCounts(months: string[]) {
   const key = months.join(',');
-  const res = useApi(() => Promise.all(months.map((m) => dashboardApi.deliveryCalendar(m))), [key]);
+  const res = useApi(() => Promise.all(months.map((m) => dashboardApi.deliveryCalendar(m))), [key], { live: true });
   const days = useMemo(() => {
     const map: Record<string, DeliveryDayCounts> = {};
     for (const r of res.data ?? []) for (const d of r.days) map[d.date] = d;
     return map;
   }, [res.data]);
-  return { days, error: res.error, loading: res.loading, reload: res.reload };
+  return { days, error: res.error, loading: res.loading, reload: res.reload, hasData: res.data !== null };
 }
 
 /**
@@ -102,15 +103,13 @@ export function ShopDeliveriesPage() {
               {errorMessage(counts.error)}
             </Notice>
           ) : (
-            <div className={`card dcal-card${counts.loading ? ' is-loading' : ''}`}>
+            <div className={`card dcal-card${counts.loading && !counts.hasData ? ' is-loading' : ''}`}>
               {view === 'month' ? (
                 <DeliveriesMonth month={shownMonth} today={today} selected={selected} days={counts.days} onPickDay={select} />
               ) : (
                 <DeliveriesWeek start={weekStart} today={today} selected={selected} days={counts.days} onPickDay={select} />
               )}
-              <p className="dcal-legend muted small">
-                <span className="dcal-dot is-ok" /> delivered <span className="dcal-dot is-warn" /> exception <span className="dcal-dot is-wait" /> awaiting
-              </p>
+              <DayLegend />
             </div>
           )}
       </div>
@@ -138,7 +137,7 @@ function DayList({
   onStatus: (v: Filter) => void;
   onPage: (p: number) => void;
 }) {
-  const list = useApi(() => dashboardApi.deliveries({ date, status, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [date, status, page]);
+  const list = useApi(() => dashboardApi.deliveries({ date, status, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [date, status, page], { live: true });
   return (
     <section className="card confirmed-card day-list" aria-labelledby="day-list-title">
       <div className="day-list-head">

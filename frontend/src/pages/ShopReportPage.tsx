@@ -19,7 +19,7 @@ export function ShopReportPage() {
   const [params, setParams] = useSearchParams();
   const today = localDateKey(new Date(), timeZone);
   const date = params.get('date') || today;
-  const report = useApi(() => dashboardApi.report(date), [date]);
+  const report = useApi(() => dashboardApi.report(date), [date], { live: true });
   const go = (d: string) => setParams(d === today ? {} : { date: d }, { replace: true });
 
   return (

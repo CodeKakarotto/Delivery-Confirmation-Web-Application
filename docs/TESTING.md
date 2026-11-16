@@ -25,6 +25,7 @@ for the test runner by `frontend/test/register-tsx.mjs` (esbuild).
 | `frontend/test/authGate.test.tsx` | Pages shown only to signed-in accounts of the right role |
 | `worker/test/corrections.test.ts` | Corrections (reason required, old values kept, outcome rules, signature never changed), voids (order back to awaiting, re-confirmable, not counted), paper entries (marked paper, slip time, photo required and checked, rules, idempotent), offline copy endpoint |
 | `frontend/test/outbox.test.ts` | The phone outbox: retry on no signal or server errors, keep refused items for attention, stop at an ended session, order and per-driver, no duplicates; today's copy per driver and day |
+| `frontend/test/dayMarks.test.ts` | Calendar colors: exceptions count as delivered, unconfirmed orders are missed once the day is over and still to deliver before |
 | `worker/test/demoSeed.test.ts` | Demo orders: twelve a day for today and the next seven days, rotating recipients, safe to run twice |
 | `frontend/test/callShop.test.tsx` | The shop's number as a tap-to-call link for drivers |
 | `worker/test/unvoidReport.test.ts` | Undo void (only on voided records, reason required, counts again, refused after re-confirmation, employees only) and the end-of-day report (rows and totals, Missing on past days, CSV for Excel, formula escaping, date checks) |

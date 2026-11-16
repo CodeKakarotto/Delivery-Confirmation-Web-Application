@@ -9,29 +9,52 @@ export interface ApiState<T> {
   mutate: (data: T) => void;
 }
 
-/** Loads data when `deps` change; ignores responses from superseded requests. */
-export function useApi<T>(loader: () => Promise<T>, deps: unknown[]): ApiState<T> {
+/** How often live pages fetch fresh numbers in the background. */
+export const LIVE_REFRESH_MS = 30_000;
+
+const DATA_CHANGED = 'mf:data-changed';
+
+/** Tell every live list and calendar on this page to refresh now (after a confirmation, correction, void, …). */
+export function announceDataChanged(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(DATA_CHANGED));
+}
+
+/**
+ * Loads data when `deps` change; ignores responses from superseded requests.
+ * With `live`, it also refreshes quietly (no spinner, the old data stays on screen, a failed refresh is ignored)
+ * every 30 seconds while the page is visible, as soon as the window comes back into view, and right after this
+ * phone or computer saves a change. So a delivery a driver confirms shows up on the employees' calendars and lists
+ * without anyone reloading the page.
+ */
+export function useApi<T>(loader: () => Promise<T>, deps: unknown[], opts: { live?: boolean } = {}): ApiState<T> {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
   const loaderRef = useRef(loader);
   loaderRef.current = loader;
+  const silentRef = useRef(false);
 
   useEffect(() => {
     let current = true;
-    setLoading(true);
-    setError(null);
+    const silent = silentRef.current;
+    silentRef.current = false;
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
     loaderRef
       .current()
       .then((d) => {
-        if (current) setData(d);
+        if (!current) return;
+        setData(d);
+        if (silent) setError(null);
       })
       .catch((e: unknown) => {
-        if (current) setError(e);
+        if (current && !silent) setError(e);
       })
       .finally(() => {
-        if (current) setLoading(false);
+        if (current && !silent) setLoading(false);
       });
     return () => {
       current = false;
@@ -40,10 +63,36 @@ export function useApi<T>(loader: () => Promise<T>, deps: unknown[]): ApiState<T
   }, [...deps, tick]);
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
+  const refresh = useCallback(() => {
+    silentRef.current = true;
+    setTick((t) => t + 1);
+  }, []);
   const mutate = useCallback((d: T) => {
     setData(d);
     setError(null);
   }, []);
+
+  const live = Boolean(opts.live);
+  useEffect(() => {
+    if (!live || typeof window === 'undefined') return;
+    const visible = () => document.visibilityState === 'visible';
+    const id = window.setInterval(() => {
+      if (visible()) refresh();
+    }, LIVE_REFRESH_MS);
+    const onBack = () => {
+      if (visible()) refresh();
+    };
+    window.addEventListener('focus', onBack);
+    document.addEventListener('visibilitychange', onBack);
+    window.addEventListener(DATA_CHANGED, onBack);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('focus', onBack);
+      document.removeEventListener('visibilitychange', onBack);
+      window.removeEventListener(DATA_CHANGED, onBack);
+    };
+  }, [live, refresh]);
+
   return { data, error, loading, reload, mutate };
 }
 

@@ -1,6 +1,8 @@
 import { addDays, weekStartKey } from '../../../shared/shopTime.ts';
 import type { DeliveryDayCounts } from '../../../shared/types.ts';
 import { fullDayLabel } from '../lib/calendar.ts';
+import { marksFromCounts } from '../lib/dayMarks.ts';
+import { DayBadges } from './DayBadges.tsx';
 import { monthGrid } from '../lib/monthGrid.ts';
 
 export type CalendarView = 'month' | 'week';
@@ -25,27 +27,21 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-function dayCountsLabel(date: string, c: DeliveryDayCounts | undefined): string {
+function dayCountsLabel(date: string, c: DeliveryDayCounts | undefined, today: string): string {
   if (!c || c.total === 0) return `${fullDayLabel(date)}: no deliveries`;
+  const past = date < today;
   const parts = [plural(c.total, 'delivery', 'deliveries')];
-  if (c.confirmed) parts.push(`${c.confirmed} delivered`);
-  if (c.exception) parts.push(plural(c.exception, 'exception', 'exceptions'));
-  if (c.awaiting) parts.push(`${c.awaiting} awaiting`);
+  if (c.confirmed) parts.push(`${c.confirmed} delivered to recipient`);
+  if (c.exception) parts.push(`${plural(c.exception, 'exception', 'exceptions')} (delivered)`);
+  if (c.awaiting) parts.push(past ? `${c.awaiting} missed` : `${c.awaiting} still to deliver`);
   if (c.cancelled) parts.push(`${c.cancelled} cancelled`);
   return `${fullDayLabel(date)}: ${parts.join(', ')}`;
 }
 
-/** Small status dots under a day's number (details are in the list below the calendar). */
-function Dots({ c }: { c: DeliveryDayCounts | undefined }) {
+/** Colored numbers under a day (green delivered, red missed, gray still to deliver). */
+function Dots({ c, today }: { c: DeliveryDayCounts | undefined; today: string }) {
   if (!c || c.total === 0) return null;
-  return (
-    <span className="dcal-dots" aria-hidden="true">
-      <span className="dcal-total">{c.total}</span>
-      {c.confirmed > 0 && <span className="dcal-dot is-ok" />}
-      {c.exception > 0 && <span className="dcal-dot is-warn" />}
-      {c.awaiting > 0 && <span className="dcal-dot is-wait" />}
-    </span>
-  );
+  return <DayBadges m={marksFromCounts(c, today)} />;
 }
 
 function dayClasses(date: string, today: string, selected: string, outside = false): string {
@@ -92,11 +88,11 @@ export function DeliveriesMonth({
                   className={dayClasses(date, today, selected, !date.startsWith(month))}
                   aria-current={date === today ? 'date' : undefined}
                   aria-pressed={date === selected}
-                  aria-label={dayCountsLabel(date, days[date])}
+                  aria-label={dayCountsLabel(date, days[date], today)}
                   onClick={() => onPickDay(date)}
                 >
                   <span className="dcal-num">{Number(date.slice(8))}</span>
-                  <Dots c={days[date]} />
+                  <Dots c={days[date]} today={today} />
                 </button>
               </td>
             ))}
@@ -131,11 +127,11 @@ export function DeliveriesWeek({
           className={dayClasses(date, today, selected)}
           aria-current={date === today ? 'date' : undefined}
           aria-pressed={date === selected}
-          aria-label={dayCountsLabel(date, days[date])}
+          aria-label={dayCountsLabel(date, days[date], today)}
           onClick={() => onPickDay(date)}
         >
           <span className="week-day-title">{`${weekdayShort.format(new Date(`${date}T12:00:00Z`))} ${Number(date.slice(8))}`}</span>
-          <Dots c={days[date]} />
+          <Dots c={days[date]} today={today} />
         </button>
       ))}
     </div>

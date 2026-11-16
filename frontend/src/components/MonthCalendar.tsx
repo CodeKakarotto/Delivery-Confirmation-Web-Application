@@ -1,26 +1,23 @@
-import type { CalendarDay } from '../../../shared/types.ts';
+import { marksWords, type DayMarks } from '../lib/dayMarks.ts';
+import { DayBadges } from './DayBadges.tsx';
 import { fullDayLabel, monthLabel } from '../lib/calendar.ts';
 import { addMonths, monthGrid } from '../lib/monthGrid.ts';
 import { weekStartKey } from '../../../shared/shopTime.ts';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function dayLabel(date: string, info: CalendarDay | undefined): string {
-  const parts = [fullDayLabel(date)];
-  if (info?.count) parts.push(`${info.count} confirmed`);
-  if (info?.needsReview) parts.push(`${info.needsReview} to review`);
-  if (info?.flagged) parts.push(`${info.flagged} flagged`);
-  return parts.join(', ');
+function dayLabel(date: string, m: DayMarks | undefined): string {
+  return [fullDayLabel(date), ...marksWords(m)].join(', ');
 }
 
 /**
- * A single month calendar: the current week's row highlighted, today circled, and today's date written underneath. Each day shows how many deliveries were confirmed; tapping a day selects it.
+ * A single month calendar: the current week's row highlighted, today circled, and today's date written underneath. Each day shows colored numbers (green delivered, red missed, gray still to deliver); tapping a day selects it.
  */
 export function MonthCalendar({
   month,
   today,
   selected,
-  days,
+  marks,
   onSelect,
   onMonth,
 }: {
@@ -29,8 +26,8 @@ export function MonthCalendar({
   /** Today in the shop's time zone. */
   today: string;
   selected: string;
-  /** Confirmation counts by date. */
-  days: Record<string, CalendarDay>;
+  /** The numbers to show, by date. */
+  marks: Record<string, DayMarks>;
   onSelect: (date: string) => void;
   onMonth: (month: string) => void;
 }) {
@@ -67,7 +64,7 @@ export function MonthCalendar({
           {weeks.map((week) => (
             <tr key={week[0]} className={week[0] === thisWeek ? 'month-cal-week is-current-week' : 'month-cal-week'}>
               {week.map((date) => {
-                const info = days[date];
+                const m = marks[date];
                 const outside = !date.startsWith(month);
                 const classes = ['month-cal-day'];
                 if (outside) classes.push('is-outside');
@@ -80,15 +77,11 @@ export function MonthCalendar({
                       className={classes.join(' ')}
                       aria-current={date === today ? 'date' : undefined}
                       aria-pressed={date === selected}
-                      aria-label={dayLabel(date, info)}
+                      aria-label={dayLabel(date, m)}
                       onClick={() => onSelect(date)}
                     >
                       <span className="month-cal-num">{Number(date.slice(8))}</span>
-                      {info?.count ? (
-                        <span className={`month-cal-count${info.needsReview || info.flagged ? ' has-review' : ''}`} aria-hidden="true">
-                          {info.count}
-                        </span>
-                      ) : null}
+                      <DayBadges m={m} />
                     </button>
                   </td>
                 );

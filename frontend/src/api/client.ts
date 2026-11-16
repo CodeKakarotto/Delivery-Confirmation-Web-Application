@@ -1,4 +1,5 @@
 import type { ApiErrorBody } from '../../../shared/types.ts';
+import { announceDataChanged } from '../lib/useApi.ts';
 
 export class ApiRequestError extends Error {
   status: number;
@@ -75,6 +76,8 @@ export async function api<T>(method: Method, path: string, body?: unknown, opts:
       err?.requestId,
     );
   }
+  // A saved change (confirmation, correction, void, paper entry…): every live list and calendar refreshes now.
+  if (method !== 'GET' && !path.startsWith('/api/auth/')) announceDataChanged();
   return data as T;
 }
 

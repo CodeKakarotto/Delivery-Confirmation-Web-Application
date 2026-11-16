@@ -4725,3 +4725,84 @@ button.account-dropdown-item {
   color: var(--evergreen);
   white-space: nowrap;
 }
+
+/* ---------- Calendar day numbers: green delivered, red missed, gray still to deliver ---------- */
+
+.day-badges {
+  display: inline-flex;
+  justify-content: center;
+  gap: 2px;
+  line-height: 1;
+}
+.day-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+}
+.day-badge.is-delivered {
+  background: #2f7d55;
+}
+.day-badge.is-missed {
+  background: #c0362c;
+}
+.day-badge.is-todo {
+  background: var(--surface);
+  color: var(--muted);
+  box-shadow: inset 0 0 0 1px var(--rule);
+}
+.day-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem 1rem;
+  margin: 0.7rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.day-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+/* Month calendar (dashboards): the numbers hang just under the day's circle. */
+.month-cal-grid {
+  border-spacing: 0 12px;
+}
+.month-cal-day .day-badges {
+  position: absolute;
+  bottom: -0.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+.month-cal-day .day-badge {
+  min-width: 1.05rem;
+  height: 1.05rem;
+  font-size: 0.64rem;
+  padding: 0 0.22rem;
+  box-shadow: 0 0 0 1.5px var(--surface);
+}
+.month-cal-day .day-badge.is-todo {
+  box-shadow: inset 0 0 0 1px var(--rule), 0 0 0 1.5px var(--surface);
+}
+/* Deliveries calendar: under the day number, inside the cell. */
+.dcal-day .day-badges {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+.dcal-strip .dcal-day .day-badges {
+  justify-content: center;
+}
+:root[data-theme='dark'] .day-badge.is-delivered {
+  background: #3c9a6a;
+}
+:root[data-theme='dark'] .day-badge.is-missed {
+  background: #d64a3f;
+}

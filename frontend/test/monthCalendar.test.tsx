@@ -22,7 +22,7 @@ function render(selected = '2026-11-15') {
       month="2026-11"
       today="2026-11-15"
       selected={selected}
-      days={{ '2026-11-14': { date: '2026-11-14', count: 2, needsReview: 1, flagged: 0 } }}
+      marks={{ '2026-11-14': { delivered: 2, missed: 1, toDeliver: 0 }, '2026-11-16': { delivered: 0, missed: 0, toDeliver: 4 } }}
       onSelect={() => {}}
       onMonth={() => {}}
     />,
@@ -45,8 +45,11 @@ describe('MonthCalendar: one calendar showing the month, week and day', () => {
     assert.match(html, /aria-current="date"[^>]*aria-label="Sunday, November 15, 2026/);
   });
 
-  it('shows how many deliveries were confirmed on a day', () => {
-    assert.match(render(), /aria-label="Saturday, November 14, 2026, 2 confirmed, 1 to review"/);
+  it('shows delivered (green), missed (red) and still-to-deliver (gray) numbers on a day, also in words', () => {
+    const html = render();
+    assert.match(html, /aria-label="Saturday, November 14, 2026, 2 delivered, 1 missed"/);
+    assert.match(html, /Saturday, November 14, 2026[^>]*>(?:(?!<\/button>).)*day-badge is-delivered">2<(?:(?!<\/button>).)*day-badge is-missed">1</);
+    assert.match(html, /aria-label="Monday, November 16, 2026, 4 still to deliver"[^>]*>(?:(?!<\/button>).)*day-badge is-todo">4</);
   });
 
   it('marks the selected day', () => {

@@ -33,8 +33,12 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
 - Safe submission: a double tap or a retry after a lost response never saves twice (idempotency key); entries are kept
   after a recoverable failure; success is shown only after the server confirms the save.
 - **Shop employees** Dashboard (`/shop`, view only): a **single month calendar**. The current week's row is highlighted,
-  today is circled, and today's date is written underneath (shop time zone, America/New_York). Each day shows how many
-  deliveries were confirmed. Tapping a day shows its figures, the orders still awaiting (tap to open) and the confirmed
+  today is circled, and today's date is written underneath (shop time zone, America/New_York). Each day shows colored
+  numbers: **green** = delivered (confirmations and delivery exceptions), **red** = missed (a day that is over, never
+  confirmed), **gray** = still to deliver (today and later), with a legend underneath. The Deliveries calendar uses the
+  same colors; a driver's calendar shows only their own deliveries (green). Calendars, lists, figures and the
+  end-of-day report **update by themselves**: right after a change is saved on that screen, every 30 seconds, and when
+  the window comes back into view. Tapping a day shows its figures, the orders still awaiting (tap to open) and the confirmed
   deliveries with their **delivery time**, 10 per page. **Deliveries** tab: a small calendar (**Month** or **Week**) where tapping
   a day lists that day's deliveries underneath (10 per page, filter by status). **Search** tab: part of an order ID or recipient name.
   - **Record and print** (`/shop/confirmations/:id`): the saved record in the same field order, with logo, barcode,
