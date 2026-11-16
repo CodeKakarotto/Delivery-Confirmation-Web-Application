@@ -14,7 +14,7 @@ const render = (data: MissedDeliveries) =>
   );
 
 describe('missed deliveries alert', () => {
-  it('lists the missed orders by day, with a way to enter each from its paper slip', () => {
+  it('lists the missed orders by day, each linking to its order', () => {
     const html = render({
       ...base,
       total: 3,
@@ -33,7 +33,7 @@ describe('missed deliveries alert', () => {
     assert.ok(html.includes('The shop closed at 6:00 PM and 1 of today’s delivery is still not confirmed'));
     assert.ok(html.includes('Today, Saturday, November 14, 2026'));
     assert.ok(html.includes('2 missed'));
-    assert.ok(html.includes('href="/shop/paper?order=MF-2"'));
+    assert.ok(!html.includes('/shop/paper'), 'no paper-slip links');
     assert.ok(html.includes('href="/shop/orders/MF-3"'));
   });
 

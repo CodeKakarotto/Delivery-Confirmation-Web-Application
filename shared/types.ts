@@ -173,21 +173,6 @@ export interface CorrectionRequest {
   reason: string;
 }
 
-/** An employee entering a confirmation from a paper slip. */
-export interface PaperConfirmationRequest {
-  orderId: string;
-  receivedBy: string;
-  outcome: DeliveryOutcome;
-  outcomeDetail?: string;
-  /** The delivery time written on the slip (ISO-8601). */
-  deliveredAt: string;
-  /** Where the signed paper slip is filed. */
-  paperReference: string;
-  /** Optional photo of the signed slip: data:image/jpeg;base64,… */
-  slipPhoto?: string;
-  idempotencyKey: string;
-}
-
 /** One order in the end-of-day report. */
 export interface DailyReportRow {
   orderId: string;

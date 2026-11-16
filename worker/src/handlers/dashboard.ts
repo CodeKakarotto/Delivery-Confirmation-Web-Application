@@ -3,7 +3,7 @@
  * summary, the deliveries list and order lookups are for employees only.
  */
 
-import { correctionSchema, isValidDate, ORDER_ID_MAX, ORDER_ID_PATTERN, PAPER_MAX_BODY_BYTES, paperConfirmationSchema, voidSchema } from '../../../shared/schemas.ts';
+import { correctionSchema, isValidDate, ORDER_ID_MAX, ORDER_ID_PATTERN, voidSchema } from '../../../shared/schemas.ts';
 import { addDays, localDateKey, localDayRangeUtc, localTimeHHMM, monthKey, weekStartKey, weekWithinMonth } from '../../../shared/shopTime.ts';
 import { OUTCOME_LABELS } from '../../../shared/types.ts';
 import type {
@@ -41,7 +41,6 @@ import {
   toDriverDelivery,
   toReceipt,
 } from '../db/confirmations.ts';
-import { validateSlipPhoto } from '../photo.ts';
 import { ApiError, isUniqueViolation, json, logEvent, readJson, SECURITY_HEADERS, validationError } from '../http.ts';
 import type { RequestContext } from '../router.ts';
 import { requireRole, requireUser } from '../auth.ts';
@@ -515,77 +514,6 @@ export async function voidConfirmation(ctx: RequestContext): Promise<Response> {
   ]);
   logEvent('info', 'confirmation_voided', { userId: user.id, requestId: ctx.requestId });
   return detailResponse(ctx, id);
-}
-
-/** An employee types in a confirmation from a paper slip (when the app could not be used). Marked "entered from paper". */
-export async function paperConfirmation(ctx: RequestContext): Promise<Response> {
-  requireDemoAccess(ctx);
-  const user = await requireRole(ctx, 'employee');
-  await rateLimit(ctx, RATE_LIMITS.submit);
-  const input = await readJson(ctx.request, paperConfirmationSchema, PAPER_MAX_BODY_BYTES);
-  const outcomeDetail = input.outcomeDetail?.trim() || null;
-  if (input.outcome !== 'delivered_to_recipient' && !outcomeDetail) {
-    throw validationError([{ path: 'outcomeDetail', message: 'Write the exception note from the slip' }]);
-  }
-  const deliveredMs = Date.parse(input.deliveredAt);
-  if (!Number.isFinite(deliveredMs) || deliveredMs > ctx.now.getTime() + 5 * 60_000 || deliveredMs < ctx.now.getTime() - 60 * 86_400_000) {
-    throw validationError([{ path: 'deliveredAt', message: 'Enter the delivery time from the slip (within the last 60 days)' }]);
-  }
-  const reference = input.paperReference.trim();
-  if (!reference) throw validationError([{ path: 'paperReference', message: 'Say where the signed paper slip is filed' }]);
-  // The photo of the signed slip is the only proof of the customer's signature, so it is required.
-  if (!input.slipPhoto) throw validationError([{ path: 'slipPhoto', message: 'Add a photo of the signed slip' }]);
-  const photo = validateSlipPhoto(input.slipPhoto);
-  const requestHash = await sha256Hex(
-    JSON.stringify(['paper', input.orderId.toLowerCase(), input.receivedBy, input.outcome, outcomeDetail, input.deliveredAt, reference, await sha256Hex(photo.bytes)]),
-  );
-
-  const replay = await findConfirmationByKey(ctx.db, input.idempotencyKey);
-  if (replay) {
-    if (replay.request_hash !== requestHash) throw new ApiError(422, 'idempotency_key_reused', 'This form was already used for a different entry. Reload the page.');
-    return json({ confirmation: toReceipt(replay), replayed: true } satisfies ConfirmationSubmitResponse, 200);
-  }
-  const delivery = await findDeliveryByOrderId(ctx.db, input.orderId);
-  if (!delivery) throw new ApiError(404, 'order_not_found', 'No order with this order ID was found.');
-  if (delivery.cancelled_at) throw new ApiError(409, 'order_cancelled', 'This order was cancelled and cannot be confirmed.');
-  if (await findConfirmationByDelivery(ctx.db, delivery.id)) {
-    throw new ApiError(409, 'already_confirmed', 'This order already has a confirmation. Void it first if it is wrong.');
-  }
-  const id = crypto.randomUUID();
-  const confirmedAt = ctx.now.toISOString();
-  const result: ConfirmationResult = input.outcome === 'delivered_to_recipient' ? 'confirmed' : 'needs_review';
-  try {
-    await insertConfirmation(ctx.db, {
-      id,
-      deliveryId: delivery.id,
-      receivedBy: input.receivedBy,
-      outcome: input.outcome,
-      outcomeDetail,
-      note: null,
-      signature: null,
-      signatureWidth: null,
-      signatureHeight: null,
-      result,
-      idempotencyKey: input.idempotencyKey,
-      requestHash,
-      confirmedAt,
-      confirmedByUserId: null,
-      paper: { enteredByUserId: user.id, reportedDeliveredAt: new Date(deliveredMs).toISOString(), reference, photo: photo?.bytes ?? null },
-    });
-  } catch (err) {
-    if (isUniqueViolation(err, 'delivery_id')) throw new ApiError(409, 'already_confirmed', 'This order already has a confirmation.');
-    if (isUniqueViolation(err, 'idempotency_key')) {
-      const again = await findConfirmationByKey(ctx.db, input.idempotencyKey);
-      if (again) return json({ confirmation: toReceipt(again), replayed: true } satisfies ConfirmationSubmitResponse, 200);
-    }
-    throw err;
-  }
-  logEvent('info', 'paper_confirmation_entered', { userId: user.id, requestId: ctx.requestId });
-  const body: ConfirmationSubmitResponse = {
-    confirmation: { id, orderId: delivery.order_id, receivedBy: input.receivedBy, outcome: input.outcome, outcomeDetail, note: null, result, confirmedAt },
-    replayed: false,
-  };
-  return json(body, 201);
 }
 
 /** The photo of a signed paper slip. Never cached, never sniffed, sandboxed if opened directly. */

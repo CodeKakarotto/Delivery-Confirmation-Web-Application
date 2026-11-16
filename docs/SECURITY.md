@@ -71,7 +71,7 @@ These were not decided by the developer, on purpose:
 4. **Zone source.** Neither app stores zones yet. Zones show as "—" unless an order has one.
 5. **Total products source.** The route app has no product count. Totals show as "Not recorded" unless set.
 6. **Signature retention and deletion.** Decided: the database keeps the last 30 days of deliveries (`RETENTION_DAYS`); older ones, signatures and slip photos included, are deleted automatically (nightly online, on every start locally after a successful backup). Backups keep older copies for as long as they are kept (newest 30): include them in any retention promise.
-7. **Photos.** Only the photo of a signed paper slip (required for paper entries; JPEG ≤600 KB, stored in D1, served only to employees with `no-store`). Retention still needs the sponsor's decision.
+7. **Photos.** None are collected any more (the paper-slip section was removed). Records entered from paper earlier keep their slip photo, shown only to employees with `no-store`, and are deleted with the record after 30 days.
 
 ## Controls in place
 

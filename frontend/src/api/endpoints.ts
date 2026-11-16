@@ -13,7 +13,6 @@ import type {
   CorrectionRequest,
   DailyReport,
   MissedDeliveries,
-  PaperConfirmationRequest,
   DashboardSummary,
   DriverAwaitingResponse,
   DriverOfflineResponse,
@@ -101,7 +100,5 @@ export const dashboardApi = {
   /** Employees: the end-of-day report; reportCsvUrl downloads it as a spreadsheet. */
   report: (date?: string) => api<DailyReport>('GET', `/api/dashboard/report${date ? `?${new URLSearchParams({ date })}` : ''}`),
   reportCsvUrl: (date: string) => `/api/dashboard/report.csv?${new URLSearchParams({ date })}`,
-  /** Employees: enter a confirmation from a paper slip. */
-  paperConfirm: (body: PaperConfirmationRequest) => api<ConfirmationSubmitResponse>('POST', '/api/dashboard/paper-confirmations', body),
   signatureUrl: (id: string) => `/api/dashboard/confirmations/${encodeURIComponent(id)}/signature`,
 };

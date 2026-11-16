@@ -3,7 +3,6 @@ import { describe, it } from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ConfirmationCorrection } from '../../shared/types.ts';
 import { CorrectionHistory } from '../src/components/CorrectionHistory.tsx';
-import { PaperSlip } from '../src/components/PaperSlip.tsx';
 
 const history: ConfirmationCorrection[] = [
   {
@@ -40,27 +39,5 @@ describe('CorrectionHistory: the original values stay visible', () => {
   it('shows a void with its reason', () => {
     assert.ok(html.includes('Voided'));
     assert.ok(html.includes('Saved against the wrong order'));
-  });
-});
-
-describe('PaperSlip: the blank paper backup in the same order as the app', () => {
-  const html = renderToStaticMarkup(<PaperSlip />);
-
-  it('has the required fields in order, with room to write', () => {
-    const labels = ['#', 'Zone', 'Order ID', 'Deliver To', 'Total Products', 'Delivery Instructions', 'Received By', 'Customer Signature', 'Delivery date', 'Driver'];
-    let last = -1;
-    for (const label of labels) {
-      const at = html.indexOf(`>${label}<`);
-      assert.ok(at > last, `${label} is missing or out of order`);
-      last = at;
-    }
-  });
-
-  it('lists every delivery option as a box to tick, with a line for the exception note', () => {
-    for (const option of ['Delivered to recipient', 'Left at door', 'Left with front desk / reception', 'Left with neighbor', 'Other']) {
-      assert.ok(html.includes(option), option);
-    }
-    assert.ok(html.includes('Exception note'));
-    assert.ok(html.includes('Customer signs only when delivered to the recipient'));
   });
 });

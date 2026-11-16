@@ -88,18 +88,3 @@ export const correctionSchema = s.object({
 
 export const voidSchema = s.object({ reason });
 
-/** Largest accepted request body for a paper entry (a photo of up to 600 KB, base64-encoded, plus the fields). */
-export const PAPER_MAX_BODY_BYTES = 900 * 1024;
-
-export const paperConfirmationSchema = s.object({
-  orderId,
-  receivedBy: s.string({ min: 1, max: RECEIVED_BY_MAX }),
-  outcome: s.enumOf(DELIVERY_OUTCOMES),
-  outcomeDetail: s.string({ max: OUTCOME_DETAIL_MAX, multiline: true }).optional(),
-  deliveredAt: s.string({ min: 17, max: 30, pattern: /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?Z$/, patternMessage: 'Enter the date and time on the slip' }),
-  paperReference: s.string({ min: 1, max: 200 }),
-  slipPhoto: s
-    .string({ min: 30, max: 820 * 1024, trim: false, pattern: /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/, patternMessage: 'The slip photo must be a JPEG image' })
-    .optional(),
-  idempotencyKey: s.string({ min: 36, max: 36, pattern: UUID, patternMessage: 'Invalid request key' }),
-});

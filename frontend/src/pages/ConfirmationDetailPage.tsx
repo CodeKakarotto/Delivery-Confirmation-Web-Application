@@ -75,15 +75,8 @@ export function ConfirmationDetailPage() {
             {c.paper && <span className="tag tag-demo">Entered from paper</span>}
           </div>
         </div>
-        {isEmployee ? (
-          <RecordActions voided={Boolean(c.voided)} editing={editing} onEdit={setEditing} onPrint={() => window.print()} />
-        ) : (
-          <div className="actions no-print">
-            <button type="button" className="btn btn-primary" onClick={() => window.print()}>
-              Print
-            </button>
-          </div>
-        )}
+        {/* Only shop employees can print confirmation records. */}
+        {isEmployee && <RecordActions voided={Boolean(c.voided)} editing={editing} onEdit={setEditing} onPrint={() => window.print()} />}
       </div>
 
       {editing === 'correct' && <CorrectionForm confirmation={c} onDone={done} onCancel={() => setEditing(null)} />}

@@ -170,9 +170,6 @@ export function DriverDashboardPage() {
           <button type="submit" className="btn btn-primary btn-block btn-large">
             Open delivery
           </button>
-          <p className="muted small paper-hint">
-            App not working at all? Use a <Link to="/driver/paper-slips">paper slip</Link> and bring it back to the shop.
-          </p>
         </form>
       </div>
 

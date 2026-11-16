@@ -43,7 +43,7 @@ export const router = new Router()
   .add('GET', '/api/dashboard/confirmations/:id', dashboard.detail)
   .add('GET', '/api/dashboard/confirmations/:id/signature', dashboard.signature)
   .add('GET', '/api/dashboard/confirmations/:id/slip-photo', dashboard.slipPhoto)
-  // Employees: correct or void a confirmation (with a reason), or enter one from a paper slip.
+  // Employees: correct or void a confirmation (with a reason).
   .add('POST', '/api/dashboard/confirmations/:id/corrections', dashboard.correct)
   .add('POST', '/api/dashboard/confirmations/:id/void', dashboard.voidConfirmation)
   .add('POST', '/api/dashboard/confirmations/:id/unvoid', dashboard.unvoidConfirmation)
@@ -51,7 +51,7 @@ export const router = new Router()
   .add('GET', '/api/dashboard/report', dashboard.report)
   .add('GET', '/api/dashboard/missed', dashboard.missed)
   .add('GET', '/api/dashboard/report.csv', dashboard.reportCsv)
-  .add('POST', '/api/dashboard/paper-confirmations', dashboard.paperConfirmation);
+;
 
 export async function handleRequest(request: Request, env: Env, now: Date = new Date()): Promise<Response> {
   const url = new URL(request.url);

@@ -68,7 +68,7 @@ Rate limited (20/min). Body (unknown fields are rejected):
 
 `result` is decided by the server: `confirmed` for `delivered_to_recipient`, otherwise `needs_review`.
 
-## Offline, corrections and paper slips
+## Offline and corrections
 
 | Method | Path | Notes |
 | --- | --- | --- |
@@ -79,10 +79,9 @@ Rate limited (20/min). Body (unknown fields are rejected):
 | GET | `/api/dashboard/missed` | Employees. Orders never confirmed (not cancelled, no active confirmation) in the last 7 days; today is included only after `SHOP_CLOSING_TIME` (default 18:00). `{ today, closingTime, afterClosing, lookbackDays, total, days: [{ date, orders[] }] }`, newest day first |
 | GET | `/api/dashboard/report.csv?date=YYYY-MM-DD` | Employees. The same report as a CSV download for Excel (UTF-8 with BOM, CRLF, formula-like cells prefixed with `'`) |
 | POST | `/api/dashboard/confirmations/:id/void` | Employees. `{ reason }`. The record stays visible (`voided`), stops counting, and the order can be confirmed again |
-| POST | `/api/dashboard/paper-confirmations` | Employees. `{ orderId, receivedBy, outcome, outcomeDetail?, deliveredAt (ISO, the time on the slip), paperReference, slipPhoto (required: JPEG data URL ≤600 KB, the proof of the signature; missing → `422` on `slipPhoto`), idempotencyKey }`. Saved as `source: 'paper'` |
 | GET | `/api/dashboard/confirmations/:id/slip-photo` | The photo of the signed slip (`image/jpeg`, `no-store`) |
 
-Records now include `source`, `corrected`, `voided`, and (detail) `corrections[]` with old and new values, `voided` and `paper`.
+Records now include `source`, `corrected`, `voided`, and (detail) `corrections[]` with old and new values, `voided` and `paper` (records entered from paper slips in earlier versions; new paper entries are no longer possible).
 
 ## Confirmations and shop views
 

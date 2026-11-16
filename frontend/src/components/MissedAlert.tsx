@@ -51,7 +51,7 @@ export function MissedAlertView({ data }: { data: MissedDeliveries }) {
           </h2>
           <p>
             {todayMissed > 0 ? `The shop closed at ${closing} and ${todayMissed} of today’s ${todayMissed === 1 ? 'delivery is' : 'deliveries are'} still not confirmed. ` : ''}
-            Tap a day to see its orders. Check with the driver. If it was delivered on paper, enter it from the paper slip; then it disappears from this list.
+            Tap a day to see its orders, then check with the driver. An order disappears from this list once it is confirmed.
           </p>
         </div>
       </div>
@@ -72,9 +72,6 @@ export function MissedAlertView({ data }: { data: MissedDeliveries }) {
                   <span className="cell-sub">
                     # {o.stopNumber ?? '—'} · Zone {o.zone ?? '—'} · {o.recipientName ?? 'No recipient name'}, {o.city}
                   </span>
-                </Link>
-                <Link to={`/shop/paper?order=${encodeURIComponent(o.orderId)}`} className="btn btn-small">
-                  Enter from paper slip
                 </Link>
               </li>
             ))}

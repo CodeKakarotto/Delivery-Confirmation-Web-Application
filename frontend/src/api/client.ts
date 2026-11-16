@@ -76,7 +76,7 @@ export async function api<T>(method: Method, path: string, body?: unknown, opts:
       err?.requestId,
     );
   }
-  // A saved change (confirmation, correction, void, paper entry…): every live list and calendar refreshes now.
+  // A saved change (confirmation, correction, void…): every live list and calendar refreshes now.
   if (method !== 'GET' && !path.startsWith('/api/auth/')) announceDataChanged();
   return data as T;
 }

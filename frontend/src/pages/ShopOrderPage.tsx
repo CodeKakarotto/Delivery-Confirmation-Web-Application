@@ -62,11 +62,6 @@ export function ShopOrderPage() {
               Open confirmation record
             </Link>
           )}
-          {status === 'awaiting' && (
-            <Link to={`/shop/paper?order=${encodeURIComponent(delivery.orderId)}`} className="btn">
-              Enter from paper slip
-            </Link>
-          )}
         </div>
       </div>
       {status === 'cancelled' && <Notice tone="warn" title="This order was cancelled">It cannot be confirmed.</Notice>}

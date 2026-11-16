@@ -49,10 +49,10 @@ function ThemeToggle() {
   );
 }
 
-type NavIcon = 'report' | 'paper' | 'search';
+type NavIcon = 'report' | 'search';
 type NavItem = { to: string; label: string; end: boolean; icon?: NavIcon; title?: string };
 /** Sections of the menu, shown with a thin divider between them. Search always sits at the end. */
-type NavSection = { kind: 'main' | 'report' | 'backup' | 'search'; items: NavItem[] };
+type NavSection = { kind: 'main' | 'report' | 'search'; items: NavItem[] };
 
 const NAV: Record<'driver' | 'employee', NavSection[]> = {
   driver: [
@@ -73,7 +73,6 @@ const NAV: Record<'driver' | 'employee', NavSection[]> = {
       ],
     },
     { kind: 'report', items: [{ to: '/shop/report', label: 'End of day', end: false, icon: 'report', title: 'End-of-day report: print or download the day’s results' }] },
-    { kind: 'backup', items: [{ to: '/shop/paper', label: 'Paper slips', end: false, icon: 'paper', title: 'Backup: when the app cannot be used' }] },
     { kind: 'search', items: [{ to: '/shop/search', label: 'Search', end: false, icon: 'search', title: 'Search: find an order by its ID' }] },
   ],
 };
@@ -85,13 +84,6 @@ function NavGlyph({ icon }: { icon: NavIcon }) {
       <svg {...common}>
         <circle cx="8.5" cy="8.5" r="5" />
         <path d="m12.3 12.3 4.2 4.2" />
-      </svg>
-    );
-  if (icon === 'paper')
-    return (
-      <svg {...common}>
-        <path d="M5 2.5h6.5L15 6v11.5H5z" />
-        <path d="M11.5 2.5V6H15M7.5 10h5M7.5 13h3.5" />
       </svg>
     );
   return (
