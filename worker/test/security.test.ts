@@ -56,7 +56,7 @@ describe('no-login access limits (fail closed)', () => {
     assert.equal((await client.request('GET', '/api/health')).status, 200);
     const config = await client.request('GET', '/api/config');
     assert.equal(config.status, 200);
-    assert.deepEqual(config.body, { appEnv: 'production', timeZone: 'America/New_York', authenticated: true, dataAvailable: false });
+    assert.deepEqual(config.body, { appEnv: 'production', timeZone: 'America/New_York', closingTime: '18:00', authenticated: true, dataAvailable: false });
   });
 });
 

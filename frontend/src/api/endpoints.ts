@@ -12,6 +12,7 @@ import type {
   ConfirmationSubmitResponse,
   CorrectionRequest,
   DailyReport,
+  MissedDeliveries,
   PaperConfirmationRequest,
   DashboardSummary,
   DriverAwaitingResponse,
@@ -95,6 +96,8 @@ export const dashboardApi = {
   /** Employees: undo a void (with a reason). */
   unvoidConfirmation: (id: string, reason: string) =>
     api<ConfirmationDetailResponse>('POST', `/api/dashboard/confirmations/${encodeURIComponent(id)}/unvoid`, { reason }),
+  /** Employees: deliveries never confirmed (earlier days of the last week, and today after closing). */
+  missed: () => api<MissedDeliveries>('GET', '/api/dashboard/missed'),
   /** Employees: the end-of-day report; reportCsvUrl downloads it as a spreadsheet. */
   report: (date?: string) => api<DailyReport>('GET', `/api/dashboard/report${date ? `?${new URLSearchParams({ date })}` : ''}`),
   reportCsvUrl: (date: string) => `/api/dashboard/report.csv?${new URLSearchParams({ date })}`,

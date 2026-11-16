@@ -12,7 +12,7 @@ POST requests need a same-origin `Origin` header and a JSON body.
 | Method | Path | Response |
 | --- | --- | --- |
 | GET | `/api/health` | `{ "ok": true }` |
-| GET | `/api/config` | `{ appEnv, timeZone, authenticated: false, dataAvailable }` |
+| GET | `/api/config` | `{ appEnv, timeZone, closingTime, authenticated, dataAvailable }` |
 
 ## Sign-in
 
@@ -76,6 +76,7 @@ Rate limited (20/min). Body (unknown fields are rejected):
 | POST | `/api/dashboard/confirmations/:id/corrections` | Employees. `{ receivedBy?, outcome?, outcomeDetail?, reason }`: at least one change and a reason. The signature is never changed; a record without one cannot become `delivered_to_recipient` (`422 signature_required`). Voided records: `409 voided` |
 | POST | `/api/dashboard/confirmations/:id/unvoid` | Employees. `{ reason }`. Only on a voided record (`409 not_voided`); refused if the order was confirmed again after the void (`409 order_reconfirmed`). Added to the history as `unvoid` |
 | GET | `/api/dashboard/report?date=YYYY-MM-DD` | Employees. End-of-day report: `{ date, isPast, totals{scheduled,delivered,exceptions,awaiting,cancelled}, rows[] }`; a row is `delivered`, `exception`, `awaiting` (`missing` once the day is over) or `cancelled`. Default date: today in the shop time zone |
+| GET | `/api/dashboard/missed` | Employees. Orders never confirmed (not cancelled, no active confirmation) in the last 7 days; today is included only after `SHOP_CLOSING_TIME` (default 18:00). `{ today, closingTime, afterClosing, lookbackDays, total, days: [{ date, orders[] }] }`, newest day first |
 | GET | `/api/dashboard/report.csv?date=YYYY-MM-DD` | Employees. The same report as a CSV download for Excel (UTF-8 with BOM, CRLF, formula-like cells prefixed with `'`) |
 | POST | `/api/dashboard/confirmations/:id/void` | Employees. `{ reason }`. The record stays visible (`voided`), stops counting, and the order can be confirmed again |
 | POST | `/api/dashboard/paper-confirmations` | Employees. `{ orderId, receivedBy, outcome, outcomeDetail?, deliveredAt (ISO, the time on the slip), paperReference, slipPhoto (required: JPEG data URL ≤600 KB, the proof of the signature; missing → `422` on `slipPhoto`), idempotencyKey }`. Saved as `source: 'paper'` |

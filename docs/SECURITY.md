@@ -118,3 +118,11 @@ storage (only the light/dark theme choice). Customer data never goes in URLs; on
 - No access control beyond "local demonstration only" (see above).
 - Rate limits are per IP. Clients behind one shared address (e.g. the shop's Wi-Fi) share a limit.
 - No retention or deletion of signatures has been implemented (pending decision 6).
+
+## Backups
+
+`scripts/backup-local.ts` copies the local database (with SQLite `VACUUM INTO`, checked with `PRAGMA integrity_check`)
+on every start of `Start-App.bat`; the newest 30 are kept. Backups hold the same personal data as the database
+(names, addresses, signatures, slip photos): the `backups/` folder is git-ignored and must stay private. A
+`BACKUP_DIR` outside the computer (OneDrive, USB) protects against losing the machine. Restoring
+(`scripts/restore-local.ts`) refuses while the app is running and backs up the current data first.

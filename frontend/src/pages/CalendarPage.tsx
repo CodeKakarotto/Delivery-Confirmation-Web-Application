@@ -5,6 +5,7 @@ import { errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { ConfirmationRows, Pager } from '../components/ConfirmationRows.tsx';
 import { MonthCalendar } from '../components/MonthCalendar.tsx';
+import { MissedAlert } from '../components/MissedAlert.tsx';
 import { DayLegend } from '../components/DayBadges.tsx';
 import { marksMap, type DayMarks } from '../lib/dayMarks.ts';
 import { useOffline } from '../lib/offline.tsx';
@@ -63,6 +64,8 @@ export function CalendarPage({ variant }: { variant: 'employee' | 'driver' }) {
       <div className="page-head">
         <h1>{variant === 'employee' ? 'Dashboard' : 'My confirmations'}</h1>
       </div>
+
+      {variant === 'employee' && <MissedAlert />}
 
       {
         <div className="shop-cal-layout">

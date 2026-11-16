@@ -4,9 +4,10 @@
  */
 
 import { correctionSchema, isValidDate, ORDER_ID_MAX, ORDER_ID_PATTERN, PAPER_MAX_BODY_BYTES, paperConfirmationSchema, voidSchema } from '../../../shared/schemas.ts';
-import { localDateKey, localDayRangeUtc, monthKey, weekStartKey, weekWithinMonth } from '../../../shared/shopTime.ts';
+import { addDays, localDateKey, localDayRangeUtc, localTimeHHMM, monthKey, weekStartKey, weekWithinMonth } from '../../../shared/shopTime.ts';
 import { OUTCOME_LABELS } from '../../../shared/types.ts';
 import type {
+  MissedDeliveries,
   AwaitingDelivery,
   CalendarCounts,
   CalendarMonth,
@@ -169,6 +170,48 @@ export async function summary(ctx: RequestContext): Promise<Response> {
     awaiting: (awaiting!.results as AwaitingRow[]).map(
       (r): AwaitingDelivery => ({ orderId: r.order_id, stopNumber: r.stop_number, zone: r.zone, recipientName: r.recipient_name, city: r.city }),
     ),
+  };
+  return json(body);
+}
+
+/** How many days back the missed-deliveries alert looks (today included). */
+export const MISSED_LOOKBACK_DAYS = 7;
+
+/**
+ * Employees: deliveries that were never confirmed (not cancelled, no active confirmation), so nothing slips by.
+ * Earlier days of the last week always count; today counts once the shop's closing time has passed.
+ */
+export async function missed(ctx: RequestContext): Promise<Response> {
+  await guard(ctx, 'employee');
+  const tz = ctx.settings.timeZone;
+  const today = localDateKey(ctx.now, tz);
+  const afterClosing = localTimeHHMM(ctx.now, tz) >= ctx.settings.closingTime;
+  const from = addDays(today, -(MISSED_LOOKBACK_DAYS - 1));
+  const to = afterClosing ? today : addDays(today, -1);
+  const res = await ctx.db
+    .prepare(
+      `SELECT d.delivery_date, d.order_id, d.stop_number, d.zone, d.recipient_name, d.city
+         FROM deliveries d
+        WHERE d.delivery_date >= ? AND d.delivery_date <= ? AND d.cancelled_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM delivery_confirmations c WHERE c.delivery_id = d.id AND c.voided_at IS NULL)
+        ORDER BY d.delivery_date DESC, d.stop_number IS NULL, d.stop_number, d.order_id
+        LIMIT 1000`,
+    )
+    .bind(from, to)
+    .all<AwaitingRow & { delivery_date: string }>();
+  const days: MissedDeliveries['days'] = [];
+  for (const r of res.results) {
+    let day = days[days.length - 1];
+    if (!day || day.date !== r.delivery_date) days.push((day = { date: r.delivery_date, orders: [] }));
+    day.orders.push({ orderId: r.order_id, stopNumber: r.stop_number, zone: r.zone, recipientName: r.recipient_name, city: r.city });
+  }
+  const body: MissedDeliveries = {
+    today,
+    closingTime: ctx.settings.closingTime,
+    afterClosing,
+    lookbackDays: MISSED_LOOKBACK_DAYS,
+    total: res.results.length,
+    days,
   };
   return json(body);
 }

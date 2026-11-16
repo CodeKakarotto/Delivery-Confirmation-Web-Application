@@ -28,6 +28,14 @@ if not exist .wrangler\state\v3\d1 (
   call npm run db:setup:local || goto :failed
 )
 
+echo Backing up the database (keeps the last 30 copies in the backups folder)...
+call npm run db:backup:local
+if errorlevel 1 (
+  echo.
+  echo WARNING: the backup did not work. The app will still start. Tell whoever looks after this computer.
+  echo.
+)
+
 echo Updating the local database...
 call npm run db:migrate:local
 echo Checking sign-in accounts...

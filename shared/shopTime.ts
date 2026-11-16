@@ -51,6 +51,19 @@ export function localDateKey(instant: Date, timeZone: string): string {
   return `${pad(f.year, 4)}-${pad(f.month)}-${pad(f.day)}`;
 }
 
+/** The shop-local clock time of an instant, "HH:MM" (24-hour). */
+export function localTimeHHMM(instant: Date, timeZone: string): string {
+  const f = localFields(instant, timeZone);
+  return `${pad(f.hour % 24)}:${pad(f.minute)}`;
+}
+
+/** Default closing time of the shop (24-hour "HH:MM"); after it, unconfirmed deliveries of the day count as missed. */
+export const DEFAULT_CLOSING_TIME = '18:00';
+
+export function isValidClockTime(value: string): boolean {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
 /** Local time minus UTC, in milliseconds, at an instant. */
 function offsetMs(instant: Date, timeZone: string): number {
   const f = localFields(instant, timeZone);

@@ -26,7 +26,9 @@ for the test runner by `frontend/test/register-tsx.mjs` (esbuild).
 | `worker/test/corrections.test.ts` | Corrections (reason required, old values kept, outcome rules, signature never changed), voids (order back to awaiting, re-confirmable, not counted), paper entries (marked paper, slip time, photo required and checked, rules, idempotent), offline copy endpoint |
 | `frontend/test/outbox.test.ts` | The phone outbox: retry on no signal or server errors, keep refused items for attention, stop at an ended session, order and per-driver, no duplicates; today's copy per driver and day |
 | `frontend/test/dayMarks.test.ts` | Calendar colors: exceptions count as delivered, unconfirmed orders are missed once the day is over and still to deliver before |
-| `worker/test/demoSeed.test.ts` | Demo orders: twelve a day for today and the next seven days, rotating recipients, safe to run twice |
+| `worker/test/demoSeed.test.ts` | Demo orders: forty a day for today and the next seven days, none on Sundays (old upcoming Sunday orders removed unless confirmed), rotating recipients, safe to run twice |
+| `worker/test/missedBackup.test.ts` | Missed-deliveries alert (earlier days always, today only after closing, confirmed/cancelled excluded, voided counts again, one-week window, configurable closing time, employees only) and local backups (checked copy, newest kept, no overwrite) |
+| `frontend/test/missedAlert.test.tsx` | The red alert (by day, paper-slip links), the green "all confirmed" line after closing, nothing before closing, 6:00 PM formatting |
 | `frontend/test/callShop.test.tsx` | The shop's number as a tap-to-call link for drivers |
 | `worker/test/unvoidReport.test.ts` | Undo void (only on voided records, reason required, counts again, refused after re-confirmation, employees only) and the end-of-day report (rows and totals, Missing on past days, CSV for Excel, formula escaping, date checks) |
 | `frontend/test/recordActions.test.tsx` | Record buttons (Undo void only on a voided record), "Void undone" in the history, the report table |

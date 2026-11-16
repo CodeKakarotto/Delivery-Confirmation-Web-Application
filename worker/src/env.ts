@@ -1,4 +1,4 @@
-import { DEFAULT_SHOP_TIME_ZONE, isValidTimeZone } from '../../shared/shopTime.ts';
+import { DEFAULT_CLOSING_TIME, DEFAULT_SHOP_TIME_ZONE, isValidClockTime, isValidTimeZone } from '../../shared/shopTime.ts';
 
 /** Bindings and variables available to the Worker (see wrangler.jsonc and .dev.vars.example). */
 export interface Env {
@@ -13,6 +13,8 @@ export interface Env {
   APP_SECRET?: string;
   /** IANA time zone the shop's days, weeks and months are counted in (default America/New_York). */
   SHOP_TIME_ZONE?: string;
+  /** The shop's closing time, 24-hour "HH:MM" (default 18:00). After it, today's unconfirmed deliveries are missed. */
+  SHOP_CLOSING_TIME?: string;
 }
 
 export interface Settings {
@@ -24,6 +26,8 @@ export interface Settings {
   appSecret: string | null;
   /** The shop's IANA time zone (validated; falls back to America/New_York). */
   timeZone: string;
+  /** Closing time, "HH:MM" (validated; falls back to 18:00). */
+  closingTime: string;
 }
 
 const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]', '::1'];
@@ -46,5 +50,6 @@ export function loadSettings(env: Env): Settings {
     demoHosts: isProduction ? new Set() : new Set([...LOOPBACK_HOSTS, ...extra]),
     appSecret: env.APP_SECRET && env.APP_SECRET.length >= 16 ? env.APP_SECRET : null,
     timeZone: env.SHOP_TIME_ZONE?.trim() && isValidTimeZone(env.SHOP_TIME_ZONE.trim()) ? env.SHOP_TIME_ZONE.trim() : DEFAULT_SHOP_TIME_ZONE,
+    closingTime: env.SHOP_CLOSING_TIME?.trim() && isValidClockTime(env.SHOP_CLOSING_TIME.trim()) ? env.SHOP_CLOSING_TIME.trim() : DEFAULT_CLOSING_TIME,
   };
 }

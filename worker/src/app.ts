@@ -18,6 +18,7 @@ export const router = new Router()
     const body: AppConfig & { dataAvailable: boolean } = {
       appEnv: ctx.settings.appEnv,
       timeZone: ctx.settings.timeZone,
+      closingTime: ctx.settings.closingTime,
       authenticated: true,
       dataAvailable: !ctx.settings.isProduction && ctx.settings.demoHosts.has(ctx.url.hostname.toLowerCase()),
     };
@@ -47,6 +48,7 @@ export const router = new Router()
   .add('POST', '/api/dashboard/confirmations/:id/unvoid', dashboard.unvoidConfirmation)
   // Employees: the end-of-day report, on screen and as a spreadsheet file.
   .add('GET', '/api/dashboard/report', dashboard.report)
+  .add('GET', '/api/dashboard/missed', dashboard.missed)
   .add('GET', '/api/dashboard/report.csv', dashboard.reportCsv)
   .add('POST', '/api/dashboard/paper-confirmations', dashboard.paperConfirmation);
 

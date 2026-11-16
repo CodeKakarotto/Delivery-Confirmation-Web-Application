@@ -252,6 +252,22 @@ export interface AppConfig {
   timeZone: string;
   /** Sign-in is required for all delivery data. */
   authenticated: true;
+  /** The shop's closing time, 24-hour "HH:MM". */
+  closingTime: string;
+}
+
+/** Deliveries that were never confirmed: earlier days, and today once the shop has closed. */
+export interface MissedDeliveries {
+  today: string;
+  /** 24-hour "HH:MM". */
+  closingTime: string;
+  /** Whether today's closing time has passed (today's unconfirmed orders are then included). */
+  afterClosing: boolean;
+  /** How many days back are checked (today included). */
+  lookbackDays: number;
+  total: number;
+  /** Newest day first; only days with missed orders. */
+  days: { date: string; orders: AwaitingDelivery[] }[];
 }
 
 // ---------- Accounts ----------
