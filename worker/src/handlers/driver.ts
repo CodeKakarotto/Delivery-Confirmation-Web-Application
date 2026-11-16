@@ -72,16 +72,17 @@ export async function submit(ctx: RequestContext): Promise<Response> {
   const driverAccount = await requireRole(ctx, 'driver');
   await rateLimit(ctx, RATE_LIMITS.submit);
   const input = await readJson(ctx.request, confirmationSubmitSchema, SUBMIT_MAX_BODY_BYTES);
-  const cross = crossFieldIssues(input);
+  const cross = crossFieldIssues({ ...input, signaturePng: input.signaturePng ?? '' });
   if (Object.keys(cross).length) throw validationError(Object.entries(cross).map(([path, message]) => ({ path, message })));
 
   const outcomeDetail = blankToNull(input.outcomeDetail);
   const note = blankToNull(input.note);
-  const signature = validateSignature(input.signaturePng);
+  // Only a hand-off to the recipient has a signature (checked above).
+  const signature = input.signaturePng ? validateSignature(input.signaturePng) : null;
   // Fingerprint of the content (not the key): tells a true retry from a different submission.
   const requestHash = await sha256Hex(
     new TextEncoder().encode(
-      JSON.stringify([input.orderId.toLowerCase(), input.receivedBy, input.outcome, outcomeDetail, note, await sha256Hex(signature.bytes)]),
+      JSON.stringify([input.orderId.toLowerCase(), input.receivedBy, input.outcome, outcomeDetail, note, signature ? await sha256Hex(signature.bytes) : null]),
     ),
   );
 
@@ -109,9 +110,9 @@ export async function submit(ctx: RequestContext): Promise<Response> {
       outcome: input.outcome,
       outcomeDetail,
       note,
-      signature: signature.bytes,
-      signatureWidth: signature.width,
-      signatureHeight: signature.height,
+      signature: signature?.bytes ?? null,
+      signatureWidth: signature?.width ?? null,
+      signatureHeight: signature?.height ?? null,
       result,
       idempotencyKey: input.idempotencyKey,
       requestHash,

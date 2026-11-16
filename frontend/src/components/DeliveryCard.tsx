@@ -34,6 +34,7 @@ export function DeliveryCard({
   receivedBy: ReactNode;
   /** When set, "Received By" is a <label> for this input. */
   receivedByInputId?: string;
+  /** null: no Customer Signature section (a delivery exception takes no signature). */
   signature: ReactNode;
   /** When set, "Customer Signature" carries this id so the signature pad can reference it. */
   signatureLabelId?: string;
@@ -71,9 +72,20 @@ export function DeliveryCard({
         <div className="deliver-outcome">{exception}</div>
       </section>
 
-      <section data-section="total-products" className="dc-section dc-inline">
-        <h2 className="dc-label">Total Products</h2>
-        <p className={d.totalProducts === null ? 'dc-total dc-missing' : 'dc-total'}>{d.totalProducts ?? 'Not recorded'}</p>
+      <section data-section="total-products" className="dc-section">
+        <div className="dc-inline">
+          <h2 className="dc-label">Total Products</h2>
+          <p className={d.totalProducts === null ? 'dc-total dc-missing' : 'dc-total'}>{d.totalProducts ?? 'Not recorded'}</p>
+        </div>
+        {d.products && d.products.length > 0 && (
+          <ul className="dc-products">
+            {d.products.map((p, i) => (
+              <li key={i}>
+                {`${p.quantity} × ${p.name}`}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section data-section="instructions" className="dc-section">
@@ -91,12 +103,14 @@ export function DeliveryCard({
           )}
           {receivedBy}
         </div>
-        <div className="dc-subfield">
-          <h3 className="dc-sublabel" id={signatureLabelId}>
-            Customer Signature
-          </h3>
-          {signature}
-        </div>
+        {signature !== null && (
+          <div className="dc-subfield">
+            <h3 className="dc-sublabel" id={signatureLabelId}>
+              Customer Signature
+            </h3>
+            {signature}
+          </div>
+        )}
       </section>
       {footer}
     </article>

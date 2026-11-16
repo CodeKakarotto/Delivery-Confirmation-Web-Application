@@ -17,6 +17,11 @@ const delivery: DriverDelivery = {
   postalCode: '22192',
   addressNotes: 'Blue door, side entrance',
   totalProducts: 3,
+  products: [
+    { name: 'Dozen red roses', quantity: 1 },
+    { name: 'Glass vase', quantity: 1 },
+    { name: 'Greeting card', quantity: 1 },
+  ],
   deliveryInstructions: 'Ring the bell twice.',
 };
 
@@ -118,6 +123,32 @@ describe('DeliveryCard: required field order', () => {
     const html = render({ ...delivery, recipientName: '<img src=x onerror=alert(1)>', deliveryInstructions: '<b>hi</b>' });
     assert.ok(!html.includes('<img src=x'));
     assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
+  });
+});
+
+describe('DeliveryCard: products and the signature section', () => {
+  it('writes out the products under Total Products', () => {
+    const html = render();
+    const [total, roses, vase, card, instructions] = positions(html, [
+      'data-section="total-products"',
+      '1 × Dozen red roses',
+      '1 × Glass vase',
+      '1 × Greeting card',
+      'data-section="instructions"',
+    ]);
+    assertIncreasing([total!, roses!, vase!, card!, instructions!], 'products');
+  });
+
+  it('leaves the product list out when the order has none', () => {
+    assert.ok(!render({ ...delivery, products: null }).includes('×'));
+  });
+
+  it('has no Customer Signature section when no signature is taken (delivery exception)', () => {
+    const html = renderToStaticMarkup(
+      <DeliveryCard delivery={delivery} exception={<p>EXC</p>} receivedBy={<input data-testid="received-by" />} signature={null} />,
+    );
+    assert.ok(html.includes('Received By'));
+    assert.ok(!html.includes('Customer Signature'));
   });
 });
 

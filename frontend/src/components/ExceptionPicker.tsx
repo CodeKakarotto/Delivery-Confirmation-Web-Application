@@ -6,8 +6,8 @@ const EXCEPTIONS: DeliveryOutcome[] = ['left_at_door', 'left_with_front_desk', '
 
 /**
  * How the order was handed over, inside Deliver To: "Delivered to recipient" is its own bubble, followed by the
- * smaller Delivery Exception group with the other options. All five are one radio group (one choice). "Other"
- * requires an explanation; the other exceptions allow an optional short note.
+ * smaller Delivery Exception group with the other options. All five are one radio group (one choice). Every exception
+ * requires an exception note (marked *); no customer signature is taken for an exception.
  */
 export function ExceptionPicker({
   value,
@@ -60,13 +60,17 @@ export function ExceptionPicker({
         </div>
         {showDetail && (
           <div className={`field exception-detail${detailError ? ' field-invalid' : ''}`}>
-            <label htmlFor={detailId}>{value === 'other' ? 'Describe where or how it was left (required)' : 'Exception note (optional)'}</label>
+            <label htmlFor={detailId}>
+              Exception note<span className="required-mark" aria-hidden="true">*</span>
+              <span className="visually-hidden"> (required)</span>
+            </label>
             <textarea
               id={detailId}
               rows={2}
               maxLength={OUTCOME_DETAIL_MAX}
               value={detail}
-              required={value === 'other'}
+              required
+              placeholder={value === 'other' ? 'Describe where or how it was left' : 'Where it was left, who took it, anything the shop should know'}
               aria-invalid={Boolean(detailError)}
               aria-describedby={detailError ? `${detailId}-err` : undefined}
               onChange={(e) => onDetailChange(e.target.value)}

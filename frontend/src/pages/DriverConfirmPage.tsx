@@ -9,7 +9,7 @@ import { ExceptionPicker } from '../components/ExceptionPicker.tsx';
 import { BackButton } from '../components/BackButton.tsx';
 import { SignatureField } from '../components/SignatureField.tsx';
 import { Notice, ResultTag, Spinner } from '../components/ui.tsx';
-import { validateConfirmationForm, type ConfirmationFormState, type FormErrors } from '../lib/confirmationForm.ts';
+import { needsSignature, validateConfirmationForm, type ConfirmationFormState, type FormErrors } from '../lib/confirmationForm.ts';
 import { shopDateTime } from '../lib/time.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
 import { useApi } from '../lib/useApi.ts';
@@ -145,13 +145,15 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
       summaryRef.current?.focus();
       return;
     }
+    // A hand-off to the recipient: the signature and an optional driver note. A delivery exception: neither.
+    const signing = needsSignature(form.outcome);
     void send({
       orderId: delivery.orderId,
       receivedBy: form.receivedBy.trim(),
       outcome: form.outcome!,
       ...(form.outcomeDetail.trim() && form.outcome !== 'delivered_to_recipient' ? { outcomeDetail: form.outcomeDetail.trim() } : {}),
-      ...(form.note.trim() ? { note: form.note.trim() } : {}),
-      signaturePng: form.signature!.dataUrl,
+      ...(signing && form.note.trim() ? { note: form.note.trim() } : {}),
+      ...(signing ? { signaturePng: form.signature!.dataUrl } : {}),
       idempotencyKey: keyRef.current,
     });
   };
@@ -232,7 +234,7 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
         </button>
         <h1>Confirm delivery</h1>
       </div>
-      <p className="muted lead">Check the order details with the recipient, choose how it was handed over, and ask the customer to sign.</p>
+      <p className="muted lead">Check the order details, then choose how it was handed over: delivered to the recipient (the customer signs) or a delivery exception (write an exception note).</p>
 
       <div ref={summaryRef} tabIndex={-1} className="form-summary">
         {errorList.length > 0 && phase === 'editing' && (
@@ -283,6 +285,7 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
           }
           signatureLabelId={ids.signatureLabel}
           signature={
+            !needsSignature(form.outcome) ? null : (
             <div className={`field${errors.signature ? ' field-invalid' : ''}`}>
               <SignatureField
                 value={form.signature}
@@ -298,13 +301,16 @@ function ConfirmForm({ delivery, timeZone }: { delivery: DriverDelivery; timeZon
                 {errors.signature ?? 'The customer signs with a finger, stylus or mouse. A typed name is not a signature.'}
               </p>
             </div>
+            )
           }
           footer={
+            !needsSignature(form.outcome) ? undefined : (
             <div className={`field dc-note${errors.note ? ' field-invalid' : ''}`}>
               <label htmlFor={ids.note}>Driver note (optional)</label>
               <textarea id={ids.note} rows={2} maxLength={NOTE_MAX} value={form.note} onChange={(e) => update('note', e.target.value)} />
               {errors.note && <p className="field-error">{errors.note}</p>}
             </div>
+            )
           }
         />
       </fieldset>

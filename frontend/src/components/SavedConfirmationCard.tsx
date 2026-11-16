@@ -22,7 +22,8 @@ export function SavedConfirmationCard({
   outcomeDetail: string | null;
   note: string | null;
   receivedBy: string;
-  signatureSrc: string;
+  /** null when no signature was taken (delivery exceptions). */
+  signatureSrc: string | null;
   signatureWidth?: number;
   signatureHeight?: number;
   result: ConfirmationResult;
@@ -52,9 +53,11 @@ export function SavedConfirmationCard({
       }
       receivedBy={<p className="saved-value">{receivedBy}</p>}
       signature={
+        signatureSrc === null ? null : (
         <div className="signature-saved">
           <img src={signatureSrc} width={signatureWidth} height={signatureHeight} alt={`Customer signature, received by ${receivedBy}`} />
         </div>
+        )
       }
       footer={
         <dl className="dc-meta">

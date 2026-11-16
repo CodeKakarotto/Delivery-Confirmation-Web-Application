@@ -1,6 +1,7 @@
 /** D1 access for deliveries and confirmations. Every query is parameterized; no SQL is built from input. */
 
 import type {
+  OrderProduct,
   ConfirmationAttempt,
   ConfirmationListItem,
   ConfirmationReceipt,
@@ -21,6 +22,7 @@ export interface DeliveryRow {
   delivery_notes: string | null;
   zone: string | null;
   total_products: number | null;
+  products: string | null;
   stop_number: number | null;
   delivery_date: string | null;
   cancelled_at: string | null;
@@ -36,8 +38,8 @@ export interface ConfirmationRow {
   outcome: DeliveryOutcome;
   outcome_detail: string | null;
   note: string | null;
-  signature_width: number;
-  signature_height: number;
+  signature_width: number | null;
+  signature_height: number | null;
   result: ConfirmationResult;
   idempotency_key: string;
   request_hash: string;
@@ -45,7 +47,7 @@ export interface ConfirmationRow {
 }
 
 const DELIVERY_COLUMNS = `d.id, d.order_id, d.recipient_name, d.address_line, d.city, d.state, d.postal_code, d.address_notes,
-  d.delivery_notes, d.zone, d.total_products, d.stop_number, d.delivery_date, d.cancelled_at`;
+  d.delivery_notes, d.zone, d.total_products, d.products, d.stop_number, d.delivery_date, d.cancelled_at`;
 
 /** Columns of a confirmation, never including the signature bytes. */
 const CONFIRMATION_COLUMNS = `c.id, c.delivery_id, c.order_id, c.stop_number, c.zone, c.received_by, c.outcome, c.outcome_detail,
@@ -63,8 +65,29 @@ export function toDriverDelivery(row: DeliveryRow): DriverDelivery {
     postalCode: row.postal_code,
     addressNotes: row.address_notes,
     totalProducts: row.total_products,
+    products: parseProducts(row.products),
     deliveryInstructions: row.delivery_notes,
   };
+}
+
+/** The products column, read defensively: anything malformed is treated as "not recorded". */
+export function parseProducts(raw: string | null): OrderProduct[] | null {
+  if (!raw) return null;
+  try {
+    const list: unknown = JSON.parse(raw);
+    if (!Array.isArray(list) || list.length === 0 || list.length > 50) return null;
+    const out: OrderProduct[] = [];
+    for (const item of list) {
+      const name = (item as { name?: unknown })?.name;
+      const quantity = (item as { quantity?: unknown })?.quantity;
+      if (typeof name !== 'string' || !name.trim() || name.length > 100) return null;
+      if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > 999) return null;
+      out.push({ name: name.trim(), quantity });
+    }
+    return out;
+  } catch {
+    return null;
+  }
 }
 
 export function toReceipt(row: ConfirmationRow): ConfirmationReceipt {
@@ -100,9 +123,10 @@ export interface NewConfirmation {
   outcome: DeliveryOutcome;
   outcomeDetail: string | null;
   note: string | null;
-  signature: Uint8Array;
-  signatureWidth: number;
-  signatureHeight: number;
+  /** null for delivery exceptions (no signature is taken). */
+  signature: Uint8Array | null;
+  signatureWidth: number | null;
+  signatureHeight: number | null;
   result: ConfirmationResult;
   idempotencyKey: string;
   requestHash: string;
@@ -243,8 +267,8 @@ export async function listConfirmations(db: D1Database, f: ListFilter): Promise<
 interface DetailRow extends ListRow {
   outcome_detail: string | null;
   note: string | null;
-  signature_width: number;
-  signature_height: number;
+  signature_width: number | null;
+  signature_height: number | null;
   address_line: string;
   city: string;
   state: string;
@@ -252,6 +276,7 @@ interface DetailRow extends ListRow {
   address_notes: string | null;
   delivery_notes: string | null;
   total_products: number | null;
+  products: string | null;
   delivery_date: string | null;
   confirmed_by: string | null;
 }
@@ -263,7 +288,7 @@ export async function getConfirmationDetail(db: D1Database, id: string, userId?:
               (SELECT COUNT(*) FROM confirmation_attempts a WHERE a.confirmation_id = c.id) AS attempt_count,
               (SELECT COUNT(*) FROM confirmation_attempts a WHERE a.confirmation_id = c.id AND a.kind = 'conflict') AS conflict_count,
               c.outcome_detail, c.note, c.signature_width, c.signature_height,
-              d.address_line, d.city, d.state, d.postal_code, d.address_notes, d.delivery_notes, d.total_products, d.delivery_date,
+              d.address_line, d.city, d.state, d.postal_code, d.address_notes, d.delivery_notes, d.total_products, d.products, d.delivery_date,
               (SELECT u.display_name FROM users u WHERE u.id = c.confirmed_by_user_id) AS confirmed_by
          FROM delivery_confirmations c
          JOIN deliveries d ON d.id = c.delivery_id
@@ -290,6 +315,7 @@ export async function getConfirmationDetail(db: D1Database, id: string, userId?:
       postalCode: row.postal_code,
       addressNotes: row.address_notes,
       totalProducts: row.total_products,
+      products: parseProducts(row.products),
       deliveryInstructions: row.delivery_notes,
       deliveryDate: row.delivery_date,
     },
@@ -306,7 +332,7 @@ export async function getConfirmationDetail(db: D1Database, id: string, userId?:
 
 export async function getSignature(db: D1Database, id: string, userId?: number): Promise<Uint8Array<ArrayBuffer> | null> {
   const row = await db
-    .prepare('SELECT signature_png FROM delivery_confirmations WHERE id = ? AND (? IS NULL OR confirmed_by_user_id = ?)')
+    .prepare('SELECT signature_png FROM delivery_confirmations WHERE id = ? AND signature_png IS NOT NULL AND (? IS NULL OR confirmed_by_user_id = ?)')
     .bind(id, userId ?? null, userId ?? null)
     .first<{ signature_png: ArrayBuffer | Uint8Array | number[] }>();
   if (!row) return null;

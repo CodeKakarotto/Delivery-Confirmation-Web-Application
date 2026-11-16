@@ -3921,3 +3921,150 @@ button.home-card {
   background: var(--primary-bg);
   color: #fff;
 }
+
+/* ---------- Required mark, products ---------- */
+
+.required-mark {
+  color: var(--error);
+  font-weight: 700;
+  margin-left: 0.15rem;
+}
+.dc-products {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0.55rem 0.75rem;
+  background: var(--canvas);
+  border-radius: var(--radius-control);
+  display: grid;
+  gap: 0.2rem;
+}
+.dc-products li {
+  overflow-wrap: anywhere;
+}
+.dc-products li::before {
+  content: '';
+  display: inline-block;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--fern);
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+/* ---------- Deliveries: a smaller calendar, the selected day's list underneath ---------- */
+
+.dcal-panel {
+  max-width: 560px;
+  margin-bottom: 1rem;
+}
+.dcal-panel .day-stepper {
+  margin-bottom: 0.4rem;
+}
+.dcal-card {
+  padding: 0.5rem 0.5rem 0.6rem;
+  margin-bottom: 0;
+}
+.dcal-month {
+  border-spacing: 2px;
+}
+.dcal-day {
+  min-height: 0;
+  height: 3.1rem;
+  padding: 0.2rem;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.1rem;
+  border-color: transparent;
+  background: transparent;
+}
+.dcal-day:hover {
+  border-color: var(--leaf-strong);
+}
+.dcal-day.is-selected {
+  border: 2px solid var(--evergreen);
+  background: var(--surface);
+}
+.dcal-num {
+  width: 1.7rem;
+  height: 1.7rem;
+  font-size: 0.9rem;
+}
+.dcal-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  line-height: 1;
+}
+.dcal-dots .dcal-total {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  margin-right: 0.1rem;
+}
+.dcal-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+}
+.dcal-dot.is-ok {
+  background: var(--success);
+}
+.dcal-dot.is-warn {
+  background: var(--amber);
+}
+.dcal-dot.is-wait {
+  background: var(--fern);
+}
+.dcal-legend {
+  margin: 0.4rem 0.4rem 0;
+  gap: 0.35rem;
+}
+.dcal-strip {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+.dcal-strip .dcal-day {
+  height: 3.6rem;
+  justify-content: center;
+}
+.dcal-strip .week-day-title {
+  font-size: 0.82rem;
+}
+.dcal-strip .dcal-day.is-today .week-day-title {
+  background: var(--primary-bg);
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.1rem 0.4rem;
+}
+.day-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.day-list-head h2 {
+  font-size: 1.2rem;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+@media (max-width: 720px) {
+  .dcal-panel {
+    max-width: none;
+  }
+  .dcal-day {
+    height: 2.9rem;
+  }
+  .dcal-dots .dcal-total {
+    display: none;
+  }
+  .dcal-strip .week-day-title {
+    font-size: 0.72rem;
+  }
+}

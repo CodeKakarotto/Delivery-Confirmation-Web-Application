@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { createEnv, makePng, TestClient, validSubmission } from './helpers/app.ts';
+import { createEnv, exceptionSubmission, makePng, TestClient, validSubmission } from './helpers/app.ts';
 
 /** Saturday 14 November 2026, 3 PM in New York. */
 const NOW = new Date('2026-11-14T20:00:00.000Z');
@@ -178,7 +178,7 @@ describe('employee deliveries calendar: month, week and day', () => {
   it('counts each day’s deliveries by status for a month', async () => {
     const { client } = setup();
     await client.request('POST', '/api/driver/confirmations', validSubmission({ orderId: 'MF-10482' }), { now: NOW });
-    await client.request('POST', '/api/driver/confirmations', validSubmission({ orderId: 'MF-10483', outcome: 'left_at_door' }), { now: NOW });
+    await client.request('POST', '/api/driver/confirmations', exceptionSubmission({ orderId: 'MF-10483', outcome: 'left_at_door' }), { now: NOW });
     const res = await client.request('GET', '/api/dashboard/deliveries/calendar?month=2026-11', undefined, { now: NOW });
     assert.equal(res.status, 200);
     assert.equal(res.headers.get('Cache-Control'), 'no-store');

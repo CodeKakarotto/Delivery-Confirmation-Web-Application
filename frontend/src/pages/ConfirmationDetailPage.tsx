@@ -96,9 +96,9 @@ export function ConfirmationDetailPage() {
         outcomeDetail={c.outcomeDetail}
         note={c.note}
         receivedBy={c.receivedBy}
-        signatureSrc={dashboardApi.signatureUrl(c.id)}
-        signatureWidth={c.signatureWidth}
-        signatureHeight={c.signatureHeight}
+        signatureSrc={c.signatureWidth === null ? null : dashboardApi.signatureUrl(c.id)}
+        signatureWidth={c.signatureWidth ?? undefined}
+        signatureHeight={c.signatureHeight ?? undefined}
         result={c.result}
         confirmedAt={c.confirmedAt}
         timeZone={timeZone}

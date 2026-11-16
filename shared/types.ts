@@ -36,6 +36,11 @@ export const RESULT_LABELS: Record<ConfirmationResult, string> = {
   needs_review: 'Exception: needs review',
 };
 
+export interface OrderProduct {
+  name: string;
+  quantity: number;
+}
+
 /** The minimum a driver needs to complete one delivery (GET /api/driver/deliveries/:orderId). */
 export interface DriverDelivery {
   orderId: string;
@@ -51,6 +56,8 @@ export interface DriverDelivery {
   addressNotes: string | null;
   /** From the order itself; null = not recorded. Never calculated. */
   totalProducts: number | null;
+  /** The products on the order, written out; null = not recorded. */
+  products: OrderProduct[] | null;
   /** Read-only delivery instructions (the route app's delivery notes). */
   deliveryInstructions: string | null;
 }
@@ -74,8 +81,8 @@ export interface ConfirmationSubmit {
   outcome: DeliveryOutcome;
   outcomeDetail?: string;
   note?: string;
-  /** data:image/png;base64,… from the signature pad. */
-  signaturePng: string;
+  /** data:image/png;base64,… from the signature pad. Required for a hand-off to the recipient; not sent for exceptions. */
+  signaturePng?: string;
   /** Random UUID generated once per form, reused for every retry of the same submission. */
   idempotencyKey: string;
 }
@@ -130,8 +137,9 @@ export interface ConfirmationDetail extends ConfirmationListItem {
   delivery: DriverDelivery & { deliveryDate: string | null };
   outcomeDetail: string | null;
   note: string | null;
-  signatureWidth: number;
-  signatureHeight: number;
+  /** null when no signature was taken (delivery exceptions). */
+  signatureWidth: number | null;
+  signatureHeight: number | null;
   attempts: ConfirmationAttempt[];
   /** Display name of the driver account that saved it (null for records from before accounts). */
   confirmedBy: string | null;

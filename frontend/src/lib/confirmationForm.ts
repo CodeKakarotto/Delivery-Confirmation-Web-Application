@@ -21,6 +21,11 @@ export interface ConfirmationFormState {
 
 export type FormErrors = Partial<Record<'outcome' | 'outcomeDetail' | 'note' | 'receivedBy' | 'signature', string>>;
 
+/** Only a hand-off to the recipient takes the customer's signature; a delivery exception does not. */
+export function needsSignature(outcome: DeliveryOutcome | null): boolean {
+  return outcome === null || outcome === 'delivered_to_recipient';
+}
+
 /** Immediate feedback for the driver. The Worker repeats every check; this is for usability only. */
 export function validateConfirmationForm(f: ConfirmationFormState): FormErrors {
   const errors: FormErrors = {};
@@ -33,8 +38,8 @@ export function validateConfirmationForm(f: ConfirmationFormState): FormErrors {
   const name = f.receivedBy.trim();
   if (!name) errors.receivedBy = 'Enter the name of the person who received the delivery';
   else if (name.length > RECEIVED_BY_MAX) errors.receivedBy = `Use at most ${RECEIVED_BY_MAX} characters`;
-  // A typed name is never a signature: the customer must draw one.
-  if (!f.signature || f.signature.strokeLength < MIN_SIGNATURE_STROKE) {
+  // A typed name is never a signature: the customer must draw one (hand-offs to the recipient only).
+  if (needsSignature(f.outcome) && (!f.signature || f.signature.strokeLength < MIN_SIGNATURE_STROKE)) {
     errors.signature = 'Ask the customer to sign in the box';
   }
   if (f.note.trim().length > NOTE_MAX) errors.note = `Use at most ${NOTE_MAX} characters`;

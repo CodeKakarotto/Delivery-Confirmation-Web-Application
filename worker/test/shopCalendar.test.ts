@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { describe, it } from 'node:test';
-import { createEnv, TestClient, validSubmission } from './helpers/app.ts';
+import { createEnv, exceptionSubmission, TestClient, validSubmission } from './helpers/app.ts';
 
 /** "Now" for these tests: Saturday 14 November 2026, 3 PM in New York. */
 const NOW = new Date('2026-11-14T20:00:00.000Z');
 
 async function confirmAt(client: TestClient, iso: string, overrides: Record<string, unknown>) {
-  const res = await client.request('POST', '/api/driver/confirmations', validSubmission(overrides), { now: new Date(iso) });
+  const body = overrides.outcome && overrides.outcome !== 'delivered_to_recipient' ? exceptionSubmission(overrides) : validSubmission(overrides);
+  const res = await client.request('POST', '/api/driver/confirmations', body, { now: new Date(iso) });
   assert.equal(res.status, 201, JSON.stringify(res.body));
   return res.body.confirmation;
 }

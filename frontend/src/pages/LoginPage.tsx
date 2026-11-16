@@ -3,7 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router';
 import { ApiRequestError, errorMessage } from '../api/client.ts';
 import { Brand } from '../components/Layout.tsx';
 import { Notice, Spinner } from '../components/ui.tsx';
-import { ROLE_HOME, useAuth } from '../lib/auth.tsx';
+import { landingPath, useAuth } from '../lib/auth.tsx';
 
 /** Simple sign-in: username and password. Drivers and shop employees land on their own dashboard. */
 export function LoginPage() {
@@ -21,7 +21,7 @@ export function LoginPage() {
   useEffect(() => userRef.current?.focus(), []);
 
   if (status === 'loading') return <Spinner label="Checking your sign-in" />;
-  if (status === 'signed-in' && user) return <Navigate to={from && from !== '/login' ? from : ROLE_HOME[user.role]} replace />;
+  if (status === 'signed-in' && user) return <Navigate to={landingPath(user, from)} replace />;
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -34,7 +34,8 @@ export function LoginPage() {
     setError(null);
     try {
       await login(username.trim(), password);
-      navigate(from && from !== '/login' ? from : '/', { replace: true });
+      // Redirected by the signed-in branch above to this account's own dashboard (or its own page it came from).
+      navigate(location.pathname, { replace: true, state: location.state });
     } catch (err) {
       setPassword(''); // never keep a rejected password on screen
       setError(err instanceof ApiRequestError && err.status === 0 ? errorMessage(err) : err instanceof ApiRequestError ? err.message : 'Could not sign in. Try again.');

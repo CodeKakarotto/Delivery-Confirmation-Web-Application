@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { MemoryRouter } from 'react-router';
-import type { DeliveryListItem } from '../../shared/types.ts';
 import { DeliveriesMonth, DeliveriesWeek, ViewSwitch } from '../src/components/DeliveriesCalendar.tsx';
 
 const days = {
@@ -20,7 +18,11 @@ describe('Deliveries calendar: Month / Week / Day switch', () => {
 });
 
 describe('Month view', () => {
-  const html = renderToStaticMarkup(<DeliveriesMonth month="2026-11" today="2026-11-15" days={days} onPickDay={() => {}} />);
+  const html = renderToStaticMarkup(<DeliveriesMonth month="2026-11" today="2026-11-15" selected="2026-11-14" days={days} onPickDay={() => {}} />);
+
+  it('marks the selected day', () => {
+    assert.match(html, /aria-pressed="true"[^>]*aria-label="Saturday, November 14, 2026/);
+  });
 
   it('is a full month grid with Sunday-first weeks, the current week and today marked', () => {
     assert.ok(html.includes('<table'));
@@ -36,40 +38,16 @@ describe('Month view', () => {
   });
 });
 
-describe('Week view', () => {
-  const item = (orderId: string, date: string, status: DeliveryListItem['status']): DeliveryListItem => ({
-    orderId,
-    stopNumber: 1,
-    zone: 'A',
-    recipientName: 'Demo',
-    city: 'Lake Ridge',
-    deliveryDate: date,
-    status,
-    confirmation: status === 'confirmed' ? { id: 'c1', confirmedAt: '2026-11-14T15:30:00.000Z', result: 'confirmed', receivedBy: 'Demo' } : null,
-  });
-  const html = renderToStaticMarkup(
-    <MemoryRouter>
-      <DeliveriesWeek
-        start="2026-11-08"
-        today="2026-11-15"
-        timeZone="America/New_York"
-        items={[item('MF-1', '2026-11-14', 'confirmed'), item('MF-2', '2026-11-14', 'awaiting'), item('MF-3', '2026-11-13', 'awaiting')]}
-        onPickDay={() => {}}
-      />
-    </MemoryRouter>,
-  );
+describe('Week view: a compact strip of the seven days', () => {
+  const html = renderToStaticMarkup(<DeliveriesWeek start="2026-11-08" today="2026-11-15" selected="2026-11-14" days={days} onPickDay={() => {}} />);
 
-  it('shows all seven days of the week, Sunday to Saturday, together', () => {
+  it('shows Sunday to Saturday in one row, each with its number of deliveries', () => {
     const heads = [...html.matchAll(/class="week-day-title">([^<]+)</g)].map((m) => m[1]);
-    assert.deepEqual(heads, ['Sun, Nov 8', 'Mon, Nov 9', 'Tue, Nov 10', 'Wed, Nov 11', 'Thu, Nov 12', 'Fri, Nov 13', 'Sat, Nov 14']);
+    assert.deepEqual(heads, ['Sun 8', 'Mon 9', 'Tue 10', 'Wed 11', 'Thu 12', 'Fri 13', 'Sat 14']);
+    assert.match(html, /aria-label="Saturday, November 14, 2026: 6 deliveries/);
   });
 
-  it('lists each day’s deliveries under that day, with the delivery time when confirmed', () => {
-    const sat = html.indexOf('Sat, Nov 14');
-    const fri = html.indexOf('Fri, Nov 13');
-    assert.ok(html.indexOf('MF-3') > fri && html.indexOf('MF-3') < sat);
-    assert.ok(html.indexOf('MF-1') > sat && html.indexOf('MF-2') > sat);
-    assert.ok(html.includes('10:30'));
-    assert.ok(html.includes('No deliveries'));
+  it('marks the selected day', () => {
+    assert.match(html, /aria-pressed="true"[^>]*aria-label="Saturday, November 14, 2026/);
   });
 });

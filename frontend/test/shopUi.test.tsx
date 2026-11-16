@@ -29,6 +29,21 @@ describe('ExceptionPicker: "Delivered to recipient" is its own bubble, then Deli
   });
 });
 
+describe('ExceptionPicker: the exception note is mandatory for every exception', () => {
+  for (const value of ['left_at_door', 'left_with_front_desk', 'left_with_neighbor', 'other'] as const) {
+    it(`asks for a required exception note (*) for ${value}`, () => {
+      const html = renderToStaticMarkup(<ExceptionPicker value={value} detail="" onChange={() => {}} onDetailChange={() => {}} />);
+      assert.match(html, /Exception note<span class="required-mark"[^>]*>\*<\/span>/);
+      assert.match(html, /<textarea[^>]*required=""/);
+    });
+  }
+
+  it('asks for no note when delivered to the recipient', () => {
+    const html = renderToStaticMarkup(<ExceptionPicker value="delivered_to_recipient" detail="" onChange={() => {}} onDetailChange={() => {}} />);
+    assert.ok(!html.includes('<textarea'));
+  });
+});
+
 describe('SignatureField: the signature is captured in a pop-up', () => {
   it('shows a large "Tap to sign" button before signing, and no pad on the page itself', () => {
     const html = renderToStaticMarkup(<SignatureField value={null} onChange={() => {}} orderId="MF-10482" />);

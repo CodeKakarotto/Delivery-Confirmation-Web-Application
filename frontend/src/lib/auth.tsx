@@ -84,4 +84,19 @@ export function useAuth(): AuthContextValue {
 }
 
 export const ROLE_HOME: Record<UserRole, string> = { driver: '/driver', employee: '/shop' };
+
+/** Pages that belong to each role. */
+const ROLE_AREAS: Record<UserRole, string[]> = { driver: ['/driver', '/confirm/'], employee: ['/shop'] };
+
+/**
+ * Where to go after signing in: back to the page that asked for sign-in if it belongs to this account's role,
+ * otherwise the account's own dashboard (never another role's page, never another site).
+ */
+export function landingPath(user: PublicUser, from: string | undefined): string {
+  const home = ROLE_HOME[user.role];
+  if (!from || !from.startsWith('/') || from.startsWith('//')) return home;
+  const path = from.split(/[?#]/)[0]!;
+  const ok = ROLE_AREAS[user.role].some((area) => (area.endsWith('/') ? path.startsWith(area) : path === area || path.startsWith(`${area}/`)));
+  return ok ? from : home;
+}
 export const ROLE_LABEL: Record<UserRole, string> = { driver: 'Driver', employee: 'Shop employee' };

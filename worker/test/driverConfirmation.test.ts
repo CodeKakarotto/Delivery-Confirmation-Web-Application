@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { describe, it } from 'node:test';
-import { captureLogs, createEnv, makePng, pngDataUrl, TestClient, validSubmission } from './helpers/app.ts';
+import { captureLogs, createEnv, exceptionSubmission, makePng, pngDataUrl, TestClient, validSubmission } from './helpers/app.ts';
 
 function setup() {
   const { env, db } = createEnv();
@@ -19,7 +19,7 @@ describe('driver lookup (no login)', () => {
     assert.equal(res.status, 200);
     assert.equal(res.body.status, 'ready');
     assert.deepEqual(Object.keys(res.body.delivery).sort(), [
-      'addressLine', 'addressNotes', 'city', 'deliveryInstructions', 'orderId', 'postalCode', 'recipientName',
+      'addressLine', 'addressNotes', 'city', 'deliveryInstructions', 'orderId', 'postalCode', 'products', 'recipientName',
       'state', 'stopNumber', 'totalProducts', 'zone',
     ]);
     assert.equal(res.body.delivery.orderId, 'MF-10482');
@@ -164,17 +164,17 @@ describe('submitting a confirmation', () => {
 
   it('requires an explanation when the exception is Other', async () => {
     const { client, db } = setup();
-    const res = await client.request('POST', '/api/driver/confirmations', validSubmission({ outcome: 'other' }));
+    const res = await client.request('POST', '/api/driver/confirmations', exceptionSubmission({ outcome: 'other', outcomeDetail: undefined }));
     assert.equal(res.status, 422);
     assert.ok(res.body.error.details.issues.some((i: { path: string }) => i.path === 'outcomeDetail'));
-    const blank = await client.request('POST', '/api/driver/confirmations', validSubmission({ outcome: 'other', outcomeDetail: '  ' }));
+    const blank = await client.request('POST', '/api/driver/confirmations', exceptionSubmission({ outcome: 'other', outcomeDetail: '  ' }));
     assert.equal(blank.status, 422);
     assert.equal(confirmationRows(db).length, 0);
 
     const ok = await client.request(
       'POST',
       '/api/driver/confirmations',
-      validSubmission({ outcome: 'other', outcomeDetail: 'Placed in the garage at the customer’s request' }),
+      exceptionSubmission({ outcome: 'other', outcomeDetail: 'Placed in the garage at the customer’s request' }),
     );
     assert.equal(ok.status, 201);
     assert.equal(ok.body.confirmation.outcomeDetail, 'Placed in the garage at the customer’s request');
@@ -191,11 +191,11 @@ describe('submitting a confirmation', () => {
     const res = await client.request(
       'POST',
       '/api/driver/confirmations',
-      validSubmission({ outcome: 'left_at_door', note: 'Customer asked by text to leave it at the door.' }),
+      exceptionSubmission({ outcome: 'left_at_door', outcomeDetail: 'Customer asked by text to leave it at the door.' }),
     );
     assert.equal(res.status, 201);
     assert.equal(res.body.confirmation.result, 'needs_review');
-    assert.equal(res.body.confirmation.note, 'Customer asked by text to leave it at the door.');
+    assert.equal(res.body.confirmation.outcomeDetail, 'Customer asked by text to leave it at the door.');
   });
 
   it('rejects field values that are too long', async () => {
@@ -272,7 +272,7 @@ describe('duplicate submissions and retries', () => {
     const second = await client.request(
       'POST',
       '/api/driver/confirmations',
-      validSubmission({ receivedBy: 'Someone Else', outcome: 'left_with_neighbor' }),
+      exceptionSubmission({ receivedBy: 'Someone Else', outcome: 'left_with_neighbor' }),
     );
     assert.equal(second.status, 409);
     assert.equal(second.body.error.code, 'already_confirmed');
@@ -331,5 +331,69 @@ describe('privacy in logs', () => {
     for (const secret of ['Avery Demo', 'Other Person', '100 Sample Way', 'Lake Ridge', signature.slice(22, 80)]) {
       assert.ok(!logs.includes(secret), `log contains ${secret}`);
     }
+  });
+});
+
+describe('delivery exceptions: an exception note and who received it, no signature', () => {
+  it('saves an exception with its note and received-by name and no signature', async () => {
+    const { client, db } = setup();
+    const res = await client.request('POST', '/api/driver/confirmations', exceptionSubmission({ receivedBy: 'Neighbor at #12', outcome: 'left_with_neighbor', outcomeDetail: 'Neighbor at #12 took it' }));
+    assert.equal(res.status, 201);
+    assert.equal(res.body.confirmation.result, 'needs_review');
+    const row = db.sqlite.prepare('SELECT signature_png, signature_width, outcome_detail, received_by FROM delivery_confirmations').get() as Record<string, unknown>;
+    assert.equal(row.signature_png, null);
+    assert.equal(row.signature_width, null);
+    assert.equal(row.outcome_detail, 'Neighbor at #12 took it');
+    assert.equal(row.received_by, 'Neighbor at #12');
+    const detail = await client.request('GET', `/api/dashboard/confirmations/${res.body.confirmation.id}`, undefined, { role: 'employee' });
+    assert.equal(detail.body.confirmation.signatureWidth, null);
+    assert.equal((await client.request('GET', `/api/dashboard/confirmations/${res.body.confirmation.id}/signature`, undefined, { role: 'employee' })).status, 404);
+  });
+
+  it('requires the exception note for every exception', async () => {
+    const { client, db } = setup();
+    for (const outcome of ['left_at_door', 'left_with_front_desk', 'left_with_neighbor', 'other']) {
+      for (const outcomeDetail of [undefined, '   ']) {
+        const res = await client.request('POST', '/api/driver/confirmations', exceptionSubmission({ outcome, outcomeDetail }));
+        assert.equal(res.status, 422, outcome);
+        assert.ok(res.body.error.details.issues.some((i: { path: string }) => i.path === 'outcomeDetail'), outcome);
+      }
+    }
+    assert.equal((db.sqlite.prepare('SELECT COUNT(*) AS n FROM delivery_confirmations').get() as { n: number }).n, 0);
+  });
+
+  it('still requires who received it', async () => {
+    const { client } = setup();
+    assert.equal((await client.request('POST', '/api/driver/confirmations', exceptionSubmission({ receivedBy: ' ' }))).status, 422);
+  });
+
+  it('takes no signature for an exception', async () => {
+    const { client } = setup();
+    const res = await client.request('POST', '/api/driver/confirmations', exceptionSubmission({ signaturePng: pngDataUrl() }));
+    assert.equal(res.status, 422);
+    assert.ok(res.body.error.details.issues.some((i: { path: string }) => i.path === 'signaturePng'));
+  });
+
+  it('requires the customer signature when the order is handed to the recipient', async () => {
+    const { client } = setup();
+    const body = validSubmission();
+    delete body.signaturePng;
+    const res = await client.request('POST', '/api/driver/confirmations', body);
+    assert.equal(res.status, 422);
+    assert.ok(res.body.error.details.issues.some((i: { path: string }) => i.path === 'signaturePng'));
+  });
+});
+
+describe('products on the order', () => {
+  it('lists the order’s products for the driver', async () => {
+    const { client } = setup();
+    const res = await client.request('GET', '/api/driver/deliveries/MF-10482');
+    assert.deepEqual(res.body.delivery.products, [
+      { name: 'Dozen red roses', quantity: 1 },
+      { name: 'Glass vase', quantity: 1 },
+      { name: 'Greeting card', quantity: 1 },
+    ]);
+    const none = await client.request('GET', '/api/driver/deliveries/MF-10485');
+    assert.equal(none.body.delivery.products, null);
   });
 });

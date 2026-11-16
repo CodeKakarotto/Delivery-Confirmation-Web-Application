@@ -1,7 +1,10 @@
 # Database schema (Cloudflare D1)
 
 Source of truth: [`migrations/0001_initial.sql`](../migrations/0001_initial.sql) and
-[`migrations/0002_accounts.sql`](../migrations/0002_accounts.sql) (accounts and sessions; additive). Timestamps are ISO-8601 UTC text;
+[`migrations/0002_accounts.sql`](../migrations/0002_accounts.sql) (accounts and sessions; additive) and
+[`migrations/0003_exceptions_products.sql`](../migrations/0003_exceptions_products.sql) (`deliveries.products`; the
+signature becomes optional for delivery exceptions: the confirmations table is rebuilt and every row and refused
+attempt copied, tested in `worker/test/migrations.test.ts`). Timestamps are ISO-8601 UTC text;
 foreign keys are enforced. Demo data: [`seed/demo-seed.sql`](../seed/demo-seed.sql) (synthetic only).
 
 ## `deliveries`
@@ -15,6 +18,7 @@ The orders that can be confirmed. Columns shared with the route app keep the rou
 | address_notes | *new*: suite/gate/building notes, shown under Deliver To |
 | zone | *new*, NULL = no zone ("—"); never invented |
 | total_products | *new*, 1–999, NULL = "Not recorded"; never calculated |
+| products | *0003*: JSON array of `{ "name", "quantity" }` shown under Total Products; NULL = not recorded |
 | stop_number | *new*: the route stop `#` (route app: `route_stops.sequence_number`), NULL = "—" |
 | delivery_date | *new*: YYYY-MM-DD the order is expected; drives "not yet confirmed / missing" |
 | cancelled_at | *new*: cancelled orders cannot be confirmed (route app: `deleted_at` + `order_canceled`) |
@@ -23,7 +27,7 @@ The orders that can be confirmed. Columns shared with the route app keep the rou
 One per order (`UNIQUE delivery_id`), never updated by the API. `delivery_id → deliveries ON DELETE RESTRICT`.
 
 `id` (random UUID), snapshots `order_id`, `stop_number`, `zone` (copied by the server), `received_by` (1–100),
-`outcome` (5 values), `outcome_detail` (≤300, required for `other`), `note` (≤500), `signature_png` BLOB (≤200 KB),
+`outcome` (5 values), `outcome_detail` (≤300, required for `other`), `note` (≤500), `signature_png` BLOB (≤200 KB; required for `delivered_to_recipient`, NULL for exceptions since 0003),
 `signature_width`/`height`, `result` (`confirmed`|`needs_review`, must match the outcome), `idempotency_key` (UNIQUE),
 `request_hash` (SHA-256 of the content), `confirmed_at` (server UTC).
 

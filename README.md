@@ -25,8 +25,9 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
 - **Driver screen** (`/confirm`): open one order by its exact ID. The card shows, in this order:
   `#` → Zone → Order ID + Code 128 barcode → Deliver To (a **Delivered to recipient** bubble, then the Delivery
   Exception options) → Total Products → Delivery Instructions (with Received By and Customer Signature).
-- **Signature pop-up**: "Tap to sign" opens a full-screen signing area (Clear, Cancel, Done); the card then shows the
-  signature with Re-sign and Clear. A typed name never counts as a signature.
+- **Delivered to recipient**: Received By and the customer signature ("Tap to sign" opens a full-screen signing area).
+  **Delivery exception**: no signature; an **Exception note \*** (required) and Received By. Total Products lists the
+  order's products.
 - **Back buttons** on every driver screen and shop page.
 - Server-side validation of every field, including a structural check of the signature PNG.
 - Safe submission: a double tap or a retry after a lost response never saves twice (idempotency key); entries are kept
@@ -34,8 +35,8 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
 - **Shop employees** Dashboard (`/shop`, view only): a **single month calendar**. The current week's row is highlighted,
   today is circled, and today's date is written underneath (shop time zone, America/New_York). Each day shows how many
   deliveries were confirmed. Tapping a day shows its figures, the orders still awaiting (tap to open) and the confirmed
-  deliveries with their **delivery time**, 10 per page. **Deliveries** tab: a calendar with **Month** (each day's deliveries by
-  status), **Week** (all seven days with their deliveries) and **Day** (the list, 10 per page) views; filter by status. **Search** tab: part of an order ID or recipient name.
+  deliveries with their **delivery time**, 10 per page. **Deliveries** tab: a small calendar (**Month** or **Week**) where tapping
+  a day lists that day's deliveries underneath (10 per page, filter by status), plus a **Day** view. **Search** tab: part of an order ID or recipient name.
   - **Record and print** (`/shop/confirmations/:id`): the saved record in the same field order, with logo, barcode,
     signature and delivery time, and refused duplicate/conflicting attempts.
 

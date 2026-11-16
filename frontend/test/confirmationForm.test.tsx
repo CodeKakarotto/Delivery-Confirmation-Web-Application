@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { validateConfirmationForm, type ConfirmationFormState } from '../src/lib/confirmationForm.ts';
+import { needsSignature, validateConfirmationForm, type ConfirmationFormState } from '../src/lib/confirmationForm.ts';
 
 const valid: ConfirmationFormState = {
   outcome: 'delivered_to_recipient',
@@ -38,5 +38,20 @@ describe('confirmation form validation (usability only; the Worker re-checks eve
   it('limits text lengths like the server does', () => {
     assert.ok(validateConfirmationForm({ ...valid, receivedBy: 'x'.repeat(101) }).receivedBy);
     assert.ok(validateConfirmationForm({ ...valid, note: 'x'.repeat(501) }).note);
+  });
+
+  it('for a delivery exception: needs the exception note and received-by name, and no signature', () => {
+    const exception: ConfirmationFormState = { ...valid, outcome: 'left_at_door', outcomeDetail: 'On the porch', signature: null };
+    assert.deepEqual(validateConfirmationForm(exception), {});
+    for (const outcome of ['left_at_door', 'left_with_front_desk', 'left_with_neighbor', 'other'] as const) {
+      assert.ok(validateConfirmationForm({ ...exception, outcome, outcomeDetail: ' ' }).outcomeDetail, outcome);
+    }
+    assert.ok(validateConfirmationForm({ ...exception, receivedBy: '' }).receivedBy);
+  });
+
+  it('knows when a signature is taken', () => {
+    assert.equal(needsSignature('delivered_to_recipient'), true);
+    assert.equal(needsSignature('left_with_neighbor'), false);
+    assert.equal(needsSignature(null), true);
   });
 });

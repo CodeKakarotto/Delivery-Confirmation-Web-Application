@@ -33,14 +33,14 @@ export const confirmationSubmitSchema = s.object({
   outcome: s.enumOf(DELIVERY_OUTCOMES),
   outcomeDetail: optionalText(OUTCOME_DETAIL_MAX),
   note: optionalText(NOTE_MAX),
-  // Structure only here; the image bytes are checked in worker/src/signature.ts.
+  // Structure only here; the image bytes are checked in worker/src/signature.ts. Required or refused by outcome below.
   signaturePng: s.string({
     min: 30,
     max: Math.ceil((SIGNATURE_MAX_BYTES * 4) / 3) + 30,
     trim: false,
     pattern: /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/,
     patternMessage: 'Capture the customer signature',
-  }),
+  }).optional(),
   idempotencyKey: s.string({ min: 36, max: 36, pattern: UUID, patternMessage: 'Invalid request key' }),
 });
 
@@ -48,10 +48,15 @@ export const confirmationSubmitSchema = s.object({
  * Rules that involve more than one field. Returns field → message (empty when valid). Used by the Worker (the
  * authority) and by the form (for immediate feedback only).
  */
-export function crossFieldIssues(input: { outcome: string; outcomeDetail?: string | null }): Record<string, string> {
+export function crossFieldIssues(input: { outcome: string; outcomeDetail?: string | null; signaturePng?: string | null }): Record<string, string> {
   const issues: Record<string, string> = {};
-  if (input.outcome === 'other' && !input.outcomeDetail?.trim()) {
-    issues.outcomeDetail = 'Describe where or how the delivery was left';
+  if (input.outcome === 'delivered_to_recipient') {
+    // A hand-off to the recipient: the customer signs.
+    if (input.signaturePng !== undefined && !input.signaturePng) issues.signaturePng = 'Ask the customer to sign';
+  } else {
+    // A delivery exception: an exception note and who received it; no signature is taken.
+    if (!input.outcomeDetail?.trim()) issues.outcomeDetail = 'Write an exception note: where or how the delivery was left';
+    if (input.signaturePng) issues.signaturePng = 'No signature is taken for a delivery exception';
   }
   return issues;
 }

@@ -23,3 +23,21 @@ SELECT 'MF-' || strftime('%m%d', 'now', '-5 hours') || '-' || printf('%02d', v.c
     (11, 'Robin Example',   '14 Demo Dr',              'Lake Ridge', '22192', NULL,                       NULL,                                                  'A', 1),
     (12, 'Sky Mockup',      '230 Nowhere Blvd',        'Woodbridge', '22191', 'Leasing office',           'Deliver to the leasing office before 5 PM.',         'A', 2)
   ) AS v;
+
+-- Products for today's demo orders (synthetic), also for orders added before products existed. Only fills empty values.
+UPDATE deliveries SET products = CASE substr(order_id, -2)
+  WHEN '01' THEN '[{"name":"Dozen red roses","quantity":1},{"name":"Glass vase","quantity":1},{"name":"Greeting card","quantity":1}]'
+  WHEN '02' THEN '[{"name":"Birthday balloon bouquet","quantity":1}]'
+  WHEN '03' THEN '[{"name":"Office desk arrangement","quantity":1},{"name":"Box of chocolates","quantity":1}]'
+  WHEN '04' THEN '[{"name":"Sympathy standing spray","quantity":1},{"name":"White lily bouquet","quantity":2},{"name":"Condolence card","quantity":1}]'
+  WHEN '06' THEN '[{"name":"Mixed spring bouquet","quantity":1},{"name":"Ceramic pot","quantity":1}]'
+  WHEN '07' THEN '[{"name":"Single orchid plant","quantity":1}]'
+  WHEN '08' THEN '[{"name":"Anniversary rose box","quantity":1},{"name":"Champagne flutes","quantity":1}]'
+  WHEN '09' THEN '[{"name":"Sunflower bunch","quantity":1}]'
+  WHEN '10' THEN '[{"name":"Get-well tulip bouquet","quantity":1},{"name":"Teddy bear","quantity":1},{"name":"Mylar balloon","quantity":1}]'
+  WHEN '11' THEN '[{"name":"Succulent planter","quantity":1}]'
+  WHEN '12' THEN '[{"name":"Lobby centerpiece","quantity":1},{"name":"Thank-you card","quantity":1}]'
+  END
+ WHERE products IS NULL
+   AND order_id GLOB 'MF-[0-9][0-9][0-9][0-9]-[0-9][0-9]'
+   AND substr(order_id, -2) <> '05';

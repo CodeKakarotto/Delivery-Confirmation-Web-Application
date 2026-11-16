@@ -36,7 +36,8 @@ Today's (shop time zone) orders that are not cancelled and not confirmed, by sto
 Exact, case-insensitive order ID. Rate limited (60/min).
 
 - `200 { status: "ready", delivery: DriverDelivery }`: `orderId, stopNumber|null, zone|null, recipientName|null,
-  addressLine, city, state, postalCode, addressNotes|null, totalProducts|null, deliveryInstructions|null`
+  addressLine, city, state, postalCode, addressNotes|null, totalProducts|null, products: [{ name, quantity }]|null,
+  deliveryInstructions|null`
 - `200 { status: "already_confirmed", orderId, confirmedAt }`: no customer details
 - `404 order_not_found`, `409 order_cancelled`, `429 rate_limited`
 
@@ -48,9 +49,9 @@ Rate limited (20/min). Body (unknown fields are rejected):
   "orderId": "MF-10482",
   "receivedBy": "Avery Demo",
   "outcome": "delivered_to_recipient | left_at_door | left_with_front_desk | left_with_neighbor | other",
-  "outcomeDetail": "required for other, optional otherwise (≤300)",
+  "outcomeDetail": "exception note: required for every exception, not used for delivered_to_recipient (≤300)",
   "note": "optional (≤500)",
-  "signaturePng": "data:image/png;base64,…",
+  "signaturePng": "data:image/png;base64,… (only for delivered_to_recipient; refused for exceptions)",
   "idempotencyKey": "uuid generated once per form"
 }
 ```

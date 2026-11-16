@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { describe, it } from 'node:test';
-import { createEnv, makePng, TestClient, validSubmission } from './helpers/app.ts';
+import { createEnv, exceptionSubmission, makePng, TestClient, validSubmission } from './helpers/app.ts';
 
 /** Fixed "now": Saturday 14 November 2026, 3 PM in New York (the shop's time zone). */
 const NOW = new Date('2026-11-14T20:00:00.000Z');
@@ -16,14 +16,14 @@ async function seeded() {
   const b = await client.request(
     'POST',
     '/api/driver/confirmations',
-    validSubmission({ orderId: 'MF-10484', receivedBy: 'Front Desk', outcome: 'left_with_front_desk', note: 'Signed by reception' }),
+    exceptionSubmission({ orderId: 'MF-10484', receivedBy: 'Front Desk', outcome: 'left_with_front_desk', outcomeDetail: 'Signed by reception' }),
     { now },
   );
   // A conflicting second attempt for MF-10482.
   await client.request(
     'POST',
     '/api/driver/confirmations',
-    validSubmission({ receivedBy: 'Not Avery', outcome: 'left_at_door', idempotencyKey: randomUUID() }),
+    exceptionSubmission({ receivedBy: 'Not Avery', outcome: 'left_at_door', idempotencyKey: randomUUID() }),
     { now },
   );
   return { env, db, client, first: a.body.confirmation, second: b.body.confirmation };

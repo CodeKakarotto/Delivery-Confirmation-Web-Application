@@ -18,21 +18,35 @@ type Filter = DeliveryStatus | 'all';
 const shortDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const noon = (d: string) => new Date(`${d}T12:00:00Z`);
 
+/** Each day's counts for the months a view shows (a week can cross into a second month). */
+function useDayCounts(months: string[]) {
+  const key = months.join(',');
+  const res = useApi(() => Promise.all(months.map((m) => dashboardApi.deliveryCalendar(m))), [key]);
+  const days = useMemo(() => {
+    const map: Record<string, DeliveryDayCounts> = {};
+    for (const r of res.data ?? []) for (const d of r.days) map[d.date] = d;
+    return map;
+  }, [res.data]);
+  return { days, error: res.error, loading: res.loading, reload: res.reload };
+}
+
 /**
- * Employees' deliveries as a calendar with Month, Week and Day views. Month: each day's deliveries by status (tap a
- * day to open it). Week: all seven days together, each with its deliveries. Day: the day's list, 10 per page. The view,
- * date, filter and page live in the URL, so Back returns to them.
+ * Employees' deliveries: a small calendar (Month or Week) where tapping a day lists that day's deliveries right
+ * underneath, 10 per page. Day view shows just the list. View, shown month, selected day, filter and page live in the
+ * URL, so Back returns to them.
  */
 export function ShopDeliveriesPage() {
   const timeZone = useShopTimeZone();
   const [params, setParams] = useSearchParams();
   const today = localDateKey(new Date(), timeZone);
   const view = (params.get('view') as CalendarView | null) ?? 'month';
-  const date = params.get('date') || today;
+  const selected = params.get('date') || today;
+  const shownMonth = params.get('m') || selected.slice(0, 7);
   const status = (params.get('status') as Filter | null) ?? 'all';
   const page = Math.max(1, Number(params.get('p')) || 1);
+  const weekStart = weekStartKey(selected);
 
-  const update = (changes: Record<string, string | null>, replace = false) => {
+  const update = (changes: Record<string, string | null>, replace = true) => {
     const next = new URLSearchParams(params);
     for (const [k, v] of Object.entries(changes)) {
       if (v === null || v === '') next.delete(k);
@@ -40,28 +54,32 @@ export function ShopDeliveriesPage() {
     }
     setParams(next, { replace });
   };
-  const openDay = (d: string) => update({ view: 'day', date: d === today ? null : d, p: null });
-  const setDate = (d: string) => update({ date: d === today ? null : d, p: null }, true);
+  const select = (d: string) => update({ date: d === today ? null : d, m: null, p: null }, false);
 
-  const weekStart = weekStartKey(date);
+  const months =
+    view === 'month' ? [shownMonth] : view === 'week' ? [...new Set([weekStart.slice(0, 7), addDays(weekStart, 6).slice(0, 7)])] : [];
+  const counts = useDayCounts(months);
+
   const title =
     view === 'month'
-      ? monthLabel(date.slice(0, 7))
+      ? monthLabel(shownMonth)
       : view === 'week'
-        ? `${shortDate.format(noon(weekStart))} – ${shortDate.format(noon(addDays(weekStart, 6)))}, ${weekStart.slice(0, 4)}`
-        : fullDayLabel(date);
-  const step = (dir: 1 | -1) =>
-    setDate(view === 'month' ? `${addMonths(date.slice(0, 7), dir)}-01` : view === 'week' ? addDays(weekStart, 7 * dir) : addDays(date, dir));
-  const showsToday = view === 'month' ? today.startsWith(date.slice(0, 7)) : view === 'week' ? weekStartKey(today) === weekStart : date === today;
+        ? `${shortDate.format(noon(weekStart))} – ${shortDate.format(noon(addDays(weekStart, 6)))}, ${addDays(weekStart, 6).slice(0, 4)}`
+        : fullDayLabel(selected);
+  const step = (dir: 1 | -1) => {
+    if (view === 'month') update({ m: addMonths(shownMonth, dir) });
+    else select(addDays(selected, view === 'week' ? 7 * dir : dir));
+  };
+  const onToday = view === 'month' ? shownMonth === today.slice(0, 7) && selected === today : selected === today;
 
   return (
     <>
       <div className="page-head">
         <h1>Deliveries</h1>
-        <ViewSwitch value={view} onChange={(v) => update({ view: v === 'month' ? null : v, p: null }, true)} />
+        <ViewSwitch value={view} onChange={(v) => update({ view: v === 'month' ? null : v, m: null, p: null })} />
       </div>
 
-      <div className="deliveries-toolbar">
+      <div className="dcal-panel">
         <div className="day-stepper">
           <button type="button" className="btn btn-ghost month-cal-nav" aria-label={`Previous ${view}`} onClick={() => step(-1)}>
             <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
@@ -76,90 +94,78 @@ export function ShopDeliveriesPage() {
               <path d="M7.5 4.5 13 10l-5.5 5.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          {!showsToday && (
-            <button type="button" className="btn btn-small" onClick={() => setDate(today)}>
+          {!onToday && (
+            <button type="button" className="btn btn-small" onClick={() => update({ date: null, m: null, p: null }, false)}>
               Today
             </button>
           )}
         </div>
-        {view !== 'month' && (
-          <Segmented<Filter>
-            label="Show"
-            value={status}
-            onChange={(v) => update({ status: v === 'all' ? null : v, p: null }, true)}
-            options={[
-              { value: 'all', label: 'All' },
-              { value: 'awaiting', label: 'Awaiting' },
-              { value: 'confirmed', label: 'Delivered' },
-              { value: 'exception', label: 'Exceptions' },
-            ]}
-          />
-        )}
+
+        {view !== 'day' &&
+          (counts.error ? (
+            <Notice tone="error" title="Could not load the calendar" action={<button type="button" className="btn btn-small" onClick={counts.reload}>Try again</button>}>
+              {errorMessage(counts.error)}
+            </Notice>
+          ) : (
+            <div className={`card dcal-card${counts.loading ? ' is-loading' : ''}`}>
+              {view === 'month' ? (
+                <DeliveriesMonth month={shownMonth} today={today} selected={selected} days={counts.days} onPickDay={select} />
+              ) : (
+                <DeliveriesWeek start={weekStart} today={today} selected={selected} days={counts.days} onPickDay={select} />
+              )}
+              <p className="dcal-legend muted small">
+                <span className="dcal-dot is-ok" /> delivered <span className="dcal-dot is-warn" /> exception <span className="dcal-dot is-wait" /> awaiting
+              </p>
+            </div>
+          ))}
       </div>
 
-      {view === 'month' && <MonthView month={date.slice(0, 7)} today={today} onPickDay={openDay} />}
-      {view === 'week' && <WeekView start={weekStart} today={today} status={status} timeZone={timeZone} onPickDay={openDay} />}
-      {view === 'day' && <DayView date={date} status={status} page={page} timeZone={timeZone} onPage={(p) => update({ p: String(p) })} />}
+      <DayList date={selected} today={today} status={status} page={page} timeZone={timeZone} showHeading={view !== 'day'} onStatus={(v) => update({ status: v === 'all' ? null : v, p: null })} onPage={(p) => update({ p: String(p) }, false)} />
     </>
   );
 }
 
-function MonthView({ month, today, onPickDay }: { month: string; today: string; onPickDay: (d: string) => void }) {
-  const cal = useApi(() => dashboardApi.deliveryCalendar(month), [month]);
-  const days = useMemo(() => {
-    const map: Record<string, DeliveryDayCounts> = {};
-    for (const d of cal.data?.days ?? []) map[d.date] = d;
-    return map;
-  }, [cal.data]);
-  return (
-    <section className="card dcal-card" aria-label="Month">
-      {cal.error ? (
-        <Notice tone="error" title="Could not load the month" action={<button type="button" className="btn btn-small" onClick={cal.reload}>Try again</button>}>
-          {errorMessage(cal.error)}
-        </Notice>
-      ) : (
-        <div className={cal.loading ? 'is-loading' : undefined}>
-          <DeliveriesMonth month={month} today={today} days={days} onPickDay={onPickDay} />
-          <p className="dcal-legend muted small">
-            <span className="dcal-pill is-ok">✓</span> delivered <span className="dcal-pill is-warn">!</span> exceptions{' '}
-            <span className="dcal-pill is-wait">•</span> awaiting. Tap a day to see its deliveries.
-          </p>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function WeekView({
-  start,
+/** The selected day's deliveries, underneath the calendar. */
+function DayList({
+  date,
   today,
   status,
+  page,
   timeZone,
-  onPickDay,
+  showHeading,
+  onStatus,
+  onPage,
 }: {
-  start: string;
+  date: string;
   today: string;
   status: Filter;
+  page: number;
   timeZone: string;
-  onPickDay: (d: string) => void;
+  showHeading: boolean;
+  onStatus: (v: Filter) => void;
+  onPage: (p: number) => void;
 }) {
-  const list = useApi(() => dashboardApi.deliveries({ from: start, to: addDays(start, 6), status, limit: 200 }), [start, status]);
-  if (list.error) return <Notice tone="error" title="Could not load the week">{errorMessage(list.error)}</Notice>;
-  if (!list.data) return <Spinner label="Loading the week" />;
-  return (
-    <section aria-label="Week" className={list.loading ? 'is-loading' : undefined}>
-      <DeliveriesWeek start={start} today={today} timeZone={timeZone} items={list.data.items} onPickDay={onPickDay} />
-      {list.data.total > list.data.items.length && (
-        <p className="muted small">Showing the first {list.data.items.length} of {list.data.total} deliveries. Open a day to see all of them.</p>
-      )}
-    </section>
-  );
-}
-
-function DayView({ date, status, page, timeZone, onPage }: { date: string; status: Filter; page: number; timeZone: string; onPage: (p: number) => void }) {
   const list = useApi(() => dashboardApi.deliveries({ date, status, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [date, status, page]);
   return (
-    <section className="card confirmed-card" aria-label="Day">
+    <section className="card confirmed-card day-list" aria-labelledby="day-list-title">
+      <div className="day-list-head">
+        <h2 id="day-list-title" className={showHeading ? undefined : 'visually-hidden'}>
+          {fullDayLabel(date)}
+          {date === today && <span className="tag tag-now">Today</span>}
+          {list.data && <span className="h1-sub">{list.data.total}</span>}
+        </h2>
+        <Segmented<Filter>
+          label="Show"
+          value={status}
+          onChange={onStatus}
+          options={[
+            { value: 'all', label: 'All' },
+            { value: 'awaiting', label: 'Awaiting' },
+            { value: 'confirmed', label: 'Delivered' },
+            { value: 'exception', label: 'Exceptions' },
+          ]}
+        />
+      </div>
       {list.error ? (
         <Notice tone="error" title="Could not load deliveries" action={<button type="button" className="btn btn-small" onClick={list.reload}>Try again</button>}>
           {errorMessage(list.error)}

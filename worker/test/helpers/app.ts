@@ -203,6 +203,13 @@ export function validSubmission(overrides: Record<string, unknown> = {}): Record
   };
 }
 
+/** A delivery exception: an exception note and who received it, and no signature. */
+export function exceptionSubmission(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const body = validSubmission({ outcome: 'left_at_door', outcomeDetail: 'Left on the front porch as asked', ...overrides });
+  if (!('signaturePng' in overrides)) delete body.signaturePng;
+  return body;
+}
+
 /** Captures everything written to console.log/warn/error while `fn` runs. */
 export async function captureLogs(fn: () => Promise<void>): Promise<string> {
   const lines: string[] = [];

@@ -31,3 +31,14 @@ VALUES
   ('MF-10490', 'Quinn Cancelled','5 Nowhere Pl',        'Dale City',   'VA', '22193', NULL,
    'Order cancelled by the customer.', 'B', 1, NULL, date('now', '-5 hours'), strftime('%Y-%m-%dT%H:%M:%fZ','now'),
    strftime('%Y-%m-%dT%H:%M:%fZ','now'), strftime('%Y-%m-%dT%H:%M:%fZ','now'));
+
+-- Products on the demo orders (synthetic). Quantities add up to each order's total_products.
+UPDATE deliveries SET products = CASE order_id
+  WHEN 'MF-10482'    THEN '[{"name":"Dozen red roses","quantity":1},{"name":"Glass vase","quantity":1},{"name":"Greeting card","quantity":1}]'
+  WHEN 'MF-10483'    THEN '[{"name":"Birthday balloon bouquet","quantity":1}]'
+  WHEN 'MF-10484'    THEN '[{"name":"Office desk arrangement","quantity":1},{"name":"Box of chocolates","quantity":1}]'
+  WHEN 'FTD-2207731' THEN '[{"name":"Sympathy standing spray","quantity":1},{"name":"White lily bouquet","quantity":2},{"name":"Condolence card","quantity":1}]'
+  WHEN 'MF-10470'    THEN '[{"name":"Mixed spring bouquet","quantity":1},{"name":"Ceramic pot","quantity":1}]'
+  WHEN 'MF-10471'    THEN '[{"name":"Single orchid plant","quantity":1}]'
+  WHEN 'MF-10490'    THEN '[{"name":"Sunflower bunch","quantity":1}]'
+  ELSE products END;
