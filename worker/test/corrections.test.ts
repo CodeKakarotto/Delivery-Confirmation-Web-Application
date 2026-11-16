@@ -123,6 +123,7 @@ describe('entering a confirmation from a paper slip (employees)', () => {
     outcome: 'delivered_to_recipient',
     deliveredAt: '2026-11-14T16:45:00.000Z',
     paperReference: 'Paper slip in the November binder',
+    slipPhoto: jpegDataUrl(),
     idempotencyKey: randomUUID(),
     ...overrides,
   });
@@ -160,8 +161,11 @@ describe('entering a confirmation from a paper slip (employees)', () => {
     assert.equal((await enter(client, paper({ orderId: 'MF-10484', deliveredAt: 'yesterday' }))).status, 422);
   });
 
-  it('checks the slip photo', async () => {
+  it('requires a photo of the signed slip, and checks it', async () => {
     const { client } = setup();
+    const missing = await enter(client, paper({ slipPhoto: undefined }));
+    assert.equal(missing.status, 422);
+    assert.ok(JSON.stringify(missing.body).includes('slipPhoto'), JSON.stringify(missing.body));
     const bad = await enter(client, paper({ slipPhoto: 'data:image/jpeg;base64,' + Buffer.from('not a jpeg at all, just text').toString('base64') }));
     assert.equal(bad.status, 422);
     assert.equal(bad.body.error.code, 'invalid_photo');

@@ -490,9 +490,11 @@ export async function paperConfirmation(ctx: RequestContext): Promise<Response> 
   }
   const reference = input.paperReference.trim();
   if (!reference) throw validationError([{ path: 'paperReference', message: 'Say where the signed paper slip is filed' }]);
-  const photo = input.slipPhoto ? validateSlipPhoto(input.slipPhoto) : null;
+  // The photo of the signed slip is the only proof of the customer's signature, so it is required.
+  if (!input.slipPhoto) throw validationError([{ path: 'slipPhoto', message: 'Add a photo of the signed slip' }]);
+  const photo = validateSlipPhoto(input.slipPhoto);
   const requestHash = await sha256Hex(
-    JSON.stringify(['paper', input.orderId.toLowerCase(), input.receivedBy, input.outcome, outcomeDetail, input.deliveredAt, reference, photo ? await sha256Hex(photo.bytes) : null]),
+    JSON.stringify(['paper', input.orderId.toLowerCase(), input.receivedBy, input.outcome, outcomeDetail, input.deliveredAt, reference, await sha256Hex(photo.bytes)]),
   );
 
   const replay = await findConfirmationByKey(ctx.db, input.idempotencyKey);

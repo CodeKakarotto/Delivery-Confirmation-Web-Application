@@ -14,6 +14,7 @@ import { shopDateTime } from '../lib/time.ts';
 import { useOffline } from '../lib/offline.tsx';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
 import { useApi } from '../lib/useApi.ts';
+import { CallShop } from '../components/CallShop.tsx';
 
 /** No signal (or the server could not be reached), as opposed to the server answering "no". */
 function isConnectionProblem(err: unknown): boolean {
@@ -93,6 +94,7 @@ export function DriverConfirmPage() {
         >
           {errorMessage(err)}
         </Notice>
+        <CallShop />
         <Link to="/driver" className="btn">
           Back to my dashboard
         </Link>
@@ -108,6 +110,7 @@ export function DriverConfirmPage() {
           A delivery confirmation was saved on {shopDateTime(data.confirmedAt, timeZone)}. It cannot be changed from this screen. Call the shop
           if something is wrong.
         </Notice>
+        <CallShop />
         <Link to="/driver" className="btn btn-primary">
           Confirm another delivery
         </Link>
@@ -313,6 +316,7 @@ function ConfirmForm({ delivery, timeZone, offlineCopy = false }: { delivery: Dr
         <h1>Confirm delivery</h1>
       </div>
       <p className="muted lead">Check the order details, then choose how it was handed over: delivered to the recipient (the customer signs) or a delivery exception (write an exception note).</p>
+      <CallShop compact />
       {offlineCopy && (
         <Notice tone="info" title="No signal">
           Showing the copy of this order saved on your phone. When you submit, it will be saved on this phone and will submit automatically

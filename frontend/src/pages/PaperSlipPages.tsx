@@ -23,16 +23,42 @@ export function PrintSlipsPage() {
             Print
           </button>
         </div>
-        <Notice tone="info" title="When to use these">
-          Only when the app cannot be used. Fill in one slip per delivery, have the customer sign it when it is handed to them, and bring the slips
-          back to the shop the same day. An employee types them in with “Enter from paper slip”.
-        </Notice>
+        <PaperSteps />
       </div>
       <div className="slips">
         <PaperSlip />
         <PaperSlip />
       </div>
     </div>
+  );
+}
+
+/** The paper backup in three steps, shown on both paper pages. */
+function PaperSteps({ onForm = false }: { onForm?: boolean }) {
+  return (
+    <section className="paper-steps" aria-labelledby="paper-steps-title">
+      <h2 id="paper-steps-title">If the app is down</h2>
+      <ol>
+        <li>
+          <span className="paper-step-num" aria-hidden="true">1</span>
+          <span>
+            <strong>Print the paper slips</strong> and hand them to the driver before they leave. One slip per delivery; the customer signs it.
+          </span>
+        </li>
+        <li>
+          <span className="paper-step-num" aria-hidden="true">2</span>
+          <span>
+            <strong>When the driver returns</strong>, fill in {onForm ? 'the form below' : 'the form on the Paper slips page'} from each driver’s slip.
+          </span>
+        </li>
+        <li>
+          <span className="paper-step-num" aria-hidden="true">3</span>
+          <span>
+            <strong>Take a photo of the signed slip.</strong> It is required: it is the proof of the customer’s signature.
+          </span>
+        </li>
+      </ol>
+    </section>
   );
 }
 
@@ -98,6 +124,7 @@ export function PaperEntryPage() {
     if (!deliveredAt || Number.isNaN(when.getTime())) found.deliveredAt = 'Enter the date and time from the slip';
     else if (when.getTime() > Date.now() + 5 * 60_000) found.deliveredAt = 'The time on the slip cannot be in the future';
     if (!reference.trim()) found.paperReference = 'Say where the signed slip is filed';
+    if (!photo) found.slipPhoto = 'Take or choose a photo of the signed slip';
     setIssues(found);
     if (Object.keys(found).length) return;
     setBusy(true);
@@ -110,7 +137,7 @@ export function PaperEntryPage() {
         ...(outcome !== 'delivered_to_recipient' ? { outcomeDetail: detail.trim() } : {}),
         deliveredAt: when.toISOString(),
         paperReference: reference.trim(),
-        ...(photo ? { slipPhoto: photo } : {}),
+        slipPhoto: photo!,
         idempotencyKey: keyRef.current,
       });
       navigate(`/shop/confirmations/${res.confirmation.id}`, { replace: true });
@@ -126,14 +153,13 @@ export function PaperEntryPage() {
     <div className="narrow-wide">
       <BackButton fallback="/shop" />
       <div className="page-head">
-        <h1>Enter from paper slip</h1>
-        <Link to="/shop/paper/print" className="btn">
+        <h1>Paper slips</h1>
+        <Link to="/shop/paper/print" className="btn btn-primary">
           Print blank slips
         </Link>
       </div>
-      <p className="muted lead">
-        Use this when a driver could not use the app and filled in a paper slip. Copy the slip exactly; the record is marked “Entered from paper”.
-      </p>
+      <PaperSteps onForm />
+      <p className="muted">Copy the slip exactly; the record is marked “Entered from paper”.</p>
       {error && <Notice tone="error">{error}</Notice>}
       <form className="card paper-form" onSubmit={onSubmit} noValidate>
         <div className={`field${issues.orderId ? ' field-invalid' : ''}`}>
@@ -198,7 +224,11 @@ export function PaperEntryPage() {
         </div>
 
         <div className={`field${issues.slipPhoto ? ' field-invalid' : ''}`}>
-          <label htmlFor={ids.photo}>Photo of the signed slip (optional)</label>
+          <label htmlFor={ids.photo}>
+            Photo of the signed slip
+            <RequiredMark />
+          </label>
+          <p className="field-hint">Lay the slip flat and make sure the signature can be read.</p>
           <input id={ids.photo} type="file" accept="image/*" capture="environment" onChange={(e) => void onPhoto(e.target.files?.[0])} />
           {photoBusy && <p className="field-hint">Preparing the photo…</p>}
           {issues.slipPhoto && <p className="field-error">{issues.slipPhoto}</p>}

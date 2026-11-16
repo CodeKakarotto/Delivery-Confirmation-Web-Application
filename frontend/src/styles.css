@@ -4442,7 +4442,7 @@ button.home-card {
   min-width: 7.5rem;
 }
 /* Narrower screens: the three extra sections become icons; the name stays for screen readers and on hover. */
-@media (max-width: 1180px) {
+@media (max-width: 960px) {
   .mainnav :is(.nav-report, .nav-backup, .nav-search) .nav-label {
     position: absolute;
     width: 1px;
@@ -4470,4 +4470,258 @@ button.home-card {
   .mainnav .nav-search {
     margin-left: auto;
   }
+}
+
+/* ---------- Paper backup steps ---------- */
+
+.paper-steps {
+  background: var(--amber-wash);
+  border: 1px solid color-mix(in srgb, var(--amber) 25%, transparent);
+  border-radius: var(--radius-card);
+  padding: 1rem 1.15rem;
+  margin-bottom: 1rem;
+}
+.paper-steps h2 {
+  font-size: 1.05rem;
+  color: var(--amber);
+  margin: 0 0 0.6rem;
+}
+.paper-steps ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+.paper-steps li {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  line-height: 1.45;
+}
+.paper-step-num {
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #fff;
+  background: var(--amber);
+}
+:root[data-theme='dark'] .paper-steps {
+  background: rgba(240, 196, 108, 0.08);
+  border-color: rgba(240, 196, 108, 0.25);
+}
+:root[data-theme='dark'] .paper-steps h2 {
+  color: #f0c46c;
+}
+:root[data-theme='dark'] .paper-step-num {
+  background: #f0c46c;
+  color: #1d1b22;
+}
+
+/* ---------- Search help ---------- */
+
+.search-help {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+.search-help-title {
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.search-help ul {
+  margin: 0 0 0.5rem;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.3rem;
+}
+.search-help strong {
+  color: var(--ink);
+}
+.search-help code {
+  font-size: 0.88em;
+  padding: 0.05rem 0.35rem;
+  border-radius: 6px;
+  background: var(--leaf);
+  color: var(--evergreen);
+}
+.search-help-note {
+  margin: 0;
+}
+
+/* ---------- Call the shop (drivers) ---------- */
+
+.call-shop {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--leaf-strong);
+  border-radius: var(--radius-card);
+  background: var(--leaf);
+}
+.call-shop-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--evergreen);
+}
+.call-shop-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+  font-size: 0.92rem;
+  color: var(--muted);
+  min-width: 0;
+}
+.call-shop-text strong {
+  color: var(--ink);
+}
+.call-shop-btn {
+  margin-left: auto;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+@media (max-width: 520px) {
+  .call-shop {
+    flex-wrap: wrap;
+  }
+  .call-shop-btn {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ---------- Account menu (one button instead of name + Sign out + theme switch) ---------- */
+
+.account-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--primary-bg);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.account-avatar-large {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 0.95rem;
+}
+.account-trigger .account-name {
+  text-align: left;
+}
+.account-dropdown {
+  min-width: 15rem;
+  padding: 0.4rem;
+}
+.account-dropdown-head {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.6rem 0.7rem;
+  margin-bottom: 0.3rem;
+  border-bottom: 1px solid var(--rule);
+}
+.account-dropdown-head > span:last-child {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.account-dropdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+button.account-dropdown-item {
+  width: 100%;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.92rem;
+  text-align: left;
+  cursor: pointer;
+}
+.account-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.account-call > span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.account-call-number {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.account-signout {
+  margin-top: 0.3rem;
+  border-top: 1px solid var(--rule) !important;
+  border-radius: 0 0 8px 8px;
+  padding-top: 0.7rem;
+}
+.account-signout:hover,
+.account-signout:focus {
+  color: var(--error) !important;
+  background: var(--error-wash) !important;
+}
+@media (max-width: 720px) {
+  .account-trigger {
+    padding: 0.2rem 0.35rem;
+  }
+}
+/* Medium screens: the account button shows just the initials, so the menu labels keep their room. */
+@media (max-width: 1100px) {
+  .account-trigger .account-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.call-shop-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin: -0.25rem 0 1rem;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+.call-shop-line svg {
+  color: var(--evergreen);
+}
+.call-shop-line a {
+  font-weight: 600;
+  color: var(--evergreen);
+  white-space: nowrap;
 }

@@ -7,6 +7,7 @@ import { DeliveryRows } from '../components/DeliveryRows.tsx';
 import { EmptyState, Notice, Spinner } from '../components/ui.tsx';
 import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
+import { localDateKey } from '../../../shared/shopTime.ts';
 
 const PAGE_SIZE = 10;
 
@@ -17,6 +18,10 @@ export function ShopSearchPage() {
   const q = params.get('q') ?? '';
   const page = Math.max(1, Number(params.get('p')) || 1);
   const [text, setText] = useState(q);
+  // Examples built from today's date, so they match real orders (demo order IDs are MF-MMDD-NN).
+  const today = localDateKey(new Date(), timeZone);
+  const mmdd = today.slice(5, 7) + today.slice(8, 10);
+  const todayWords = new Date(`${today}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: 'UTC' });
   const results = useApi(
     () => (q ? dashboardApi.deliveries({ q, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }) : Promise.resolve(null)),
     [q, page],
@@ -33,6 +38,7 @@ export function ShopSearchPage() {
       <div className="page-head">
         <h1>Search</h1>
       </div>
+      <p className="muted lead">Find any delivery (past, today or upcoming) and open its record.</p>
       <form className="card search-card" role="search" onSubmit={onSubmit} noValidate>
         <label htmlFor="shop-search" className="search-card-label">
           Order ID or recipient name
@@ -42,7 +48,7 @@ export function ShopSearchPage() {
             id="shop-search"
             type="search"
             className="input-large"
-            placeholder="e.g. MF-10482 or Avery"
+            placeholder={`e.g. MF-${mmdd}-04 or Avery`}
             value={text}
             onChange={(e) => setText(e.target.value)}
             autoComplete="off"
@@ -52,6 +58,18 @@ export function ShopSearchPage() {
           <button type="submit" className="btn btn-primary btn-large">
             Search
           </button>
+        </div>
+        <div className="search-help">
+          <p className="search-help-title">What you can search for</p>
+          <ul>
+            <li>
+              <strong>Order ID</strong> from the ticket or FTD, e.g. <code>MF-{mmdd}-04</code>. Part of it is enough: <code>{mmdd}</code> finds every order from {todayWords}.
+            </li>
+            <li>
+              <strong>Recipient’s name</strong>, first or last, e.g. <code>Avery</code> or <code>Demo</code>.
+            </li>
+          </ul>
+          <p className="search-help-note">Capital letters do not matter. Use this when a customer calls to ask about an order.</p>
         </div>
       </form>
       {q && (

@@ -23,8 +23,10 @@ for the test runner by `frontend/test/register-tsx.mjs` (esbuild).
 | `worker/test/auth.test.ts` | Sign-in: cookie flags (HttpOnly, SameSite=Strict, Secure/__Host- on HTTPS), generic errors, lockout after 5 failures, per-device limit, deactivated accounts, hashes only, nothing secret in logs, idle and absolute expiry, sign-out, anti-forgery token, old role header ignored |
 | `worker/test/roles.test.ts` | Sign-in required everywhere; only drivers confirm; employee-only views; drivers see only their own confirmations and signatures; signature served with the cookie alone; awaiting list (5 per page); employees' deliveries list and search (wildcards escaped) |
 | `frontend/test/authGate.test.tsx` | Pages shown only to signed-in accounts of the right role |
-| `worker/test/corrections.test.ts` | Corrections (reason required, old values kept, outcome rules, signature never changed), voids (order back to awaiting, re-confirmable, not counted), paper entries (marked paper, slip time, photo checks, rules, idempotent), offline copy endpoint |
+| `worker/test/corrections.test.ts` | Corrections (reason required, old values kept, outcome rules, signature never changed), voids (order back to awaiting, re-confirmable, not counted), paper entries (marked paper, slip time, photo required and checked, rules, idempotent), offline copy endpoint |
 | `frontend/test/outbox.test.ts` | The phone outbox: retry on no signal or server errors, keep refused items for attention, stop at an ended session, order and per-driver, no duplicates; today's copy per driver and day |
+| `worker/test/demoSeed.test.ts` | Demo orders: twelve a day for today and the next seven days, rotating recipients, safe to run twice |
+| `frontend/test/callShop.test.tsx` | The shop's number as a tap-to-call link for drivers |
 | `worker/test/unvoidReport.test.ts` | Undo void (only on voided records, reason required, counts again, refused after re-confirmation, employees only) and the end-of-day report (rows and totals, Missing on past days, CSV for Excel, formula escaping, date checks) |
 | `frontend/test/recordActions.test.tsx` | Record buttons (Undo void only on a voided record), "Void undone" in the history, the report table |
 | `frontend/test/correctionsUi.test.tsx` | Change history (old value crossed out → new, who, when, why; voids) and the blank paper slip layout |

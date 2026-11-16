@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router';
+import { useEffect, useId, useRef, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router';
 import { ROLE_LABEL, useAuth } from '../lib/auth.tsx';
 import { useOffline } from '../lib/offline.tsx';
+import { SHOP_PHONE, SHOP_PHONE_TEL } from '../lib/shop.ts';
 import { applyTheme, currentTheme, type Theme } from '../lib/theme.ts';
+import { PhoneIcon } from './CallShop.tsx';
 
 /**
  * Header brand: the sponsor's original logo artwork (frontend/public/brand), same as the route-optimization app.
@@ -100,37 +102,104 @@ function NavGlyph({ icon }: { icon: NavIcon }) {
   );
 }
 
-/** The signed-in account and Sign out (which ends the session on the server). */
-function AccountBadge() {
+/**
+ * One account button in the header (initials, name, role). It opens a small menu with the light/dark switch,
+ * "Call the shop" for drivers, and Sign out (which ends the session on the server).
+ */
+function AccountMenu() {
   const { user, logout } = useAuth();
   const { items } = useOffline();
-  const unsent = items.length;
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+  const { pathname } = useLocation();
+
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      ref.current?.querySelector<HTMLButtonElement>('.account-trigger')?.focus();
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
   if (!user) return null;
+  const unsent = items.length;
+  const initials = user.displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join('');
+
+  const signOut = () => {
+    // Signing out wipes this phone, including confirmations that have not been sent yet.
+    if (
+      unsent > 0 &&
+      !window.confirm(
+        `${unsent === 1 ? '1 confirmation has' : `${unsent} confirmations have`} not been sent yet and will be lost if you sign out now. Get signal first and wait until it says "All sent". Sign out anyway?`,
+      )
+    ) {
+      return;
+    }
+    void logout();
+  };
+
   return (
-    <span className="role-badge">
-      <span className="account-name">
-        {user.displayName}
-        <span className="account-role">{ROLE_LABEL[user.role]}</span>
-      </span>
-      <button
-        type="button"
-        className="btn btn-small"
-        onClick={() => {
-          // Signing out wipes this phone, including confirmations that have not been sent yet.
-          if (
-            unsent > 0 &&
-            !window.confirm(
-              `${unsent === 1 ? '1 confirmation has' : `${unsent} confirmations have`} not been sent yet and will be lost if you sign out now. Get signal first and wait until it says "All sent". Sign out anyway?`,
-            )
-          ) {
-            return;
-          }
-          void logout();
-        }}
-      >
-        Sign out
+    <div className="account-menu" ref={ref}>
+      <button type="button" className="account-trigger" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen((o) => !o)}>
+        <span className="account-avatar" aria-hidden="true">
+          {initials}
+        </span>
+        <span className="account-name">
+          {user.displayName}
+          <span className="account-role">{ROLE_LABEL[user.role]}</span>
+        </span>
+        <svg className="account-chevron" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+          <path d="m5.5 7.5 4.5 4.5 4.5-4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
-    </span>
+      <div id={menuId} className="account-dropdown" hidden={!open}>
+        <div className="account-dropdown-head">
+          <span className="account-avatar account-avatar-large" aria-hidden="true">
+            {initials}
+          </span>
+          <span>
+            <strong>{user.displayName}</strong>
+            <span className="account-role">{ROLE_LABEL[user.role]}</span>
+          </span>
+        </div>
+        {user.role === 'driver' && (
+          <a className="account-dropdown-item account-call" href={`tel:${SHOP_PHONE_TEL}`}>
+            <PhoneIcon size={16} />
+            <span>
+              Call the shop
+              <span className="account-call-number">{SHOP_PHONE}</span>
+            </span>
+          </a>
+        )}
+        <div className="account-dropdown-row">
+          <span>Appearance</span>
+          <ThemeToggle />
+        </div>
+        <button type="button" className="account-dropdown-item account-signout" onClick={signOut}>
+          <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+            <path d="M8 3.5H4.5v13H8M12.5 6.5 16 10l-3.5 3.5M16 10H8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          Sign out
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -163,8 +232,7 @@ export function AppLayout() {
             ))}
           </nav>
           <div className="account">
-            <AccountBadge />
-            <ThemeToggle />
+            <AccountMenu />
           </div>
         </div>
       </header>

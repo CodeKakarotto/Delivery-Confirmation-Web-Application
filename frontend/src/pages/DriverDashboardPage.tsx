@@ -12,6 +12,7 @@ import { OutboxBanner, useOffline } from '../lib/offline.tsx';
 import { fullDayLabel } from '../lib/calendar.ts';
 import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
+import { CallShop } from '../components/CallShop.tsx';
 
 const PAGE_SIZE = 5;
 const RECENT = 5;
@@ -80,6 +81,7 @@ export function DriverDashboardPage() {
       </div>
 
       <OutboxBanner />
+      <CallShop />
 
       <div className="driver-grid">
         <section className="card awaiting-card driver-awaiting" aria-labelledby="awaiting-title">

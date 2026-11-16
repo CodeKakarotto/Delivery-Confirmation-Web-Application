@@ -48,7 +48,8 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
 | **No signal at the door** | The same: **"Saved on this phone. It will submit automatically when you regain connection."** A banner shows how many are waiting. Open the driver dashboard once with signal before leaving, so today's deliveries are on the phone and orders can be opened without signal. Signing out warns if anything has not been submitted. |
 | **A confirmation is wrong** | Employees can **Correct** it (received by, outcome, exception note) or **Void** it (e.g. wrong order), always with a reason. The original values stay visible under "Changes"; a voided order goes back to Awaiting. A record voided by mistake shows **Undo void** (only on voided records, with a reason); it is refused if the order has been confirmed again since. |
 | **No copy outside the app** | **End-of-day report** (employees): every order of the day with its result, who received it, the time and any exception note, plus the totals. Unconfirmed orders show as **Missing** once the day is over. **Print** it or **Download for Excel** at the end of each day. |
-| **The app cannot be used at all** | Drivers use a **printed paper slip** (Driver dashboard → "paper slip", or Paper slips → Print blank slips). Employees type it in with **Paper slips → Enter from paper slip**, optionally with a photo of the signed slip; the record is marked "Entered from paper". |
+| **The app cannot be used at all** | Drivers use a **printed paper slip** (Driver dashboard → "paper slip", or Paper slips → Print blank slips). If the app is down: (1) an employee prints the slips and hands them to the driver, (2) when the driver returns, the employee fills in the **Paper slips** form from each slip, (3) a **photo of the signed slip is required** (it is the proof of the signature). The record is marked "Entered from paper". |
+| **A driver has an emergency or a question about an order** | The driver dashboard and the confirm screen show **Call the shop: (703) 590-3200** (tap to call); it is also in the driver's account menu. |
 
 Limitation: the offline copy works while the app is open on the phone; reloading the page without signal is not supported yet.
 
@@ -70,8 +71,8 @@ npm run dev:web                       # app on http://localhost:5173 (proxies /a
 
 Open http://localhost:5173 and sign in. The first start creates demo accounts (`npm run users:demo`) and saves their
 usernames and passwords to `demo-accounts.local.txt` (ignored by git). Add an account with
-`npm run users:create -- <username> <driver|employee> "<Display Name>"` (prints a one-time password). Every start (and `npm run db:demo-today:local`) adds twelve demo orders for today
-(`MF-MMDD-01` … `-12`) if they are not there yet. Other demo order IDs: `MF-10482`, `MF-10483`, `MF-10484`, `MF-10485` (no zone, stop or product
+`npm run users:create -- <username> <driver|employee> "<Display Name>"` (prints a one-time password). Every start (and `npm run db:demo-today:local`) adds twelve demo orders a day for today and the
+next seven days (`MF-MMDD-01` … `-12`, recipients rotate by day) if they are not there yet. Other demo order IDs: `MF-10482`, `MF-10483`, `MF-10484`, `MF-10485` (no zone, stop or product
 total, to show missing values), `FTD-2207731`, `MF-10490` (cancelled).
 
 To try the driver screen on a phone on the same Wi-Fi, add this computer's LAN address to `DEV_EXTRA_HOSTS` in

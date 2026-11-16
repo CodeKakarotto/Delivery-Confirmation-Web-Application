@@ -78,7 +78,7 @@ Rate limited (20/min). Body (unknown fields are rejected):
 | GET | `/api/dashboard/report?date=YYYY-MM-DD` | Employees. End-of-day report: `{ date, isPast, totals{scheduled,delivered,exceptions,awaiting,cancelled}, rows[] }`; a row is `delivered`, `exception`, `awaiting` (`missing` once the day is over) or `cancelled`. Default date: today in the shop time zone |
 | GET | `/api/dashboard/report.csv?date=YYYY-MM-DD` | Employees. The same report as a CSV download for Excel (UTF-8 with BOM, CRLF, formula-like cells prefixed with `'`) |
 | POST | `/api/dashboard/confirmations/:id/void` | Employees. `{ reason }`. The record stays visible (`voided`), stops counting, and the order can be confirmed again |
-| POST | `/api/dashboard/paper-confirmations` | Employees. `{ orderId, receivedBy, outcome, outcomeDetail?, deliveredAt (ISO, the time on the slip), paperReference, slipPhoto? (JPEG data URL ≤600 KB), idempotencyKey }`. Saved as `source: 'paper'` |
+| POST | `/api/dashboard/paper-confirmations` | Employees. `{ orderId, receivedBy, outcome, outcomeDetail?, deliveredAt (ISO, the time on the slip), paperReference, slipPhoto (required: JPEG data URL ≤600 KB, the proof of the signature; missing → `422` on `slipPhoto`), idempotencyKey }`. Saved as `source: 'paper'` |
 | GET | `/api/dashboard/confirmations/:id/slip-photo` | The photo of the signed slip (`image/jpeg`, `no-store`) |
 
 Records now include `source`, `corrected`, `voided`, and (detail) `corrections[]` with old and new values, `voided` and `paper`.
