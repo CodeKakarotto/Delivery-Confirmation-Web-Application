@@ -4970,40 +4970,17 @@ button.account-dropdown-item {
   padding: 0.35rem 0;
 }
 
-/* Driver dashboard: the driver's name, large and easy to spot. */
-.driver-head {
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem 1rem;
+/* Driver dashboard: "Dashboard" with the driver's name right under it. */
+.driver-title h1 {
+  margin-bottom: 0;
 }
-.driver-name-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.7rem;
-  margin: 0;
-  padding: 0.45rem 1rem 0.45rem 0.5rem;
-  border-radius: 999px;
-  background: var(--leaf);
-  border: 1px solid var(--leaf-strong);
-}
-.driver-name-badge .account-avatar {
-  width: 2.6rem;
-  height: 2.6rem;
-  font-size: 1rem;
-}
-.driver-name-badge > span:last-child {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.15;
-}
-.driver-name-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.driver-name-badge strong {
-  font-size: 1.3rem;
+.driver-title-name {
+  margin: 0.2rem 0 0;
+  padding-left: 0.65rem;
+  border-left: 4px solid var(--fern);
+  font-family: var(--sans);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.25;
   color: var(--evergreen);
 }
