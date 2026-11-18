@@ -73,11 +73,25 @@ export function DriverDashboardPage() {
 
   return (
     <>
-      <div className="page-head">
-        <h1>
-          Dashboard
-          {user && <span className="h1-sub">{user.displayName}</span>}
-        </h1>
+      <div className="page-head driver-head">
+        <h1>Dashboard</h1>
+        {/* The driver's name, easy to spot (for example when a phone is shared or handed over). */}
+        {user && (
+          <p className="driver-name-badge">
+            <span className="account-avatar" aria-hidden="true">
+              {user.displayName
+                .split(/\s+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((w) => w[0]!.toUpperCase())
+                .join('')}
+            </span>
+            <span>
+              <span className="driver-name-label">Driver</span>
+              <strong>{user.displayName}</strong>
+            </span>
+          </p>
+        )}
       </div>
 
       <OutboxBanner />
