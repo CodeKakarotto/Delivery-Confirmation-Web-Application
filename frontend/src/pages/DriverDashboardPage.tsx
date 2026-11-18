@@ -14,7 +14,8 @@ import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
 import { PAGE_SIZE } from '../lib/paging.ts';
 
-const RECENT = PAGE_SIZE;
+/** "Recently confirmed" shows only the 5 latest; "All my confirmations" has the full list. */
+const RECENT = 5;
 
 /**
  * Driver dashboard: today's awaiting deliveries on the left (5 per page; tap one to confirm it), "Can't find the
