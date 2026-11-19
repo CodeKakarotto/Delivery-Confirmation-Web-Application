@@ -9,6 +9,7 @@ import { MissedAlert } from '../components/MissedAlert.tsx';
 import { DayLegend } from '../components/DayBadges.tsx';
 import { marksMap, type DayMarks } from '../lib/dayMarks.ts';
 import { useOffline } from '../lib/offline.tsx';
+import { useAuth } from '../lib/auth.tsx';
 import { Notice, Spinner } from '../components/ui.tsx';
 import { fullDayLabel } from '../lib/calendar.ts';
 import { useApi } from '../lib/useApi.ts';
@@ -25,6 +26,7 @@ import { PAGE_SIZE, pageOf, useLocalPage } from '../lib/paging.ts';
  */
 export function CalendarPage({ variant }: { variant: 'employee' | 'driver' }) {
   const timeZone = useShopTimeZone();
+  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const { sentVersion } = useOffline();
   const localToday = localDateKey(new Date(), timeZone);
@@ -62,7 +64,15 @@ export function CalendarPage({ variant }: { variant: 'employee' | 'driver' }) {
   return (
     <>
       <div className="page-head">
-        <h1>{variant === 'employee' ? 'Dashboard' : 'My confirmations'}</h1>
+        {variant === 'employee' ? (
+          // "Dashboard" with the employee's name right under it, like the driver dashboard.
+          <div className="driver-title">
+            <h1>Dashboard</h1>
+            {user && <p className="driver-title-name">{user.displayName}</p>}
+          </div>
+        ) : (
+          <h1>My confirmations</h1>
+        )}
       </div>
 
       {variant === 'employee' && <MissedAlert />}
