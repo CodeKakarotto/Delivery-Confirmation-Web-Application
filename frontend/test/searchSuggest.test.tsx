@@ -32,23 +32,32 @@ describe('search suggestions', () => {
   });
 });
 
-describe('search results start with the chosen field', () => {
+describe('search results: same layout, the searched field is the blue bold text', () => {
   const item = {
     orderId: 'MF-1121-04', stopNumber: 4, zone: 'A', recipientName: 'Avery Demo', city: 'Lake Ridge', addressLine: '100 Sample Way', postalCode: '22192',
     deliveryDate: '2026-11-21', status: 'awaiting' as const, confirmation: null, voidedConfirmationId: null, changed: false,
   };
-  const first = (lead: 'order' | 'name' | 'address') => {
-    const html = renderToStaticMarkup(<MemoryRouter><DeliveryRows items={[item]} timeZone="America/New_York" lead={lead} /></MemoryRouter>);
-    return /class="conf-order">([^<]+)</.exec(html)?.[1];
-  };
-  it('order ID by default, or the name, or the address', () => {
-    assert.equal(first('order'), 'MF-1121-04');
-    assert.equal(first('name'), 'Avery Demo');
-    assert.equal(first('address'), '100 Sample Way, Lake Ridge');
+  const row = (lead: 'order' | 'name' | 'address') =>
+    renderToStaticMarkup(<MemoryRouter><DeliveryRows items={[item]} timeZone="America/New_York" lead={lead} /></MemoryRouter>);
+  const bold = (html: string) => [...html.matchAll(/class="lead-text">([^<]+)</g)].map((m) => m[1]);
+
+  it('order ID is the blue bold text by default', () => {
+    const html = row('order');
+    assert.match(html, /class="conf-order">MF-1121-04</);
+    assert.deepEqual(bold(html), []);
   });
-  it('suggestions too', () => {
-    assert.equal(toSuggestion(item).label, 'MF-1121-04');
-    assert.equal(toSuggestion(item, 'name').label, 'Avery Demo');
-    assert.equal(toSuggestion(item, 'address').label, '100 Sample Way, Lake Ridge');
+  it('filtering by name or address moves the bold to it; the layout stays the same', () => {
+    const byName = row('name');
+    assert.match(byName, /class="conf-order is-plain">MF-1121-04</, 'the order ID stays first, now plain');
+    assert.deepEqual(bold(byName), ['Avery Demo']);
+    assert.deepEqual(bold(row('address')), ['100 Sample Way, Lake Ridge']);
+    const order = (h: string) => ['MF-1121-04', 'Avery Demo', '100 Sample Way'].map((t) => h.indexOf(t));
+    assert.deepEqual(order(byName), [...order(byName)].sort((x, y) => x - y), 'same order of the parts');
+  });
+  it('suggestions keep the order ID first and bold the searched part', () => {
+    assert.equal(toSuggestion(item, 'name').label, 'MF-1121-04');
+    assert.equal(toSuggestion(item, 'name').emphasis, 'Avery Demo');
+    assert.equal(toSuggestion(item, 'address').emphasis, '100 Sample Way, Lake Ridge');
+    assert.equal(toSuggestion(item).emphasis, undefined);
   });
 });

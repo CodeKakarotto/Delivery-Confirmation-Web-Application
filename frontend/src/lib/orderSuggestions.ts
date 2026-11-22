@@ -19,12 +19,11 @@ export function toSuggestion(d: DeliveryListItem, lead: SearchLead = 'order'): S
           : { text: 'Awaiting', tone: 'quiet' };
   const name = d.recipientName ?? 'No recipient name';
   const addr = [d.addressLine, d.city].filter(Boolean).join(', ');
-  const [label, ...rest] =
-    lead === 'name' ? [name, d.orderId, addr] : lead === 'address' ? [addr || d.orderId, d.orderId, name] : [d.orderId, name, addr];
   return {
     key: d.orderId,
-    label: label!,
-    detail: [...rest, shortDay(d.deliveryDate)].filter(Boolean).join(' · '),
+    label: d.orderId,
+    detail: [name, addr, shortDay(d.deliveryDate)].filter(Boolean).join(' · '),
+    emphasis: lead === 'name' ? name : lead === 'address' && addr ? addr : undefined,
     tag,
     to: record ? `/shop/confirmations/${record}` : `/shop/orders/${encodeURIComponent(d.orderId)}`,
   };
@@ -53,13 +52,11 @@ export function deliveryMatches(d: Pick<DriverDelivery, 'orderId' | 'recipientNa
 export function todaySuggestion(d: DriverDelivery, savedOnPhone = false, lead: SearchLead = 'order'): Suggestion {
   const name = d.recipientName ?? 'No recipient name';
   const addr = `${d.addressLine}, ${d.city}`;
-  const stop = `Stop ${d.stopNumber ?? '—'}`;
-  const [label, ...rest] =
-    lead === 'name' ? [name, d.orderId, stop, addr] : lead === 'address' ? [addr, d.orderId, stop, name] : [d.orderId, stop, name, addr];
   return {
     key: `today-${d.orderId}`,
-    label: label!,
-    detail: rest.join(' · '),
+    label: d.orderId,
+    detail: `Stop ${d.stopNumber ?? '—'} · ${name} · ${addr}`,
+    emphasis: lead === 'name' ? name : lead === 'address' ? addr : undefined,
     tag: savedOnPhone ? { text: 'Saved on phone', tone: 'warn' } : { text: 'To deliver', tone: 'quiet' },
     to: `/confirm/${encodeURIComponent(d.orderId)}`,
   };
@@ -70,8 +67,9 @@ export function mineSuggestion(c: ConfirmationListItem, lead: SearchLead = 'orde
   const name = c.recipientName ?? 'No recipient name';
   return {
     key: `mine-${c.id}`,
-    label: lead === 'name' ? name : c.orderId,
-    detail: `${lead === 'name' ? c.orderId : name} · received by ${c.receivedBy}`,
+    label: c.orderId,
+    detail: `${name} · received by ${c.receivedBy}`,
+    emphasis: lead === 'name' ? name : undefined,
     tag: c.voided
       ? { text: 'Voided', tone: 'bad' }
       : c.result === 'confirmed'

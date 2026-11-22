@@ -5289,3 +5289,21 @@ button.account-dropdown-item {
     width: 100%;
   }
 }
+
+/* Search results: the searched field is the blue bold text (order ID by default). */
+.lead-text {
+  font-weight: 700;
+  color: var(--evergreen);
+}
+.conf-order.is-plain {
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+}
+.suggest-label.is-plain {
+  font-weight: 500;
+  color: var(--ink);
+}
+.driver-stop-main .cell-strong.lead-text {
+  color: var(--evergreen);
+}

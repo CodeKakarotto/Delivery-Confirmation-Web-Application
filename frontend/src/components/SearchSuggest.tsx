@@ -7,6 +7,8 @@ export interface Suggestion {
   detail?: string;
   tag?: { text: string; tone: 'ok' | 'warn' | 'quiet' | 'bad' };
   to: string;
+  /** Part of the detail line shown in the blue bold style (the searched name or address); the label is then plain. */
+  emphasis?: string;
 }
 
 /** The last line of the list, e.g. "See all results for 'taylor'" or "Open the Search page". */
@@ -38,6 +40,21 @@ function Highlighted({ text, q }: { text: string; q: string }) {
       {p.before}
       {p.match && <mark>{p.match}</mark>}
       {p.after}
+    </>
+  );
+}
+
+/** The detail line, with the searched part (if any) in the blue bold style. */
+function Emphasized({ text, emphasis, q }: { text: string; emphasis?: string; q: string }) {
+  const at = emphasis ? text.indexOf(emphasis) : -1;
+  if (!emphasis || at < 0) return <Highlighted text={text} q={q} />;
+  return (
+    <>
+      <Highlighted text={text.slice(0, at)} q={q} />
+      <strong className="lead-text">
+        <Highlighted text={emphasis} q={q} />
+      </strong>
+      <Highlighted text={text.slice(at + emphasis.length)} q={q} />
     </>
   );
 }
@@ -176,12 +193,12 @@ export function SearchSuggest({
                 onClick={() => pick(s)}
               >
                 <span className="suggest-main">
-                  <span className="suggest-label">
+                  <span className={`suggest-label${s.emphasis ? ' is-plain' : ''}`}>
                     <Highlighted text={s.label} q={value} />
                   </span>
                   {s.detail && (
                     <span className="suggest-detail">
-                      <Highlighted text={s.detail} q={value} />
+                      <Emphasized text={s.detail} emphasis={s.emphasis} q={value} />
                     </span>
                   )}
                 </span>

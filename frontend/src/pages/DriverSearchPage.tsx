@@ -4,6 +4,7 @@ import type { DriverDelivery } from '../../../shared/types.ts';
 import { errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { ConfirmationRows, Pager } from '../components/ConfirmationRows.tsx';
+import { Lead } from '../components/DeliveryRows.tsx';
 import { leadFromParam, SearchFieldSwitch } from '../components/SearchFilters.tsx';
 import { SearchSuggest } from '../components/SearchSuggest.tsx';
 import { Notice, Spinner } from '../components/ui.tsx';
@@ -171,19 +172,16 @@ export function DriverSearchPage() {
                             {d.stopNumber ?? '—'}
                           </span>
                           <span className="driver-stop-main">
-                            {/* The searched field comes first. */}
-                            <span className="cell-strong">
-                              {field === 'name' ? (d.recipientName ?? 'No recipient name') : field === 'address' ? `${d.addressLine}, ${d.city}` : d.orderId}
+                            {/* Same layout always; the searched field is the blue bold text. */}
+                            <span className={`cell-strong${field === 'order' ? ' lead-text' : ''}`}>{d.orderId}</span>
+                            <span className="cell-sub">
+                              Zone {d.zone ?? '—'} · <Lead on={field === 'name'}>{d.recipientName ?? 'No recipient name'}</Lead>
                             </span>
                             <span className="cell-sub">
-                              {field === 'order' ? '' : `${d.orderId} · `}Zone {d.zone ?? '—'}
-                              {field === 'name' ? '' : ` · ${d.recipientName ?? 'No recipient name'}`}
-                            </span>
-                            {field !== 'address' && (
-                              <span className="cell-sub">
+                              <Lead on={field === 'address'}>
                                 {d.addressLine}, {d.city} {d.postalCode}
-                              </span>
-                            )}
+                              </Lead>
+                            </span>
                           </span>
                           {waiting.has(d.orderId.toLowerCase()) && <span className="tag tag-warn">Saved on phone</span>}
                         </Link>

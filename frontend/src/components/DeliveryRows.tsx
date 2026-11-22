@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import type { DeliveryListItem, SearchLead } from '../../../shared/types.ts';
 import { fullDayLabel } from '../lib/calendar.ts';
@@ -30,9 +31,12 @@ export function DeliveryRows({
                 {d.confirmation ? <time dateTime={d.confirmation.confirmedAt}>{shopTime(d.confirmation.confirmedAt, timeZone)}</time> : '—'}
               </span>
               <span className="conf-main">
-                <span className="conf-order">{leadText(d, lead)}</span>
+                {/* Same layout always; the searched field (order ID unless name or address) is the blue bold text. */}
+                <span className={`conf-order${lead === 'order' ? '' : ' is-plain'}`}>{d.orderId}</span>
                 <span className="cell-sub">
-                  {restText(d, lead)}
+                  # {d.stopNumber ?? '—'} · Zone {d.zone ?? '—'} ·{' '}
+                  <Lead on={lead === 'name'}>{d.recipientName ?? 'No recipient name'}</Lead>,{' '}
+                  <Lead on={lead === 'address'}>{[d.addressLine, d.city].filter(Boolean).join(', ')}</Lead>
                   {showDate && d.deliveryDate ? ` · ${fullDayLabel(d.deliveryDate)}` : ''}
                 </span>
                 {d.confirmation && (
@@ -56,20 +60,7 @@ export function DeliveryRows({
   );
 }
 
-const address = (d: DeliveryListItem) => [d.addressLine, d.city].filter(Boolean).join(', ');
-
-/** The first line of a row: the order ID, the recipient's name or the address. */
-function leadText(d: DeliveryListItem, lead: SearchLead): string {
-  if (lead === 'name') return d.recipientName ?? 'No recipient name';
-  if (lead === 'address') return address(d) || d.orderId;
-  return d.orderId;
-}
-
-/** The line under it: everything else. */
-function restText(d: DeliveryListItem, lead: SearchLead): string {
-  const stop = `# ${d.stopNumber ?? '—'} · Zone ${d.zone ?? '—'}`;
-  const name = d.recipientName ?? 'No recipient name';
-  if (lead === 'name') return `${d.orderId} · ${stop} · ${address(d)}`;
-  if (lead === 'address') return `${d.orderId} · ${stop} · ${name}`;
-  return `${stop} · ${name}, ${address(d)}`;
+/** The searched field's text, in the blue bold style (plain otherwise). */
+export function Lead({ on, children }: { on: boolean; children: ReactNode }) {
+  return on ? <strong className="lead-text">{children}</strong> : <>{children}</>;
 }

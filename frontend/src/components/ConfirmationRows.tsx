@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { OUTCOME_LABELS, type ConfirmationListItem } from '../../../shared/types.ts';
 import { shopDateTime, shopTime } from '../lib/time.ts';
 import { FlagTag, ResultTag } from './ui.tsx';
+import { Lead } from './DeliveryRows.tsx';
 
 /** Saved confirmations as tappable rows, each with its delivery time. */
 export function ConfirmationRows({
@@ -28,10 +29,15 @@ export function ConfirmationRows({
               {showDate ? shopDateTime(c.confirmedAt, timeZone) : shopTime(c.confirmedAt, timeZone)}
             </time>
             <span className="conf-main">
-              <span className="conf-order">{leadWithName ? (c.recipientName ?? c.orderId) : c.orderId}</span>
+              <span className={`conf-order${leadWithName ? ' is-plain' : ''}`}>{c.orderId}</span>
               <span className="cell-sub">
-                {leadWithName ? `${c.orderId} · ` : ''}# {c.stopNumber ?? '—'} · Zone {c.zone ?? '—'}
-                {!leadWithName && c.recipientName ? ` · For ${c.recipientName}` : ''}
+                # {c.stopNumber ?? '—'} · Zone {c.zone ?? '—'}
+                {c.recipientName && (
+                  <>
+                    {' '}
+                    · For <Lead on={leadWithName}>{c.recipientName}</Lead>
+                  </>
+                )}
               </span>
               <span className="conf-received">
                 Received by <strong>{c.receivedBy}</strong> · {OUTCOME_LABELS[c.outcome]}
