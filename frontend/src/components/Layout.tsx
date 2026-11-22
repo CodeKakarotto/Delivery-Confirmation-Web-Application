@@ -1,10 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { ROLE_LABEL, useAuth } from '../lib/auth.tsx';
 import { useOffline } from '../lib/offline.tsx';
 import { SHOP_PHONE, SHOP_PHONE_TEL } from '../lib/shop.ts';
 import { applyTheme, currentTheme, type Theme } from '../lib/theme.ts';
 import { PhoneIcon } from './CallShop.tsx';
+import { SearchSuggest } from './SearchSuggest.tsx';
+import { orderSuggestions } from '../lib/orderSuggestions.ts';
 
 /**
  * Header brand: the sponsor's original logo artwork (frontend/public/brand), same as the route-optimization app.
@@ -91,6 +93,48 @@ function NavGlyph({ icon }: { icon: NavIcon }) {
       <rect x="4" y="3.5" width="12" height="14" rx="1.5" />
       <path d="M7.5 3.5V2.5h5v1M7 13.5v-2M10 13.5V9M13 13.5v-3.5" />
     </svg>
+  );
+}
+
+/**
+ * The menu bar's search box (employees): type to get suggestions and click one to open that order, or press Enter
+ * for the full results on the Search page. On narrow screens it becomes the magnifier button (no room for a box).
+ */
+function NavSearch({ item }: { item: NavItem }) {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [text, setText] = useState('');
+  useEffect(() => setText(''), [pathname]);
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = text.trim().slice(0, 100);
+    navigate(q ? `/shop/search?${new URLSearchParams({ q })}` : '/shop/search');
+  };
+  return (
+    <>
+      <form className="nav-search-form" role="search" onSubmit={submit}>
+        <NavGlyph icon="search" />
+        <SearchSuggest
+          value={text}
+          onChange={setText}
+          getSuggestions={orderSuggestions}
+          onPick={(s) => navigate(s.to)}
+          inputProps={{
+            type: 'search',
+            className: 'nav-search-input',
+            placeholder: 'Search orders',
+            'aria-label': 'Search orders by order ID or recipient name',
+            maxLength: 100,
+            spellCheck: false,
+            enterKeyHint: 'search',
+          }}
+        />
+      </form>
+      <NavLink to={item.to} title={item.title} className={({ isActive }) => `nav-search-link${isActive ? ' is-active' : ''}`}>
+        <NavGlyph icon="search" />
+        <span className="nav-label">{item.label}</span>
+      </NavLink>
+    </>
   );
 }
 
@@ -214,12 +258,16 @@ export function AppLayout() {
           <nav className="mainnav" aria-label="Main">
             {nav.map((section) => (
               <div key={section.kind} className={`nav-section nav-${section.kind}`}>
-                {section.items.map((item) => (
+                {section.kind === 'search' ? (
+                  <NavSearch item={section.items[0]!} />
+                ) : (
+                section.items.map((item) => (
                   <NavLink key={item.to} to={item.to} end={item.end} title={item.title} className={({ isActive }) => (isActive ? 'is-active' : '')}>
                     {item.icon && <NavGlyph icon={item.icon} />}
                     <span className="nav-label">{item.label}</span>
                   </NavLink>
-                ))}
+                ))
+                )}
               </div>
             ))}
           </nav>

@@ -5118,3 +5118,64 @@ button.account-dropdown-item {
   width: 100%;
   flex: none;
 }
+
+/* ---------- Menu bar search box (employees) ---------- */
+
+/* The box replaces the old look-alike link on wider screens; the dropdown must not be clipped by the menu bar. */
+@media (min-width: 961px) {
+  .mainnav {
+    overflow: visible;
+  }
+  .mainnav .nav-search-link {
+    display: none !important;
+  }
+}
+@media (max-width: 960px) {
+  .nav-search-form {
+    display: none !important;
+  }
+}
+.nav-search-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 15rem;
+}
+.nav-search-form > svg {
+  position: absolute;
+  left: 0.75rem;
+  z-index: 1;
+  color: var(--muted);
+  pointer-events: none;
+}
+.nav-search-form .suggest {
+  flex: 1;
+}
+.mainnav .nav-search-input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.9rem 0.4rem 2.2rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+}
+.mainnav .nav-search-input:focus {
+  outline: none;
+  border-color: var(--fern);
+  box-shadow: 0 0 0 3px var(--leaf-strong);
+}
+/* Suggestions under the menu bar: wider than the box, lined up with its right edge. */
+.nav-search-form .suggest-list {
+  left: auto;
+  right: 0;
+  width: 26rem;
+  max-width: calc(100vw - 2rem);
+}
+@media (max-width: 1180px) {
+  .nav-search-form {
+    width: 12rem;
+  }
+}

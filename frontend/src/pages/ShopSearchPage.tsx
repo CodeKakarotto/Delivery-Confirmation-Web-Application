@@ -1,41 +1,17 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { Pager } from '../components/ConfirmationRows.tsx';
 import { DeliveryRows } from '../components/DeliveryRows.tsx';
-import { SearchSuggest, type Suggestion } from '../components/SearchSuggest.tsx';
-import type { DeliveryListItem } from '../../../shared/types.ts';
+import { SearchSuggest } from '../components/SearchSuggest.tsx';
+import { orderSuggestions } from '../lib/orderSuggestions.ts';
 import { EmptyState, Notice, Spinner } from '../components/ui.tsx';
 import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
 import { localDateKey } from '../../../shared/shopTime.ts';
 import { PAGE_SIZE } from '../lib/paging.ts';
 
-
-const shortDay = (d: string | null) =>
-  d ? new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) : '';
-
-/** What a suggestion shows and opens for one order (same places as the result rows). */
-function toSuggestion(d: DeliveryListItem): Suggestion {
-  const record = d.confirmation?.id ?? d.voidedConfirmationId;
-  const tag: Suggestion['tag'] = d.voidedConfirmationId
-    ? { text: 'Voided', tone: 'bad' }
-    : d.status === 'confirmed'
-      ? { text: 'Delivered', tone: 'ok' }
-      : d.status === 'exception'
-        ? { text: 'Exception', tone: 'warn' }
-        : d.status === 'cancelled'
-          ? { text: 'Cancelled', tone: 'quiet' }
-          : { text: 'Awaiting', tone: 'quiet' };
-  return {
-    key: d.orderId,
-    label: d.orderId,
-    detail: [d.recipientName ?? 'No recipient name', d.city, shortDay(d.deliveryDate)].filter(Boolean).join(' · '),
-    tag,
-    to: record ? `/shop/confirmations/${record}` : `/shop/orders/${encodeURIComponent(d.orderId)}`,
-  };
-}
 
 /** Employees: find deliveries on any day by order ID or recipient name (part of either is enough). */
 export function ShopSearchPage() {
@@ -44,6 +20,8 @@ export function ShopSearchPage() {
   const q = params.get('q') ?? '';
   const page = Math.max(1, Number(params.get('p')) || 1);
   const [text, setText] = useState(q);
+  // A search typed in the menu bar while this page is open shows up in the box too.
+  useEffect(() => setText(q), [q]);
   const navigate = useNavigate();
   // Examples built from today's date, so they match real orders (demo order IDs are MF-MMDD-NN).
   const today = localDateKey(new Date(), timeZone);
@@ -74,7 +52,7 @@ export function ShopSearchPage() {
           <SearchSuggest
             value={text}
             onChange={setText}
-            getSuggestions={async (s) => (await dashboardApi.deliveries({ q: s, limit: 6 })).items.map(toSuggestion)}
+            getSuggestions={orderSuggestions}
             onPick={(s) => navigate(s.to)}
             inputProps={{
               id: 'shop-search',
