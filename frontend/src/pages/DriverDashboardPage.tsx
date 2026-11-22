@@ -7,7 +7,9 @@ import { ApiRequestError, errorMessage } from '../api/client.ts';
 import { dashboardApi, driverApi } from '../api/endpoints.ts';
 import { ConfirmationRows, Pager } from '../components/ConfirmationRows.tsx';
 import { Field, Notice, Spinner } from '../components/ui.tsx';
-import { matchesQuery, SearchSuggest, type Suggestion } from '../components/SearchSuggest.tsx';
+import { SearchSuggest } from '../components/SearchSuggest.tsx';
+import { driverSuggestions } from '../lib/orderSuggestions.ts';
+import { useLoadToday } from '../lib/useLoadToday.ts';
 import { useAuth } from '../lib/auth.tsx';
 import { OutboxBanner, useOffline } from '../lib/offline.tsx';
 import { fullDayLabel } from '../lib/calendar.ts';
@@ -64,20 +66,8 @@ export function DriverDashboardPage() {
         }
       : null);
 
-  // Suggestions while typing: today's orders (the copy kept on the phone, so it also works with no signal).
-  const suggestToday = async (q: string): Promise<Suggestion[]> => {
-    let today: Array<{ orderId: string; stopNumber: number | null; recipientName: string | null; city: string }> = await offline.listToday();
-    if (!today.length) today = (await driverApi.awaiting({ limit: 50, offset: 0 })).items;
-    return today
-      .filter((d) => matchesQuery(d.orderId, q) || matchesQuery(d.recipientName, q))
-      .map((d) => ({
-        key: d.orderId,
-        label: d.orderId,
-        detail: `Stop ${d.stopNumber ?? '—'} · ${d.recipientName ?? 'No recipient name'} · ${d.city}`,
-        tag: waitingOrders.has(d.orderId.toLowerCase()) ? { text: 'Saved on phone', tone: 'warn' as const } : undefined,
-        to: `/confirm/${encodeURIComponent(d.orderId)}`,
-      }));
-  };
+  // Suggestions while typing (order ID, name or address): today's deliveries from the phone's copy, then my confirmations.
+  const loadToday = useLoadToday();
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -164,7 +154,7 @@ export function DriverDashboardPage() {
 
         <form className="card start-card driver-find" onSubmit={onSubmit} noValidate>
           <h2>Can’t find the order?</h2>
-          <Field label="Enter the order ID" error={error} hint="Start typing the order number or the recipient's name and pick it from the list.">
+          <Field label="Enter the order ID" error={error} hint="Type the order number, the recipient's name or the address and pick it from the list.">
             {(p) => (
               <SearchSuggest
                 value={orderId}
@@ -172,8 +162,12 @@ export function DriverDashboardPage() {
                   setOrderId(v);
                   setError(undefined);
                 }}
-                getSuggestions={suggestToday}
+                getSuggestions={(s) => driverSuggestions(s, loadToday)}
                 onPick={(s) => navigate(s.to)}
+                footer={(s) => ({
+                  label: s ? `More search options for “${s}”` : 'More search options (name, address, filters)',
+                  onSelect: () => navigate(s ? `/driver/search?${new URLSearchParams({ q: s })}` : '/driver/search'),
+                })}
                 inputProps={{
                   ...p,
                   className: 'input-large',
@@ -189,6 +183,9 @@ export function DriverDashboardPage() {
           <button type="submit" className="btn btn-primary btn-block btn-large">
             Open delivery
           </button>
+          <p className="driver-find-more">
+            <Link to={orderId.trim() ? `/driver/search?${new URLSearchParams({ q: orderId.trim() })}` : '/driver/search'}>More search options →</Link>
+          </p>
         </form>
       </div>
 

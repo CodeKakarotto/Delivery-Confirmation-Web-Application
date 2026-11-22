@@ -9,6 +9,12 @@ export interface Suggestion {
   to: string;
 }
 
+/** The last line of the list, e.g. "See all results for 'taylor'" or "Open the Search page". */
+export interface SuggestFooter {
+  label: string;
+  onSelect: () => void;
+}
+
 /** How many suggestions show at once. */
 export const MAX_SUGGESTIONS = 6;
 
@@ -40,13 +46,15 @@ const TAG_CLASS = { ok: 'tag-ok', warn: 'tag-warn', quiet: 'tag-quiet', bad: 'ta
 
 /**
  * A search box with suggestions as you type (an ARIA combobox): up to 6 matches under the box, the typed letters
- * highlighted. Arrow keys move, Enter opens the highlighted one (otherwise the form submits as before), Escape closes.
+ * highlighted, and an optional last line (for example "See all results"). Arrow keys move, Enter opens the
+ * highlighted line (otherwise the form submits as before), Escape closes.
  */
 export function SearchSuggest({
   value,
   onChange,
   getSuggestions,
   onPick,
+  footer,
   inputProps,
   minChars = 1,
 }: {
@@ -55,6 +63,8 @@ export function SearchSuggest({
   /** Suggestions for the typed text (may be async; late answers for older text are ignored). */
   getSuggestions: (q: string) => Promise<Suggestion[]> | Suggestion[];
   onPick: (s: Suggestion) => void;
+  /** An extra last line for the typed text (or for an empty box), or null for none. */
+  footer?: (q: string) => SuggestFooter | null;
   inputProps?: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'role'>;
   minChars?: number;
 }) {
@@ -70,6 +80,7 @@ export function SearchSuggest({
   useEffect(() => {
     const q = value.trim();
     latest.current = q;
+    setActive(-1);
     if (q.length < minChars) {
       setItems([]);
       setSearched('');
@@ -81,32 +92,47 @@ export function SearchSuggest({
         if (latest.current !== q) return;
         setItems(found);
         setSearched(q);
-        setActive(-1);
       } catch {
-        if (latest.current === q) setItems([]);
+        if (latest.current === q) {
+          setItems([]);
+          setSearched(q);
+        }
       }
     }, 180);
     return () => window.clearTimeout(t);
   }, [value, minChars]);
 
-  const show = open && value.trim().length >= minChars && searched === value.trim();
+  const q = value.trim();
+  const typed = q.length >= minChars;
+  const foot = footer?.(q) ?? null;
+  const ready = typed ? searched === q : true;
+  const show = open && ready && (typed || Boolean(foot));
+  const count = (typed ? items.length : 0) + (foot ? 1 : 0);
+  const footIndex = foot ? count - 1 : -1;
+
+  const close = () => setOpen(false);
   const pick = (s: Suggestion) => {
-    setOpen(false);
+    close();
     onPick(s);
   };
+  const chooseFooter = () => {
+    close();
+    foot?.onSelect();
+  };
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'ArrowDown' && items.length) {
+    if (e.key === 'ArrowDown' && count) {
       e.preventDefault();
       setOpen(true);
-      setActive((a) => (a + 1) % items.length);
-    } else if (e.key === 'ArrowUp' && items.length) {
+      setActive((a) => (a + 1) % count);
+    } else if (e.key === 'ArrowUp' && count) {
       e.preventDefault();
-      setActive((a) => (a <= 0 ? items.length - 1 : a - 1));
-    } else if (e.key === 'Enter' && show && active >= 0 && items[active]) {
+      setActive((a) => (a <= 0 ? count - 1 : a - 1));
+    } else if (e.key === 'Enter' && show && active >= 0) {
       e.preventDefault();
-      pick(items[active]);
+      if (active === footIndex) chooseFooter();
+      else if (typed && items[active]) pick(items[active]);
     } else if (e.key === 'Escape') {
-      setOpen(false);
+      close();
     }
   };
 
@@ -116,7 +142,7 @@ export function SearchSuggest({
         {...inputProps}
         role="combobox"
         aria-autocomplete="list"
-        aria-expanded={show && items.length > 0}
+        aria-expanded={show && count > 0}
         aria-controls={listId}
         aria-activedescendant={show && active >= 0 ? `${listId}-${active}` : undefined}
         autoComplete="off"
@@ -126,16 +152,18 @@ export function SearchSuggest({
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
+        onClick={() => setOpen(true)}
+        onBlur={close}
         onKeyDown={onKeyDown}
       />
       {show && (
         <ul id={listId} role="listbox" className="suggest-list" aria-label="Suggestions">
-          {items.length === 0 ? (
+          {typed && items.length === 0 && (
             <li className="suggest-empty" role="presentation">
               No matching orders
             </li>
-          ) : (
+          )}
+          {typed &&
             items.map((s, i) => (
               <li
                 key={s.key}
@@ -159,7 +187,19 @@ export function SearchSuggest({
                 </span>
                 {s.tag && <span className={`tag ${TAG_CLASS[s.tag.tone]}`}>{s.tag.text}</span>}
               </li>
-            ))
+            ))}
+          {foot && (
+            <li
+              id={`${listId}-${footIndex}`}
+              role="option"
+              aria-selected={active === footIndex}
+              className="suggest-item suggest-footer"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={chooseFooter}
+            >
+              <span>{foot.label}</span>
+              <span aria-hidden="true">→</span>
+            </li>
           )}
         </ul>
       )}

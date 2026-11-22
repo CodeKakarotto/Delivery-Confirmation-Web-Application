@@ -204,7 +204,7 @@ describe('employee deliveries calendar: month, week and day', () => {
     assert.equal(res.body.total, 8);
     assert.deepEqual([...new Set(res.body.items.map((i: { deliveryDate: string }) => i.deliveryDate))], ['2026-11-14', '2026-11-13']);
     assert.equal((await client.request('GET', '/api/dashboard/deliveries?from=2026-11-14&to=2026-11-08')).status, 422);
-    assert.equal((await client.request('GET', '/api/dashboard/deliveries?from=2026-10-01&to=2026-11-30')).status, 422, 'at most 42 days');
+    assert.equal((await client.request('GET', '/api/dashboard/deliveries?from=2025-01-01&to=2026-11-30')).status, 422, 'at most 400 days (search ranges)');
     assert.equal((await client.request('GET', '/api/dashboard/deliveries?from=2026-11-08')).status, 422, 'from needs to');
   });
 });

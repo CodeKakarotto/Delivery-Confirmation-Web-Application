@@ -40,7 +40,7 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
   end-of-day report **update by themselves**: right after a change is saved on that screen, every 30 seconds, and when
   the window comes back into view. Tapping a day shows its figures, the orders still awaiting (tap to open) and the confirmed
   deliveries with their **delivery time**, 10 per page. **Deliveries** tab: a small calendar (**Month** or **Week**) where tapping
-  a day lists that day's deliveries underneath (10 per page, filter by status). **Search** tab: part of an order ID or recipient name, with suggestions as you type (status shown; click one to open it). The same search box sits in the menu bar on every employee page: type there, pick a suggestion, or press Enter for the full results (on phones it is a magnifier button). Drivers get the same suggestions from today's orders in "Can't find the order?".
+  a day lists that day's deliveries underneath (10 per page, filter by status). **Search**: by order ID, recipient name or address (street, city or ZIP; part of any is enough), with suggestions as you type and filters (search in, status incl. voided, zone, dates, sort). The search box sits in the menu bar on every page (the magnifier or "See all results" opens the Search page; on phones it is a magnifier button). Drivers have the same: a menu-bar search and a driver Search page for today's deliveries and their own confirmations, and "Can't find the order?" suggests by ID, name or address.
   - **Record and print** (`/shop/confirmations/:id`): the saved record in the same field order, with logo,
     signature and delivery time, and refused duplicate/conflicting attempts.
 

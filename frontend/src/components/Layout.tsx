@@ -6,7 +6,8 @@ import { SHOP_PHONE, SHOP_PHONE_TEL } from '../lib/shop.ts';
 import { applyTheme, currentTheme, type Theme } from '../lib/theme.ts';
 import { PhoneIcon } from './CallShop.tsx';
 import { SearchSuggest } from './SearchSuggest.tsx';
-import { orderSuggestions } from '../lib/orderSuggestions.ts';
+import { driverSuggestions, orderSuggestions } from '../lib/orderSuggestions.ts';
+import { useLoadToday } from '../lib/useLoadToday.ts';
 
 /**
  * Header brand: the sponsor's original logo artwork (frontend/public/brand), same as the route-optimization app.
@@ -65,6 +66,7 @@ const NAV: Record<'driver' | 'employee', NavSection[]> = {
         { to: '/driver/confirmations', label: 'Confirmations', end: false },
       ],
     },
+    { kind: 'search', items: [{ to: '/driver/search', label: 'Search', end: false, icon: 'search', title: 'Search: today’s deliveries and your confirmations' }] },
   ],
   employee: [
     {
@@ -97,33 +99,43 @@ function NavGlyph({ icon }: { icon: NavIcon }) {
 }
 
 /**
- * The menu bar's search box (employees): type to get suggestions and click one to open that order, or press Enter
- * for the full results on the Search page. On narrow screens it becomes the magnifier button (no room for a box).
+ * The menu bar's search box (drivers and employees): type to get suggestions and click one to open it; the last line
+ * (or the magnifier, or Enter) opens the Search page with the full results and filters. Highlighted while on that page.
+ * On narrow screens it becomes the magnifier button (no room for a box).
  */
-function NavSearch({ item }: { item: NavItem }) {
+function NavSearch({ item, role }: { item: NavItem; role: 'driver' | 'employee' }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const loadToday = useLoadToday();
   const [text, setText] = useState('');
   useEffect(() => setText(''), [pathname]);
+  const openSearch = (q: string) => navigate(q ? `${item.to}?${new URLSearchParams({ q })}` : item.to);
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const q = text.trim().slice(0, 100);
-    navigate(q ? `/shop/search?${new URLSearchParams({ q })}` : '/shop/search');
+    openSearch(text.trim().slice(0, 100));
   };
+  const onSearchPage = pathname === item.to;
   return (
     <>
-      <form className="nav-search-form" role="search" onSubmit={submit}>
-        <NavGlyph icon="search" />
+      <form className={`nav-search-form${onSearchPage ? ' is-active' : ''}`} role="search" onSubmit={submit}>
+        <button type="button" className="nav-search-go" title="Open the Search page" aria-label="Open the Search page" onClick={() => openSearch(text.trim().slice(0, 100))}>
+          <NavGlyph icon="search" />
+        </button>
         <SearchSuggest
           value={text}
           onChange={setText}
-          getSuggestions={orderSuggestions}
+          getSuggestions={role === 'driver' ? (q) => driverSuggestions(q, loadToday) : orderSuggestions}
           onPick={(s) => navigate(s.to)}
+          footer={(q) =>
+            q
+              ? { label: `See all results for “${q}”`, onSelect: () => openSearch(q) }
+              : { label: 'Open the Search page (filters and all results)', onSelect: () => openSearch('') }
+          }
           inputProps={{
             type: 'search',
             className: 'nav-search-input',
-            placeholder: 'Search orders',
-            'aria-label': 'Search orders by order ID or recipient name',
+            placeholder: role === 'driver' ? 'Search deliveries' : 'Search orders',
+            'aria-label': 'Search by order ID, name or address',
             maxLength: 100,
             spellCheck: false,
             enterKeyHint: 'search',
@@ -259,7 +271,7 @@ export function AppLayout() {
             {nav.map((section) => (
               <div key={section.kind} className={`nav-section nav-${section.kind}`}>
                 {section.kind === 'search' ? (
-                  <NavSearch item={section.items[0]!} />
+                  <NavSearch item={section.items[0]!} role={user!.role} />
                 ) : (
                 section.items.map((item) => (
                   <NavLink key={item.to} to={item.to} end={item.end} title={item.title} className={({ isActive }) => (isActive ? 'is-active' : '')}>

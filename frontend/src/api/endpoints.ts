@@ -12,6 +12,7 @@ import type {
   ConfirmationSubmitResponse,
   CorrectionRequest,
   DailyReport,
+  SearchField,
   MissedDeliveries,
   DashboardSummary,
   DriverAwaitingResponse,
@@ -49,6 +50,10 @@ export interface ListQuery {
   day?: string;
   result?: ConfirmationResult;
   flagged?: boolean;
+  /** Part of the order ID, the recipient's name or the address. */
+  q?: string;
+  in?: SearchField;
+  zone?: string;
   limit?: number;
   offset?: number;
 }
@@ -64,12 +69,26 @@ export const dashboardApi = {
     if (q.day) p.set('day', q.day);
     if (q.result) p.set('result', q.result);
     if (q.flagged) p.set('flagged', '1');
+    if (q.q) p.set('q', q.q);
+    if (q.in && q.in !== 'all') p.set('in', q.in);
+    if (q.zone) p.set('zone', q.zone);
     if (q.limit) p.set('limit', String(q.limit));
     if (q.offset) p.set('offset', String(q.offset));
     return api<ConfirmationListResponse>('GET', `/api/dashboard/confirmations?${p}`);
   },
-  /** Employees: orders for a day, or matching ?q= (order ID or recipient name), 10 per page. */
-  deliveries: (q: { date?: string; from?: string; to?: string; q?: string; status?: DeliveryStatus | 'all'; limit?: number; offset?: number }) => {
+  /** Employees: orders for a day, or matching ?q= (order ID, name or address), with filters; 10 per page. */
+  deliveries: (q: {
+    date?: string;
+    from?: string;
+    to?: string;
+    q?: string;
+    in?: SearchField;
+    status?: DeliveryStatus | 'voided' | 'all';
+    zone?: string;
+    sort?: 'newest' | 'oldest';
+    limit?: number;
+    offset?: number;
+  }) => {
     const p = new URLSearchParams();
     if (q.date) p.set('date', q.date);
     if (q.from && q.to) {
@@ -78,6 +97,9 @@ export const dashboardApi = {
     }
     if (q.q) p.set('q', q.q);
     if (q.status && q.status !== 'all') p.set('status', q.status);
+    if (q.in && q.in !== 'all') p.set('in', q.in);
+    if (q.zone) p.set('zone', q.zone);
+    if (q.sort === 'oldest') p.set('sort', 'oldest');
     if (q.limit) p.set('limit', String(q.limit));
     if (q.offset) p.set('offset', String(q.offset));
     return api<DeliveryListResponse>('GET', `/api/dashboard/deliveries?${p}`);

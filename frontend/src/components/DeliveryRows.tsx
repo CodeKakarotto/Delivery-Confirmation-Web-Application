@@ -21,7 +21,8 @@ export function DeliveryRows({ items, timeZone, showDate = false }: { items: Del
               <span className="conf-main">
                 <span className="conf-order">{d.orderId}</span>
                 <span className="cell-sub">
-                  # {d.stopNumber ?? '—'} · Zone {d.zone ?? '—'} · {d.recipientName ?? 'No recipient name'}, {d.city}
+                  # {d.stopNumber ?? '—'} · Zone {d.zone ?? '—'} · {d.recipientName ?? 'No recipient name'}, {d.addressLine ? `${d.addressLine}, ` : ''}
+                  {d.city}
                   {showDate && d.deliveryDate ? ` · ${fullDayLabel(d.deliveryDate)}` : ''}
                 </span>
                 {d.confirmation && (

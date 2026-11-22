@@ -5179,3 +5179,113 @@ button.account-dropdown-item {
     width: 12rem;
   }
 }
+
+/* ---------- Search options (filters) ---------- */
+
+.search-filters {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--rule);
+}
+.search-in {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+.search-in-label,
+.search-filter > span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.search-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 0.9rem;
+}
+.search-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.search-filter select,
+.search-filter input {
+  min-height: 2.5rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+}
+.search-clear {
+  align-self: flex-end;
+}
+.search-help-card .search-help-list {
+  margin: 0.4rem 0 0.6rem;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.3rem;
+}
+.search-help-card code {
+  font-size: 0.88em;
+  padding: 0.05rem 0.35rem;
+  border-radius: 6px;
+  background: var(--leaf);
+  color: var(--evergreen);
+}
+.driver-find-more {
+  margin: 0.6rem 0 0;
+  text-align: center;
+  font-weight: 600;
+}
+.suggest-footer {
+  justify-content: space-between;
+  border-top: 1px solid var(--rule);
+  margin-top: 0.2rem;
+  border-radius: 0 0 8px 8px;
+  font-weight: 600;
+  color: var(--evergreen);
+}
+/* Menu bar search: the magnifier is a button that opens the Search page. */
+.nav-search-form > svg {
+  display: none;
+}
+.nav-search-go {
+  position: absolute;
+  left: 0.3rem;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.nav-search-go:hover,
+.nav-search-go:focus-visible {
+  background: var(--leaf);
+  color: var(--evergreen);
+}
+.nav-search-form.is-active .nav-search-input {
+  border-color: var(--evergreen);
+  background: var(--leaf);
+}
+@media (max-width: 560px) {
+  .search-filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .search-filter select,
+  .search-filter input {
+    width: 100%;
+  }
+}

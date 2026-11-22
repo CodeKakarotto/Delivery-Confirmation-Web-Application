@@ -6,7 +6,9 @@
 import { correctionSchema, isValidDate, ORDER_ID_MAX, ORDER_ID_PATTERN, voidSchema } from '../../../shared/schemas.ts';
 import { addDays, localDateKey, localDayRangeUtc, localTimeHHMM, monthKey, weekStartKey, weekWithinMonth } from '../../../shared/shopTime.ts';
 import { OUTCOME_LABELS } from '../../../shared/types.ts';
+import { SEARCH_FIELDS, searchClause } from '../db/search.ts';
 import type {
+  SearchField,
   MissedDeliveries,
   AwaitingDelivery,
   CalendarCounts,
@@ -76,6 +78,12 @@ export async function list(ctx: RequestContext): Promise<Response> {
   if (orderId !== undefined && (orderId.length > ORDER_ID_MAX || !ORDER_ID_PATTERN.test(orderId))) {
     throw validationError([{ path: 'orderId', message: 'Enter a complete order ID' }]);
   }
+  const text = (q.get('q') ?? '').trim();
+  if (text.length > 100) throw validationError([{ path: 'q', message: 'Use at most 100 characters' }]);
+  const field = (q.get('in') || 'all') as SearchField;
+  if (!SEARCH_FIELDS.includes(field)) throw validationError([{ path: 'in', message: `Must be one of: ${SEARCH_FIELDS.join(', ')}` }]);
+  const zone = (q.get('zone') ?? '').trim();
+  if (zone && !/^[A-Za-z0-9]{1,8}$/.test(zone)) throw validationError([{ path: 'zone', message: 'Use a zone letter or number' }]);
   const resultRaw = q.get('result') || undefined;
   if (resultRaw !== undefined && resultRaw !== 'confirmed' && resultRaw !== 'needs_review') {
     throw validationError([{ path: 'result', message: 'Must be confirmed or needs_review' }]);
@@ -89,6 +97,8 @@ export async function list(ctx: RequestContext): Promise<Response> {
     orderId,
     result: resultRaw as ConfirmationResult | undefined,
     flagged: q.get('flagged') === '1',
+    search: text ? { field, text } : undefined,
+    zone: zone || undefined,
     range: dayRange ? { from: dayRange.start.toISOString(), to: dayRange.end.toISOString() } : undefined,
     limit: intParam(ctx, 'limit', 50, 1, 200),
     offset: intParam(ctx, 'offset', 0, 0, 100_000),
@@ -321,17 +331,23 @@ export async function order(ctx: RequestContext): Promise<Response> {
   return json(body);
 }
 
-const STATUSES = ['all', 'awaiting', 'confirmed', 'exception', 'cancelled'] as const;
+const STATUSES = ['all', 'awaiting', 'confirmed', 'exception', 'cancelled', 'voided'] as const;
 
 /**
- * Employees' deliveries list: every order for a day (default today) or, with ?q=, orders whose ID or recipient name
- * contains the text (any day). Filter by status; 10 per page by default.
+ * Employees' deliveries list: every order for a day (default today) or, with ?q=, orders whose ID, recipient name or
+ * address contains the text (any day; ?in=order|name|address narrows it). Filters: status (incl. voided), zone, a
+ * date or a range of days; ?sort=oldest puts the earliest days first. 10 per page by default.
  */
 export async function deliveries(ctx: RequestContext): Promise<Response> {
   await guard(ctx, 'employee');
   const q = ctx.url.searchParams;
   const text = (q.get('q') ?? '').trim();
   if (text.length > 100) throw validationError([{ path: 'q', message: 'Use at most 100 characters' }]);
+  const field = (q.get('in') || 'all') as SearchField;
+  if (!SEARCH_FIELDS.includes(field)) throw validationError([{ path: 'in', message: `Must be one of: ${SEARCH_FIELDS.join(', ')}` }]);
+  const zone = (q.get('zone') ?? '').trim();
+  if (zone && !/^[A-Za-z0-9]{1,8}$/.test(zone)) throw validationError([{ path: 'zone', message: 'Use a zone letter or number' }]);
+  const oldestFirst = q.get('sort') === 'oldest';
   const status = (q.get('status') || 'all') as (typeof STATUSES)[number];
   if (!STATUSES.includes(status)) throw validationError([{ path: 'status', message: `Must be one of: ${STATUSES.join(', ')}` }]);
   const dateRaw = q.get('date') || undefined;
@@ -343,7 +359,7 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
   if (rangeFrom !== undefined && rangeTo !== undefined) {
     if (!isValidDate(rangeFrom) || !isValidDate(rangeTo)) throw validationError([{ path: 'from', message: 'Use YYYY-MM-DD' }]);
     const span = (Date.parse(`${rangeTo}T00:00:00Z`) - Date.parse(`${rangeFrom}T00:00:00Z`)) / 86_400_000;
-    if (span < 0 || span > 41) throw validationError([{ path: 'to', message: 'Use a range of 1 to 42 days, from before to' }]);
+    if (span < 0 || span > 400) throw validationError([{ path: 'to', message: 'Use a range of days with "from" before "to"' }]);
   }
   const range = rangeFrom && rangeTo ? { from: rangeFrom, to: rangeTo } : undefined;
   const date = range ? undefined : (dateRaw ?? (text ? undefined : localDateKey(ctx.now, ctx.settings.timeZone)));
@@ -360,14 +376,21 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
     binds.push(range.from, range.to);
   }
   if (text) {
-    where.push(`(d.order_id LIKE ? ESCAPE '!' OR d.recipient_name LIKE ? ESCAPE '!')`);
-    const like = `%${text.replace(/[!%_]/g, (c) => `!${c}`)}%`;
-    binds.push(like, like);
+    const s = searchClause(field, text);
+    where.push(s.sql);
+    binds.push(...s.binds);
+  }
+  if (zone) {
+    where.push('d.zone = ? COLLATE NOCASE');
+    binds.push(zone);
   }
   if (status === 'awaiting') where.push('d.cancelled_at IS NULL AND c.id IS NULL');
   if (status === 'confirmed') where.push(`c.result = 'confirmed'`);
   if (status === 'exception') where.push(`c.result = 'needs_review'`);
   if (status === 'cancelled') where.push('d.cancelled_at IS NOT NULL AND c.id IS NULL');
+  if (status === 'voided') {
+    where.push('c.id IS NULL AND EXISTS (SELECT 1 FROM delivery_confirmations v WHERE v.delivery_id = d.id AND v.voided_at IS NOT NULL)');
+  }
   const clause = where.length ? ` WHERE ${where.join(' AND ')}` : '';
   const from = 'FROM deliveries d LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id AND c.voided_at IS NULL';
   const limit = intParam(ctx, 'limit', 10, 1, 200);
@@ -379,6 +402,8 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
     zone: string | null;
     recipient_name: string | null;
     city: string;
+    address_line: string;
+    postal_code: string;
     delivery_date: string | null;
     cancelled_at: string | null;
     c_id: string | null;
@@ -391,13 +416,13 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
   const [rows, count] = await ctx.db.batch<Row | { n: number }>([
     ctx.db
       .prepare(
-        `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city, d.delivery_date, d.cancelled_at,
+        `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city, d.address_line, d.postal_code, d.delivery_date, d.cancelled_at,
                 c.id AS c_id, c.confirmed_at, c.result, c.received_by,
                 (SELECT v.id FROM delivery_confirmations v WHERE v.delivery_id = d.id AND v.voided_at IS NOT NULL
                   ORDER BY v.voided_at DESC LIMIT 1) AS voided_id,
                 (SELECT COUNT(*) FROM confirmation_corrections k WHERE k.confirmation_id = c.id) AS change_count
            ${from}${clause}
-          ORDER BY d.delivery_date DESC, d.stop_number IS NULL, d.stop_number, d.order_id
+          ORDER BY d.delivery_date ${oldestFirst ? 'ASC' : 'DESC'}, d.stop_number IS NULL, d.stop_number, d.order_id
           LIMIT ? OFFSET ?`,
       )
       .bind(...binds, limit, offset),
@@ -417,6 +442,8 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
         confirmation: r.c_id ? { id: r.c_id, confirmedAt: r.confirmed_at!, result: r.result!, receivedBy: r.received_by! } : null,
         voidedConfirmationId: r.c_id ? null : r.voided_id,
         changed: Boolean(r.c_id && r.change_count),
+        addressLine: r.address_line,
+        postalCode: r.postal_code,
       }),
     ),
   };

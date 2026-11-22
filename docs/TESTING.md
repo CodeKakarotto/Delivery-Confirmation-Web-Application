@@ -29,6 +29,7 @@ for the test runner by `frontend/test/register-tsx.mjs` (esbuild).
 | `worker/test/demoSeed.test.ts` | Demo orders: forty a day for today and the next seven days, none on Sundays (old upcoming Sunday orders removed unless confirmed), rotating recipients, safe to run twice |
 | `worker/test/retention.test.ts` | 30-day limit: today and the 29 days before are kept; older deliveries go with their confirmations and history; RETENTION_DAYS and its fallback |
 | `worker/test/missedBackup.test.ts` | Missed-deliveries alert (earlier days always, today only after closing, confirmed/cancelled excluded, voided counts again, one-week window, configurable closing time, employees only) and local backups (checked copy, newest kept, no overwrite) |
+| `worker/test/search.test.ts` | Search by street, city, ZIP, name and ID; "search in" one field; zone, voided status and oldest-first filters; drivers search only their own confirmations |
 | `frontend/test/searchSuggest.test.tsx` | Search suggestions: matching part of an ID or name, highlighting, an accessible combobox that starts closed |
 | `frontend/test/paging.test.tsx` | 10 per page everywhere: page splitting, the end-of-day report (10 on screen, all rows printed), the missed alert per day |
 | `frontend/test/missedAlert.test.tsx` | The red alert (by day, linking to each order, no paper-slip links), the green "all confirmed" line after closing, nothing before closing, 6:00 PM formatting |

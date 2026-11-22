@@ -1,6 +1,8 @@
 /** D1 access for deliveries and confirmations. Every query is parameterized; no SQL is built from input. */
 
+import { searchClause } from './search.ts';
 import type {
+  SearchField,
   OrderProduct,
   ConfirmationAttempt,
   ConfirmationCorrection,
@@ -249,6 +251,10 @@ export interface ListFilter {
   orderId?: string;
   result?: ConfirmationResult;
   flagged?: boolean;
+  /** Part of the order ID, the recipient's name or the address. */
+  search?: { field: SearchField; text: string };
+  /** One zone, e.g. "A". */
+  zone?: string;
   /** Only confirmations in [from, to): the UTC range of one shop-local day. */
   range?: { from: string; to: string };
   limit: number;
@@ -272,6 +278,15 @@ export async function listConfirmations(db: D1Database, f: ListFilter): Promise<
     binds.push(f.result);
   }
   if (f.flagged) where.push('EXISTS (SELECT 1 FROM confirmation_attempts a WHERE a.confirmation_id = c.id)');
+  if (f.zone) {
+    where.push('c.zone = ? COLLATE NOCASE');
+    binds.push(f.zone);
+  }
+  if (f.search) {
+    const s = searchClause(f.search.field, f.search.text, 'c.order_id');
+    where.push(s.sql);
+    binds.push(...s.binds);
+  }
   if (f.range !== undefined) {
     // ISO-8601 UTC strings of one fixed format compare correctly as text.
     where.push('c.confirmed_at >= ? AND c.confirmed_at < ?');
@@ -280,7 +295,7 @@ export async function listConfirmations(db: D1Database, f: ListFilter): Promise<
   const clause = where.length ? ` WHERE ${where.join(' AND ')}` : '';
   const [rows, count] = await db.batch<ListRow | { n: number }>([
     db.prepare(`${LIST_SELECT}${clause} ORDER BY c.confirmed_at DESC, c.id LIMIT ? OFFSET ?`).bind(...binds, f.limit, f.offset),
-    db.prepare(`SELECT COUNT(*) AS n FROM delivery_confirmations c${clause}`).bind(...binds),
+    db.prepare(`SELECT COUNT(*) AS n FROM delivery_confirmations c JOIN deliveries d ON d.id = c.delivery_id${clause}`).bind(...binds),
   ]);
   return {
     items: (rows!.results as ListRow[]).map(toListItem),

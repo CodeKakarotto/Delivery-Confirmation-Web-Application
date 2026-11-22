@@ -285,6 +285,9 @@ export interface AuthResponse {
 
 export type DeliveryStatus = 'awaiting' | 'confirmed' | 'exception' | 'cancelled';
 
+/** Where a search looks: everything, or only the order ID, the recipient's name or the address. */
+export type SearchField = 'all' | 'order' | 'name' | 'address';
+
 /** One order in the employees' deliveries list. */
 export interface DeliveryListItem {
   orderId: string;
@@ -299,6 +302,9 @@ export interface DeliveryListItem {
   voidedConfirmationId: string | null;
   /** The active confirmation has entries in its change history (corrected, or voided and restored). */
   changed: boolean;
+  /** Street address and ZIP code (employees only; shown in search results). */
+  addressLine: string;
+  postalCode: string;
 }
 
 export interface DeliveryListResponse {

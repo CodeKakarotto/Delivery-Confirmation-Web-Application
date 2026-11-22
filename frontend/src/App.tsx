@@ -13,6 +13,7 @@ import { NotFoundPage } from './pages/HomePage.tsx';
 import { LoginPage } from './pages/LoginPage.tsx';
 import { ShopDeliveriesPage } from './pages/ShopDeliveriesPage.tsx';
 import { ShopOrderPage } from './pages/ShopOrderPage.tsx';
+import { DriverSearchPage } from './pages/DriverSearchPage.tsx';
 import { ShopReportPage } from './pages/ShopReportPage.tsx';
 import { ShopSearchPage } from './pages/ShopSearchPage.tsx';
 
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
       // Drivers
       { path: '/driver', element: driver(<DriverDashboardPage />) },
       { path: '/driver/confirmations', element: driver(<CalendarPage variant="driver" />) },
+      { path: '/driver/search', element: driver(<DriverSearchPage />) },
       { path: '/driver/confirmations/:id', element: driver(<ConfirmationDetailPage />) },
       { path: '/confirm', element: <Navigate to="/driver" replace /> },
       { path: '/confirm/:orderId', element: driver(<DriverConfirmPage />) },
