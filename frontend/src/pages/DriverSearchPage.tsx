@@ -79,7 +79,10 @@ export function DriverSearchPage() {
       <div className="page-head">
         <h1>Search</h1>
       </div>
-      <p className="muted lead">Find one of today’s deliveries or one of your confirmations by order ID, name or address.</p>
+      <p className="muted lead search-lead">
+        Find one of today’s deliveries or one of your confirmations by <strong>order ID</strong> (part is enough), <strong>recipient’s name</strong>{' '}
+        (first or last) or <strong>address</strong> (street, city or ZIP code).
+      </p>
       <form className="card search-card" role="search" onSubmit={onSubmit} noValidate>
         <label htmlFor="driver-search" className="search-card-label">
           Order ID, name or address
@@ -135,22 +138,7 @@ export function DriverSearchPage() {
         </div>
       </form>
 
-      {!q ? (
-        <div className="card search-help-card">
-          <p className="search-help-title">What you can search for</p>
-          <ul className="search-help-list">
-            <li>
-              <strong>Order ID</strong> from the ticket; part of it is enough.
-            </li>
-            <li>
-              <strong>Recipient’s name</strong>, first or last.
-            </li>
-            <li>
-              <strong>Address</strong>: street, city or ZIP code.
-            </li>
-          </ul>
-        </div>
-      ) : (
+      {q && (
         <>
           {show !== 'mine' && (
             <section className="card awaiting-card driver-awaiting" aria-labelledby="search-today">

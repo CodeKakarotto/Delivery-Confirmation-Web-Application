@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { addDays, localDateKey } from '../../../shared/shopTime.ts';
-import type { DeliveryStatus } from '../../../shared/types.ts';
 import { errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { Pager } from '../components/ConfirmationRows.tsx';
@@ -14,16 +13,7 @@ import { PAGE_SIZE } from '../lib/paging.ts';
 import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
 
-type StatusFilter = DeliveryStatus | 'voided' | 'all';
 type When = 'any' | 'today' | 'last7' | 'upcoming' | 'custom';
-const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
-  { value: 'all', label: 'Any status' },
-  { value: 'awaiting', label: 'Awaiting' },
-  { value: 'confirmed', label: 'Delivered' },
-  { value: 'exception', label: 'Exception' },
-  { value: 'voided', label: 'Voided' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
 const WHEN_OPTIONS: Array<{ value: When; label: string }> = [
   { value: 'any', label: 'Any time' },
   { value: 'today', label: 'Today' },
@@ -35,8 +25,8 @@ const ZONES = ['A', 'B', 'C'];
 const isDate = (v: string | null): v is string => Boolean(v && /^\d{4}-\d{2}-\d{2}$/.test(v));
 
 /**
- * Employees: find deliveries by order ID, recipient name or address (part of any is enough), with filters for status,
- * zone, dates and order. Everything lives in the URL, so Back returns to the same search.
+ * Employees: find deliveries by order ID, recipient name or address (part of any is enough), with filters for zone,
+ * dates and order. Everything lives in the URL, so Back returns to the same search.
  */
 export function ShopSearchPage() {
   const timeZone = useShopTimeZone();
@@ -44,7 +34,6 @@ export function ShopSearchPage() {
   const [params, setParams] = useSearchParams();
   const q = params.get('q') ?? '';
   const field = leadFromParam(params.get('in'));
-  const status = (STATUS_OPTIONS.some((o) => o.value === params.get('status')) ? params.get('status') : 'all') as StatusFilter;
   const zone = ZONES.includes(params.get('zone') ?? '') ? params.get('zone')! : '';
   const when = (WHEN_OPTIONS.some((o) => o.value === params.get('when')) ? params.get('when') : 'any') as When;
   const customFrom = params.get('from');
@@ -68,15 +57,15 @@ export function ShopSearchPage() {
             ? { from: customFrom, to: customTo }
             : anyTimeRange();
   const customIncomplete = when === 'custom' && !(isDate(customFrom) && isDate(customTo) && customFrom <= customTo);
-  const filtered = field !== 'order' || status !== 'all' || zone !== '' || when !== 'any' || sort !== 'newest';
-  const active = Boolean(q) || status !== 'all' || zone !== '' || when !== 'any';
+  const filtered = field !== 'order' || zone !== '' || when !== 'any' || sort !== 'newest';
+  const active = Boolean(q) || zone !== '' || when !== 'any';
 
   const results = useApi(
     () =>
       active && !customIncomplete
-        ? dashboardApi.deliveries({ q: q || undefined, in: field, status, zone: zone || undefined, sort, ...days, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE })
+        ? dashboardApi.deliveries({ q: q || undefined, in: field, zone: zone || undefined, sort, ...days, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE })
         : Promise.resolve(null),
-    [q, field, status, zone, when, customFrom, customTo, sort, page],
+    [q, field, zone, when, customFrom, customTo, sort, page],
     { live: true },
   );
 
@@ -100,7 +89,10 @@ export function ShopSearchPage() {
       <div className="page-head">
         <h1>Search</h1>
       </div>
-      <p className="muted lead">Find any delivery (past, today or upcoming) by order ID, recipient name or address.</p>
+      <p className="muted lead search-lead">
+        Find any delivery (past, today or upcoming) by <strong>order ID</strong> (part is enough: <code>{mmdd}</code> finds every order from that
+        day), <strong>recipient’s name</strong> (first or last) or <strong>address</strong> (street, city or ZIP code).
+      </p>
       <form className="card search-card" role="search" onSubmit={onSubmit} noValidate>
         <label htmlFor="shop-search" className="search-card-label">
           Order ID, name or address
@@ -128,16 +120,6 @@ export function ShopSearchPage() {
         <div className="search-filters" aria-label="Search options">
           <SearchFieldSwitch value={field} onChange={(v) => update({ in: v === 'order' ? null : v })} />
           <div className="search-filter-row">
-            <label className="search-filter">
-              <span>Status</span>
-              <select value={status} onChange={(e) => update({ status: e.target.value === 'all' ? null : e.target.value })}>
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
             <label className="search-filter">
               <span>Zone</span>
               <select value={zone} onChange={(e) => update({ zone: e.target.value || null })}>
@@ -179,7 +161,7 @@ export function ShopSearchPage() {
               </select>
             </label>
             {filtered && (
-              <button type="button" className="btn btn-small btn-ghost search-clear" onClick={() => update({ in: null, status: null, zone: null, when: null, from: null, to: null, sort: null })}>
+              <button type="button" className="btn btn-small btn-ghost search-clear" onClick={() => update({ in: null, zone: null, when: null, from: null, to: null, sort: null })}>
                 Clear filters
               </button>
             )}
@@ -189,24 +171,7 @@ export function ShopSearchPage() {
 
       {customIncomplete && active && <Notice tone="info">Pick a start and an end date to search between them.</Notice>}
 
-      {!active ? (
-        <div className="card search-help-card">
-          <p className="search-help-title">What you can search for</p>
-          <ul className="search-help-list">
-            <li>
-              <strong>Order ID</strong>, e.g. <code>MF-{mmdd}-04</code>. Part of it is enough: <code>{mmdd}</code> finds every order from that day.
-            </li>
-            <li>
-              <strong>Recipient’s name</strong>, first or last, e.g. <code>Avery</code>.
-            </li>
-            <li>
-              <strong>Address</strong>: street, city or ZIP code, e.g. <code>Sample Way</code>, <code>Lorton</code> or <code>22079</code>.
-            </li>
-          </ul>
-          <p className="search-help-note">Or leave the box empty and use the filters, e.g. every voided delivery of the last 7 days.</p>
-        </div>
-      ) : (
-        !customIncomplete && (
+      {active && !customIncomplete && (
           <section className="card confirmed-card" aria-label="Search results">
             <h2 className="results-title">
               {q ? <>Results for “{q}”</> : 'Matching deliveries'}
@@ -227,7 +192,6 @@ export function ShopSearchPage() {
               </div>
             )}
           </section>
-        )
       )}
     </>
   );
