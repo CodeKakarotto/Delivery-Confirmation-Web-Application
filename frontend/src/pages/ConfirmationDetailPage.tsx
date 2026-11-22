@@ -110,9 +110,8 @@ export function ConfirmationDetailPage() {
         </Notice>
       )}
       {c.result === 'needs_review' && !c.voided && (
-        <Notice tone="warn" title="Delivery exception">
-          The order was not handed to the recipient ({OUTCOME_LABELS[c.outcome].toLowerCase()}). Review it before treating the delivery as
-          complete.
+        <Notice tone="ok" title="Delivered (exception)">
+          The order was delivered but not handed to the recipient ({OUTCOME_LABELS[c.outcome].toLowerCase()}). The exception note below says where it was left.
         </Notice>
       )}
 

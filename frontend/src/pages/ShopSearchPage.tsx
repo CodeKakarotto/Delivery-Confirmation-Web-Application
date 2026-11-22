@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { addDays, localDateKey } from '../../../shared/shopTime.ts';
-import type { DeliveryStatus, SearchField } from '../../../shared/types.ts';
+import type { DeliveryStatus } from '../../../shared/types.ts';
 import { errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { Pager } from '../components/ConfirmationRows.tsx';
 import { DeliveryRows } from '../components/DeliveryRows.tsx';
 import { SearchSuggest } from '../components/SearchSuggest.tsx';
-import { SearchFieldSwitch } from '../components/SearchFilters.tsx';
+import { leadFromParam, SearchFieldSwitch } from '../components/SearchFilters.tsx';
 import { EmptyState, Notice, Spinner } from '../components/ui.tsx';
 import { anyTimeRange, orderSuggestions } from '../lib/orderSuggestions.ts';
 import { PAGE_SIZE } from '../lib/paging.ts';
@@ -43,7 +43,7 @@ export function ShopSearchPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const q = params.get('q') ?? '';
-  const field = (['order', 'name', 'address'].includes(params.get('in') ?? '') ? params.get('in') : 'all') as SearchField;
+  const field = leadFromParam(params.get('in'));
   const status = (STATUS_OPTIONS.some((o) => o.value === params.get('status')) ? params.get('status') : 'all') as StatusFilter;
   const zone = ZONES.includes(params.get('zone') ?? '') ? params.get('zone')! : '';
   const when = (WHEN_OPTIONS.some((o) => o.value === params.get('when')) ? params.get('when') : 'any') as When;
@@ -68,7 +68,7 @@ export function ShopSearchPage() {
             ? { from: customFrom, to: customTo }
             : anyTimeRange();
   const customIncomplete = when === 'custom' && !(isDate(customFrom) && isDate(customTo) && customFrom <= customTo);
-  const filtered = field !== 'all' || status !== 'all' || zone !== '' || when !== 'any' || sort !== 'newest';
+  const filtered = field !== 'order' || status !== 'all' || zone !== '' || when !== 'any' || sort !== 'newest';
   const active = Boolean(q) || status !== 'all' || zone !== '' || when !== 'any';
 
   const results = useApi(
@@ -109,7 +109,7 @@ export function ShopSearchPage() {
           <SearchSuggest
             value={text}
             onChange={setText}
-            getSuggestions={orderSuggestions}
+            getSuggestions={(s) => orderSuggestions(s, field)}
             onPick={(s) => navigate(s.to)}
             inputProps={{
               id: 'shop-search',
@@ -126,7 +126,7 @@ export function ShopSearchPage() {
         </div>
 
         <div className="search-filters" aria-label="Search options">
-          <SearchFieldSwitch value={field} onChange={(v) => update({ in: v === 'all' ? null : v })} />
+          <SearchFieldSwitch value={field} onChange={(v) => update({ in: v === 'order' ? null : v })} />
           <div className="search-filter-row">
             <label className="search-filter">
               <span>Status</span>
@@ -222,7 +222,7 @@ export function ShopSearchPage() {
               <EmptyState title="No deliveries match.">Try part of the order ID, name or address, or clear the filters.</EmptyState>
             ) : (
               <div className={results.loading ? 'is-loading' : undefined}>
-                <DeliveryRows items={results.data.items} timeZone={timeZone} showDate />
+                <DeliveryRows items={results.data.items} timeZone={timeZone} showDate lead={field} />
                 <Pager page={page} total={results.data.total} pageSize={PAGE_SIZE} onPage={(p) => setParams(new URLSearchParams({ ...Object.fromEntries(params), p: String(p) }))} />
               </div>
             )}

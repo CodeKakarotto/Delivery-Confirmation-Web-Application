@@ -169,6 +169,6 @@ describe('SavedConfirmationCard: the employee/print view uses the same order', (
     ]);
     assertIncreasing([deliverTo!, exception!, total!, instructions!, received!, signature!], 'saved card');
     assert.ok(html.includes('Signed by reception'));
-    assert.ok(html.includes('Exception: needs review'), 'an exception is labelled in words, not only by color');
+    assert.ok(html.includes('Delivered (exception)'), 'an exception is labelled in words, not only by color');
   });
 });

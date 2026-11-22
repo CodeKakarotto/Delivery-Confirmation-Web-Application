@@ -1,17 +1,24 @@
-import type { SearchField } from '../../../shared/types.ts';
+import type { SearchLead } from '../../../shared/types.ts';
 import { Segmented } from './ui.tsx';
 
-/** Where a search looks: everything, or only the order ID, the name or the address. */
-export function SearchFieldSwitch({ value, onChange }: { value: SearchField; onChange: (v: SearchField) => void }) {
+/** Reads the "in" URL parameter: order ID unless name or address was chosen. */
+export function leadFromParam(value: string | null): SearchLead {
+  return value === 'name' || value === 'address' ? value : 'order';
+}
+
+/**
+ * What a search puts first. Every search looks at the order ID, the name and the address; the chosen one comes first
+ * (matches in it at the top of the results, and each result starts with it). Order ID is the standard.
+ */
+export function SearchFieldSwitch({ value, onChange }: { value: SearchLead; onChange: (v: SearchLead) => void }) {
   return (
     <div className="search-in">
-      <span className="search-in-label">Search in</span>
-      <Segmented<SearchField>
-        label="Search in"
+      <span className="search-in-label">Show first</span>
+      <Segmented<SearchLead>
+        label="Show first"
         value={value}
         onChange={onChange}
         options={[
-          { value: 'all', label: 'Everything' },
           { value: 'order', label: 'Order ID' },
           { value: 'name', label: 'Name' },
           { value: 'address', label: 'Address' },

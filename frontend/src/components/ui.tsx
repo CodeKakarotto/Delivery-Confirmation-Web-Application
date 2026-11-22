@@ -107,16 +107,15 @@ export function Segmented<T extends string>({
   );
 }
 
-/** Saved result in words (never color alone): green for a recipient hand-off, amber for an exception to review. */
+/**
+ * Saved result in words (never color alone). Both are deliveries, so both are green: "Delivered to recipient", or
+ * "Delivered (exception)" when it was left at the door, with a neighbor, at reception or elsewhere.
+ */
 export function ResultTag({ result }: { result: ConfirmationResult }) {
   return (
-    <span className={`tag ${result === 'confirmed' ? 'tag-ok' : 'tag-warn'}`}>
+    <span className={`tag tag-ok${result === 'confirmed' ? '' : ' is-exception'}`}>
       <svg aria-hidden="true" viewBox="0 0 12 12" width="10" height="10">
-        {result === 'confirmed' ? (
-          <path d="M2 6.5 4.8 9 10 3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        ) : (
-          <path d="M6 1.5 11 10.5H1L6 1.5Zm0 3v3m0 1.4v.1" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
-        )}
+        <path d="M2 6.5 4.8 9 10 3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
       {RESULT_LABELS[result]}
     </span>

@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import type { DriverDelivery, SearchField } from '../../../shared/types.ts';
+import type { DriverDelivery } from '../../../shared/types.ts';
 import { errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { ConfirmationRows, Pager } from '../components/ConfirmationRows.tsx';
-import { SearchFieldSwitch } from '../components/SearchFilters.tsx';
+import { leadFromParam, SearchFieldSwitch } from '../components/SearchFilters.tsx';
 import { SearchSuggest } from '../components/SearchSuggest.tsx';
 import { Notice, Spinner } from '../components/ui.tsx';
 import { useOffline } from '../lib/offline.tsx';
-import { deliveryMatches, driverSuggestions } from '../lib/orderSuggestions.ts';
+import { driverSuggestions, rankToday } from '../lib/orderSuggestions.ts';
 import { PAGE_SIZE, pageOf, useLocalPage } from '../lib/paging.ts';
 import { useApi } from '../lib/useApi.ts';
 import { useLoadToday } from '../lib/useLoadToday.ts';
@@ -29,7 +29,7 @@ export function DriverSearchPage() {
   const loadToday = useLoadToday();
   const [params, setParams] = useSearchParams();
   const q = params.get('q') ?? '';
-  const field = (['order', 'name', 'address'].includes(params.get('in') ?? '') ? params.get('in') : 'all') as SearchField;
+  const field = leadFromParam(params.get('in'));
   const show = (['today', 'mine'].includes(params.get('show') ?? '') ? params.get('show') : 'both') as Show;
   const zone = ZONES.includes(params.get('zone') ?? '') ? params.get('zone')! : '';
   const page = Math.max(1, Number(params.get('p')) || 1);
@@ -44,7 +44,7 @@ export function DriverSearchPage() {
   }, [loadToday, offline.sentVersion]);
   const waiting = new Set(offline.items.filter((i) => i.state === 'waiting').map((i) => i.payload.orderId.toLowerCase()));
   const todayMatches = useMemo(
-    () => (today ?? []).filter((d) => q && deliveryMatches(d, field, q) && (!zone || (d.zone ?? '').toUpperCase() === zone)),
+    () => (q ? rankToday(today ?? [], q, field) : []).filter((d) => !zone || (d.zone ?? '').toUpperCase() === zone),
     [today, q, field, zone],
   );
   const [todayPage, setTodayPage] = useLocalPage(todayMatches.length, `${q}|${field}|${zone}`);
@@ -71,7 +71,7 @@ export function DriverSearchPage() {
     e.preventDefault();
     update({ q: text.trim().slice(0, 100) });
   };
-  const filtered = field !== 'all' || show !== 'both' || zone !== '';
+  const filtered = field !== 'order' || show !== 'both' || zone !== '';
 
   return (
     <>
@@ -87,7 +87,7 @@ export function DriverSearchPage() {
           <SearchSuggest
             value={text}
             onChange={setText}
-            getSuggestions={(s) => driverSuggestions(s, loadToday)}
+            getSuggestions={(s) => driverSuggestions(s, loadToday, field)}
             onPick={(s) => navigate(s.to)}
             inputProps={{
               id: 'driver-search',
@@ -104,7 +104,7 @@ export function DriverSearchPage() {
           </button>
         </div>
         <div className="search-filters" aria-label="Search options">
-          <SearchFieldSwitch value={field} onChange={(v) => update({ in: v === 'all' ? null : v })} />
+          <SearchFieldSwitch value={field} onChange={(v) => update({ in: v === 'order' ? null : v })} />
           <div className="search-filter-row">
             <label className="search-filter">
               <span>Show</span>
@@ -171,13 +171,19 @@ export function DriverSearchPage() {
                             {d.stopNumber ?? '—'}
                           </span>
                           <span className="driver-stop-main">
-                            <span className="cell-strong">{d.orderId}</span>
-                            <span className="cell-sub">
-                              Zone {d.zone ?? '—'} · {d.recipientName ?? 'No recipient name'}
+                            {/* The searched field comes first. */}
+                            <span className="cell-strong">
+                              {field === 'name' ? (d.recipientName ?? 'No recipient name') : field === 'address' ? `${d.addressLine}, ${d.city}` : d.orderId}
                             </span>
                             <span className="cell-sub">
-                              {d.addressLine}, {d.city} {d.postalCode}
+                              {field === 'order' ? '' : `${d.orderId} · `}Zone {d.zone ?? '—'}
+                              {field === 'name' ? '' : ` · ${d.recipientName ?? 'No recipient name'}`}
                             </span>
+                            {field !== 'address' && (
+                              <span className="cell-sub">
+                                {d.addressLine}, {d.city} {d.postalCode}
+                              </span>
+                            )}
                           </span>
                           {waiting.has(d.orderId.toLowerCase()) && <span className="tag tag-warn">Saved on phone</span>}
                         </Link>
@@ -205,7 +211,7 @@ export function DriverSearchPage() {
                 <p className="muted">None of your confirmations match.</p>
               ) : (
                 <>
-                  <ConfirmationRows items={mine.data.items} timeZone={timeZone} showDate linkBase="/driver/confirmations" />
+                  <ConfirmationRows items={mine.data.items} timeZone={timeZone} showDate linkBase="/driver/confirmations" leadWithName={field === 'name'} />
                   <Pager page={page} total={mine.data.total} pageSize={PAGE_SIZE} onPage={(p) => setParams(new URLSearchParams({ ...Object.fromEntries(params), p: String(p) }))} />
                 </>
               )}

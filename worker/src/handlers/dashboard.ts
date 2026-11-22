@@ -375,10 +375,12 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
     where.push('d.delivery_date BETWEEN ? AND ?');
     binds.push(range.from, range.to);
   }
+  let rank: ReturnType<typeof searchClause>['rank'] = null;
   if (text) {
     const s = searchClause(field, text);
-    where.push(s.sql);
-    binds.push(...s.binds);
+    where.push(s.where.sql);
+    binds.push(...s.where.binds);
+    rank = s.rank;
   }
   if (zone) {
     where.push('d.zone = ? COLLATE NOCASE');
@@ -422,10 +424,10 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
                   ORDER BY v.voided_at DESC LIMIT 1) AS voided_id,
                 (SELECT COUNT(*) FROM confirmation_corrections k WHERE k.confirmation_id = c.id) AS change_count
            ${from}${clause}
-          ORDER BY d.delivery_date ${oldestFirst ? 'ASC' : 'DESC'}, d.stop_number IS NULL, d.stop_number, d.order_id
+          ORDER BY ${rank ? `${rank.sql}, ` : ''}d.delivery_date ${oldestFirst ? 'ASC' : 'DESC'}, d.stop_number IS NULL, d.stop_number, d.order_id
           LIMIT ? OFFSET ?`,
       )
-      .bind(...binds, limit, offset),
+      .bind(...binds, ...(rank?.binds ?? []), limit, offset),
     ctx.db.prepare(`SELECT COUNT(*) AS n ${from}${clause}`).bind(...binds),
   ]);
   const body: DeliveryListResponse = {

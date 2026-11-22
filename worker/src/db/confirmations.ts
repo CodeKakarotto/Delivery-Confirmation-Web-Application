@@ -282,10 +282,12 @@ export async function listConfirmations(db: D1Database, f: ListFilter): Promise<
     where.push('c.zone = ? COLLATE NOCASE');
     binds.push(f.zone);
   }
+  let rank: ReturnType<typeof searchClause>['rank'] = null;
   if (f.search) {
     const s = searchClause(f.search.field, f.search.text, 'c.order_id');
-    where.push(s.sql);
-    binds.push(...s.binds);
+    where.push(s.where.sql);
+    binds.push(...s.where.binds);
+    rank = s.rank;
   }
   if (f.range !== undefined) {
     // ISO-8601 UTC strings of one fixed format compare correctly as text.
@@ -294,7 +296,9 @@ export async function listConfirmations(db: D1Database, f: ListFilter): Promise<
   }
   const clause = where.length ? ` WHERE ${where.join(' AND ')}` : '';
   const [rows, count] = await db.batch<ListRow | { n: number }>([
-    db.prepare(`${LIST_SELECT}${clause} ORDER BY c.confirmed_at DESC, c.id LIMIT ? OFFSET ?`).bind(...binds, f.limit, f.offset),
+    db
+      .prepare(`${LIST_SELECT}${clause} ORDER BY ${rank ? `${rank.sql}, ` : ''}c.confirmed_at DESC, c.id LIMIT ? OFFSET ?`)
+      .bind(...binds, ...(rank?.binds ?? []), f.limit, f.offset),
     db.prepare(`SELECT COUNT(*) AS n FROM delivery_confirmations c JOIN deliveries d ON d.id = c.delivery_id${clause}`).bind(...binds),
   ]);
   return {

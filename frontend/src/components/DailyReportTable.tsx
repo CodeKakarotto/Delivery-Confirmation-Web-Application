@@ -7,7 +7,7 @@ import { Pager } from './ConfirmationRows.tsx';
 
 const STATUS: Record<DailyReportRow['status'], { label: string; tag: string }> = {
   delivered: { label: 'Delivered to recipient', tag: 'tag-ok' },
-  exception: { label: 'Exception', tag: 'tag-warn' },
+  exception: { label: 'Delivered (exception)', tag: 'tag-ok' },
   awaiting: { label: 'Awaiting', tag: 'tag-quiet' },
   missing: { label: 'Missing', tag: 'tag-not-verified' },
   cancelled: { label: 'Cancelled', tag: 'tag-status-cancelled' },
@@ -30,7 +30,7 @@ export function DailyReportTable({ report: r, timeZone }: { report: DailyReport;
           <span className="figure-value">{r.totals.delivered}</span>
           <span className="figure-label">Delivered</span>
         </div>
-        <div className={`figure${r.totals.exceptions ? ' figure-warn' : ''}`}>
+        <div className="figure figure-ok">
           <span className="figure-value">{r.totals.exceptions}</span>
           <span className="figure-label">Exceptions</span>
         </div>

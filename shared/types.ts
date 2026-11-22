@@ -33,7 +33,7 @@ export type ConfirmationResult = 'confirmed' | 'needs_review';
 
 export const RESULT_LABELS: Record<ConfirmationResult, string> = {
   confirmed: 'Delivered to recipient',
-  needs_review: 'Exception: needs review',
+  needs_review: 'Delivered (exception)',
 };
 
 export interface OrderProduct {
@@ -287,6 +287,8 @@ export type DeliveryStatus = 'awaiting' | 'confirmed' | 'exception' | 'cancelled
 
 /** Where a search looks: everything, or only the order ID, the recipient's name or the address. */
 export type SearchField = 'all' | 'order' | 'name' | 'address';
+/** The field a search puts first (results matching it come first, and each result starts with it). */
+export type SearchLead = Exclude<SearchField, 'all'>;
 
 /** One order in the employees' deliveries list. */
 export interface DeliveryListItem {

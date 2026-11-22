@@ -1,4 +1,4 @@
-import type { ConfirmationListItem, DeliveryListItem, DriverDelivery, SearchField } from '../../../shared/types.ts';
+import type { ConfirmationListItem, DeliveryListItem, DriverDelivery, SearchField, SearchLead } from '../../../shared/types.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { MAX_SUGGESTIONS, matchesQuery, type Suggestion } from '../components/SearchSuggest.tsx';
 
@@ -6,29 +6,33 @@ const shortDay = (d: string | null) =>
   d ? new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) : '';
 
 /** What a suggestion shows and opens for one order (the same places as the result rows). */
-export function toSuggestion(d: DeliveryListItem): Suggestion {
+export function toSuggestion(d: DeliveryListItem, lead: SearchLead = 'order'): Suggestion {
   const record = d.confirmation?.id ?? d.voidedConfirmationId;
   const tag: Suggestion['tag'] = d.voidedConfirmationId
     ? { text: 'Voided', tone: 'bad' }
     : d.status === 'confirmed'
       ? { text: 'Delivered', tone: 'ok' }
       : d.status === 'exception'
-        ? { text: 'Exception', tone: 'warn' }
+        ? { text: 'Delivered (exception)', tone: 'ok' }
         : d.status === 'cancelled'
           ? { text: 'Cancelled', tone: 'quiet' }
           : { text: 'Awaiting', tone: 'quiet' };
+  const name = d.recipientName ?? 'No recipient name';
+  const addr = [d.addressLine, d.city].filter(Boolean).join(', ');
+  const [label, ...rest] =
+    lead === 'name' ? [name, d.orderId, addr] : lead === 'address' ? [addr || d.orderId, d.orderId, name] : [d.orderId, name, addr];
   return {
     key: d.orderId,
-    label: d.orderId,
-    detail: [d.recipientName ?? 'No recipient name', d.addressLine, d.city, shortDay(d.deliveryDate)].filter(Boolean).join(' · '),
+    label: label!,
+    detail: [...rest, shortDay(d.deliveryDate)].filter(Boolean).join(' · '),
     tag,
     to: record ? `/shop/confirmations/${record}` : `/shop/orders/${encodeURIComponent(d.orderId)}`,
   };
 }
 
 /** Employees: orders matching part of an order ID, a name or an address, on any day of the last month and the coming one. */
-export async function orderSuggestions(q: string): Promise<Suggestion[]> {
-  return (await dashboardApi.deliveries({ q, limit: MAX_SUGGESTIONS, ...anyTimeRange() })).items.map(toSuggestion);
+export async function orderSuggestions(q: string, lead: SearchLead = 'order'): Promise<Suggestion[]> {
+  return (await dashboardApi.deliveries({ q, in: lead, limit: MAX_SUGGESTIONS, ...anyTimeRange() })).items.map((d) => toSuggestion(d, lead));
 }
 
 /** "Any time" for searches: the 30 days the shop keeps and the upcoming month. */
@@ -46,27 +50,33 @@ export function deliveryMatches(d: Pick<DriverDelivery, 'orderId' | 'recipientNa
 }
 
 /** A driver's suggestion for one of today's deliveries still to deliver. */
-export function todaySuggestion(d: DriverDelivery, savedOnPhone = false): Suggestion {
+export function todaySuggestion(d: DriverDelivery, savedOnPhone = false, lead: SearchLead = 'order'): Suggestion {
+  const name = d.recipientName ?? 'No recipient name';
+  const addr = `${d.addressLine}, ${d.city}`;
+  const stop = `Stop ${d.stopNumber ?? '—'}`;
+  const [label, ...rest] =
+    lead === 'name' ? [name, d.orderId, stop, addr] : lead === 'address' ? [addr, d.orderId, stop, name] : [d.orderId, stop, name, addr];
   return {
     key: `today-${d.orderId}`,
-    label: d.orderId,
-    detail: `Stop ${d.stopNumber ?? '—'} · ${d.recipientName ?? 'No recipient name'} · ${d.addressLine}, ${d.city}`,
+    label: label!,
+    detail: rest.join(' · '),
     tag: savedOnPhone ? { text: 'Saved on phone', tone: 'warn' } : { text: 'To deliver', tone: 'quiet' },
     to: `/confirm/${encodeURIComponent(d.orderId)}`,
   };
 }
 
 /** A driver's suggestion for one of their own confirmations. */
-export function mineSuggestion(c: ConfirmationListItem): Suggestion {
+export function mineSuggestion(c: ConfirmationListItem, lead: SearchLead = 'order'): Suggestion {
+  const name = c.recipientName ?? 'No recipient name';
   return {
     key: `mine-${c.id}`,
-    label: c.orderId,
-    detail: `${c.recipientName ?? 'No recipient name'} · received by ${c.receivedBy}`,
+    label: lead === 'name' ? name : c.orderId,
+    detail: `${lead === 'name' ? c.orderId : name} · received by ${c.receivedBy}`,
     tag: c.voided
       ? { text: 'Voided', tone: 'bad' }
       : c.result === 'confirmed'
         ? { text: 'Delivered', tone: 'ok' }
-        : { text: 'Exception', tone: 'warn' },
+        : { text: 'Delivered (exception)', tone: 'ok' },
     to: `/driver/confirmations/${c.id}`,
   };
 }
@@ -75,12 +85,19 @@ export function mineSuggestion(c: ConfirmationListItem): Suggestion {
  * Drivers: today's deliveries still to deliver (from the copy on the phone, so it works with no signal), then their own
  * confirmations (any day; skipped quietly when there is no signal).
  */
-export async function driverSuggestions(q: string, loadToday: () => Promise<DriverDelivery[]>): Promise<Suggestion[]> {
-  const today = (await loadToday().catch(() => [] as DriverDelivery[])).filter((d) => deliveryMatches(d, 'all', q)).map((d) => todaySuggestion(d));
+export async function driverSuggestions(q: string, loadToday: () => Promise<DriverDelivery[]>, lead: SearchLead = 'order'): Promise<Suggestion[]> {
+  const today = rankToday(await loadToday().catch(() => [] as DriverDelivery[]), q, lead).map((d) => todaySuggestion(d, false, lead));
   if (today.length >= MAX_SUGGESTIONS) return today;
   const mine = await dashboardApi
-    .list({ q, limit: MAX_SUGGESTIONS })
-    .then((r) => r.items.map(mineSuggestion))
+    .list({ q, in: lead, limit: MAX_SUGGESTIONS })
+    .then((r) => r.items.map((c) => mineSuggestion(c, lead)))
     .catch(() => [] as Suggestion[]);
   return [...today, ...mine];
+}
+
+/** Today's deliveries matching the text anywhere, those matching it in the chosen field first (in stop order). */
+export function rankToday(list: DriverDelivery[], q: string, lead: SearchLead): DriverDelivery[] {
+  const matches = list.filter((d) => deliveryMatches(d, 'all', q));
+  const first = matches.filter((d) => deliveryMatches(d, lead, q));
+  return [...first, ...matches.filter((d) => !first.includes(d))];
 }

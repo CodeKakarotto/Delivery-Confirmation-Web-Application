@@ -23,11 +23,13 @@ describe('search by order ID, name or address (employees)', () => {
     assert.deepEqual([row.addressLine, row.postalCode], ['100 Sample Way', '22192'], 'results carry the address');
   });
 
-  it('"Search in" narrows the search to one field', async () => {
+  it('the chosen field comes first, then the other matches', async () => {
     const { client } = setup();
-    assert.deepEqual(ids((await find(client, 'q=sample&in=address')).body), ['MF-10482']);
-    assert.deepEqual(ids((await find(client, 'q=sample&in=name')).body), ['FTD-2207731'], 'Casey Sample');
-    assert.deepEqual(ids((await find(client, 'q=sample&in=order')).body), []);
+    const order = async (query: string) => (await find(client, query)).body.items.map((i: { orderId: string }) => i.orderId);
+    // "sample" is in MF-10482's street (100 Sample Way) and in FTD-2207731's name (Casey Sample).
+    assert.deepEqual(await order('q=sample&in=address'), ['MF-10482', 'FTD-2207731'], 'address match first');
+    assert.deepEqual(await order('q=sample&in=name'), ['FTD-2207731', 'MF-10482'], 'name match first');
+    assert.deepEqual((await order('q=sample&in=order')).sort(), ['FTD-2207731', 'MF-10482'], 'order ID first: nothing lost');
     assert.equal((await find(client, 'q=x&in=everything')).status, 422);
   });
 
@@ -54,7 +56,7 @@ describe('searching confirmations (drivers see only their own)', () => {
     const mine = await client.request('GET', '/api/dashboard/confirmations?q=sample%20way', undefined, { role: 'driver' });
     assert.deepEqual([mine.body.total, mine.body.items[0]?.orderId], [1, 'MF-10482']);
     assert.equal((await client.request('GET', '/api/dashboard/confirmations?q=avery&in=name', undefined, { role: 'driver' })).body.total, 1);
-    assert.equal((await client.request('GET', '/api/dashboard/confirmations?q=avery&in=order', undefined, { role: 'driver' })).body.total, 0);
+    assert.equal((await client.request('GET', '/api/dashboard/confirmations?q=avery&in=order', undefined, { role: 'driver' })).body.total, 1, 'still found, the field only sets the order');
     assert.equal((await client.request('GET', '/api/dashboard/confirmations?q=sample', undefined, { role: 'driver2' })).body.total, 0, 'another driver');
     assert.equal((await client.request('GET', '/api/dashboard/confirmations?q=sample', undefined, { role: 'employee' })).body.total, 1, 'employees see all');
   });

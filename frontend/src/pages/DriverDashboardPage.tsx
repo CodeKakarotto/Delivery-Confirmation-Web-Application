@@ -80,11 +80,7 @@ export function DriverDashboardPage() {
   return (
     <>
       <div className="page-head">
-        {/* "Dashboard" with the driver's name right under it, easy to spot. */}
-        <div className="driver-title">
-          <h1>Dashboard</h1>
-          {user && <p className="driver-title-name">{user.displayName}</p>}
-        </div>
+        <h1>Dashboard</h1>
       </div>
 
       <OutboxBanner />

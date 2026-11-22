@@ -9,12 +9,15 @@ export function ConfirmationRows({
   timeZone,
   showDate = false,
   linkBase = '/shop/confirmations',
+  leadWithName = false,
 }: {
   items: ConfirmationListItem[];
   timeZone: string;
   showDate?: boolean;
   /** Where a row opens: the employee or the driver record page. */
   linkBase?: string;
+  /** Search results by name start with the recipient's name. */
+  leadWithName?: boolean;
 }) {
   return (
     <ul className="conf-rows">
@@ -25,10 +28,10 @@ export function ConfirmationRows({
               {showDate ? shopDateTime(c.confirmedAt, timeZone) : shopTime(c.confirmedAt, timeZone)}
             </time>
             <span className="conf-main">
-              <span className="conf-order">{c.orderId}</span>
+              <span className="conf-order">{leadWithName ? (c.recipientName ?? c.orderId) : c.orderId}</span>
               <span className="cell-sub">
-                # {c.stopNumber ?? '—'} · Zone {c.zone ?? '—'}
-                {c.recipientName ? ` · For ${c.recipientName}` : ''}
+                {leadWithName ? `${c.orderId} · ` : ''}# {c.stopNumber ?? '—'} · Zone {c.zone ?? '—'}
+                {!leadWithName && c.recipientName ? ` · For ${c.recipientName}` : ''}
               </span>
               <span className="conf-received">
                 Received by <strong>{c.receivedBy}</strong> · {OUTCOME_LABELS[c.outcome]}
