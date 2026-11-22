@@ -5360,3 +5360,132 @@ mark.match,
 .find-more {
   margin: 0.35rem 0 0;
 }
+
+/* ---------- Search filters: an obvious swap, chips, lit-up filters, one-tap buttons, a Filters button ---------- */
+
+/* 1. The searched field gets the order ID's look (bold, purple, underlined); the order ID fades to small gray. */
+.lead-text {
+  font-weight: 700;
+  color: var(--evergreen);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.conf-order.is-plain {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--muted);
+  text-decoration: none;
+}
+.suggest-label.is-plain {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* 6. The Filters button and 2. the active filters as chips. */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.85rem;
+}
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.filter-toggle.is-set {
+  border-color: var(--evergreen);
+  background: var(--leaf);
+  color: var(--evergreen);
+  font-weight: 700;
+}
+.filter-chevron {
+  transition: transform 0.15s ease;
+}
+.filter-chevron.is-open {
+  transform: rotate(180deg);
+}
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2rem;
+  padding: 0.2rem 0.55rem 0.2rem 0.75rem;
+  border: 1px solid var(--evergreen);
+  border-radius: 999px;
+  background: var(--leaf);
+  color: var(--evergreen);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.filter-chip span {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.filter-chip:hover,
+.filter-chip:focus-visible {
+  background: var(--leaf-strong);
+}
+.filter-clear {
+  font-size: 0.88rem;
+}
+
+/* 5. One-tap buttons, grouped; 3. a changed filter is outlined in purple. */
+.filter-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+}
+.filter-group.is-set {
+  border-color: var(--evergreen);
+  background: color-mix(in srgb, var(--leaf) 60%, transparent);
+}
+.filter-group-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.filter-group.is-set .filter-group-label {
+  color: var(--evergreen);
+}
+.filter-dates {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-end;
+}
+.filter-panel .segmented {
+  flex-wrap: wrap;
+}
+
+/* 4. "19 of 41 deliveries (filtered)". */
+.results-title .h1-sub.is-filtered {
+  color: var(--evergreen);
+  font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) {
+  .filter-chevron {
+    transition: none;
+  }
+}
