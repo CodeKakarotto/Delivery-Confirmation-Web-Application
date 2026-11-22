@@ -40,8 +40,8 @@ describe('end-of-day report table', () => {
         isPast: true,
         totals: { scheduled: 2, delivered: 1, exceptions: 0, awaiting: 1, cancelled: 0 },
         rows: [
-          { orderId: 'MF-1', stopNumber: 1, zone: 'A', recipientName: 'Avery', city: 'Lake Ridge', status: 'delivered', receivedBy: 'Avery', outcome: 'delivered_to_recipient', outcomeDetail: null, confirmedAt: '2026-11-13T15:30:00.000Z', source: 'paper', corrected: true, flagged: false, confirmationId: 'c1' },
-          { orderId: 'MF-2', stopNumber: 2, zone: 'B', recipientName: 'Jordan', city: 'Woodbridge', status: 'missing', receivedBy: null, outcome: null, outcomeDetail: null, confirmedAt: null, source: null, corrected: false, flagged: false, confirmationId: null },
+          { orderId: 'MF-1', stopNumber: 1, zone: 'A', recipientName: 'Avery', city: 'Lake Ridge', status: 'delivered', receivedBy: 'Avery', outcome: 'delivered_to_recipient', outcomeDetail: null, confirmedAt: '2026-11-13T15:30:00.000Z', source: 'paper', corrected: true, flagged: false, confirmationId: 'c1', changed: true, voidedConfirmationId: null },
+          { orderId: 'MF-2', stopNumber: 2, zone: 'B', recipientName: 'Jordan', city: 'Woodbridge', status: 'missing', receivedBy: null, outcome: null, outcomeDetail: null, confirmedAt: null, source: null, corrected: false, flagged: false, confirmationId: null, changed: false, voidedConfirmationId: null },
         ],
       }}
     />
@@ -50,7 +50,7 @@ describe('end-of-day report table', () => {
 
   it('shows the totals and a line per order with the result in words', () => {
     assert.ok(html.includes('Friday, November 13, 2026'));
-    for (const text of ['Scheduled', 'Delivered', 'Exceptions', 'Missing', 'MF-1', 'MF-2', 'Delivered to recipient', '10:30 AM', 'Paper', 'Corrected']) {
+    for (const text of ['Scheduled', 'Delivered', 'Exceptions', 'Missing', 'MF-1', 'MF-2', 'Delivered to recipient', '10:30 AM', 'Paper', 'Changed']) {
       assert.ok(html.includes(text), text);
     }
   });

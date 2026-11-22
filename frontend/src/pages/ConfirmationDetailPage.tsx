@@ -71,7 +71,7 @@ export function ConfirmationDetailPage() {
           </p>
           <div className="row-tags">
             {c.voided && <span className="tag tag-status-cancelled">Voided</span>}
-            {c.corrected && <span className="tag tag-warn">Corrected</span>}
+            {c.changeCount > 0 && <span className="tag tag-warn">Changed</span>}
             {c.paper && <span className="tag tag-demo">Entered from paper</span>}
           </div>
         </div>

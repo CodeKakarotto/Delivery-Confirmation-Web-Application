@@ -181,7 +181,10 @@ function DayPanel({
               <ul className="plain-list awaiting-list">
                 {pageOf(s.awaiting, awaitingPage).map((a) => (
                   <li key={a.orderId}>
-                    <Link to={`/shop/orders/${encodeURIComponent(a.orderId)}`} className="awaiting-row">
+                    <Link
+                      to={a.voidedConfirmationId ? `/shop/confirmations/${a.voidedConfirmationId}` : `/shop/orders/${encodeURIComponent(a.orderId)}`}
+                      className="awaiting-row"
+                    >
                       <span>
                         <span className="cell-strong">{a.orderId}</span>
                         <span className="cell-sub">
@@ -189,6 +192,7 @@ function DayPanel({
                         </span>
                       </span>
                       <span className="row-tags">
+                        {a.voidedConfirmationId && <span className="tag tag-not-verified">Voided</span>}
                         <span className={`tag ${s.isPast ? 'tag-not-verified' : 'tag-quiet'}`}>{s.isPast ? 'Missing' : 'Awaiting'}</span>
                         <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" className="row-chevron">
                           <path d="M7.5 5.5 12 10l-4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />

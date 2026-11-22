@@ -19,12 +19,12 @@ describe('missed deliveries alert', () => {
       ...base,
       total: 3,
       days: [
-        { date: '2026-11-14', orders: [{ orderId: 'MF-1', stopNumber: 1, zone: 'A', recipientName: 'Avery', city: 'Lake Ridge' }] },
+        { date: '2026-11-14', orders: [{ orderId: 'MF-1', stopNumber: 1, zone: 'A', recipientName: 'Avery', city: 'Lake Ridge', voidedConfirmationId: null }] },
         {
           date: '2026-11-13',
           orders: [
-            { orderId: 'MF-2', stopNumber: 2, zone: 'B', recipientName: 'Jordan', city: 'Woodbridge' },
-            { orderId: 'MF-3', stopNumber: null, zone: null, recipientName: null, city: 'Lorton' },
+            { orderId: 'MF-2', stopNumber: 2, zone: 'B', recipientName: 'Jordan', city: 'Woodbridge', voidedConfirmationId: null },
+            { orderId: 'MF-3', stopNumber: null, zone: null, recipientName: null, city: 'Lorton', voidedConfirmationId: null },
           ],
         },
       ],

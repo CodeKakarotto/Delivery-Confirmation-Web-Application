@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { decodeCode128B } from '../../shared/barcode.ts';
 import type { DriverDelivery } from '../../shared/types.ts';
 import { DeliveryCard, DELIVERY_SECTIONS } from '../src/components/DeliveryCard.tsx';
 import { SavedConfirmationCard } from '../src/components/SavedConfirmationCard.tsx';
@@ -73,16 +72,10 @@ describe('DeliveryCard: required field order', () => {
     }
   });
 
-  it('places a barcode encoding the exact order ID directly under the readable order ID', () => {
+  it('shows the order ID with no barcode (the shop does not use them)', () => {
     const html = render();
-    const [idText, barcode, deliverTo] = positions(html, ['>MF-10482<', '<svg', 'data-section="deliver-to"']);
-    assert.ok(idText! < barcode! && barcode! < deliverTo!);
-    const value = /data-barcode-value="([^"]+)"/.exec(html)?.[1];
-    assert.equal(value, 'MF-10482');
-    // The drawn bars decode back to the same order ID.
-    const widths = /data-bars="([0-9,]+)"/.exec(html)?.[1]?.split(',').map(Number) ?? [];
-    assert.equal(decodeCode128B(widths), 'MF-10482');
-    assert.match(html, /role="img" aria-label="Barcode for order MF-10482"/);
+    assert.ok(html.includes('>MF-10482<'));
+    assert.ok(!/barcode/i.test(html));
   });
 
   it('puts the delivery exception inside Deliver To, after the address and before Total Products', () => {

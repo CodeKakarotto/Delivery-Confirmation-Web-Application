@@ -31,7 +31,7 @@ stack, folder layout, conventions and design.
    (`000N_delivery_confirmations.sql`) referencing its `deliveries(id)`; add `zone`/`total_products` there only once a
    source is approved.
 2. Read the stop number from `route_stops`/`routes` (active stop, saved route) instead of a column.
-3. Move `worker/src/handlers/{driver,dashboard}.ts`, `db/confirmations.ts`, `signature.ts` and `shared/barcode.ts`
+3. Move `worker/src/handlers/{driver,dashboard}.ts`, `db/confirmations.ts`, `signature.ts`
    across. Replace `requireDemoAccess` with the route app's `requireUser`/`requireEmployee` (driver endpoints limited
    to the driver's own saved routes) **only once the sponsor approves using sign-in for this flow**.
 4. Move the pages and components across and add nav entries to the route app's `Layout.tsx`.

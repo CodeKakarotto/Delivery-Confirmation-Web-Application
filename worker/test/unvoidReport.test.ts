@@ -146,7 +146,7 @@ describe('end-of-day report (employees)', () => {
     const text = new TextDecoder().decode(res.bytes);
     const lines = text.trim().split('\r\n');
     assert.deepEqual([...res.bytes.slice(0, 3)], [0xef, 0xbb, 0xbf], 'starts with the byte-order mark so Excel reads it as UTF-8');
-    assert.equal(lines[0], 'Date,Stop,Zone,Order ID,Recipient,City,Result,Received by,Delivery time,Exception note,Entered from,Corrected,Flagged');
+    assert.equal(lines[0], 'Date,Stop,Zone,Order ID,Recipient,City,Result,Received by,Delivery time,Exception note,Entered from,Changed,Flagged');
     assert.equal(lines.length, 7);
     assert.match(lines[1]!, /^2026-11-14,1,A,MF-10482,Avery Demo,Lake Ridge,Delivered to recipient,Avery Demo,10:30 AM,,App,No,No$/);
     assert.match(lines[2]!, /Left with neighbor,Neighbor #12,12:05 PM,Neighbor at #12,App/);
@@ -167,5 +167,43 @@ describe('end-of-day report (employees)', () => {
     assert.equal((await client.request('GET', '/api/dashboard/report.csv', undefined, { role: 'driver' })).status, 403);
     assert.equal((await client.request('GET', '/api/dashboard/report?date=2026-02-30', undefined, { role: 'employee' })).status, 422);
     assert.equal((await client.request('GET', '/api/dashboard/report', undefined, { role: 'employee', now: NOW })).body.date, '2026-11-14');
+  });
+});
+
+describe('a void and its undo show everywhere', () => {
+  const get = (client: TestClient, path: string) => client.request('GET', path, undefined, { role: 'employee', now: NOW });
+
+  it('dashboard lists, awaiting list, report and CSV all say "voided", then "changed" after the undo', async () => {
+    const { client } = setup();
+    const id = await voided(client);
+    const listed = (await get(client, '/api/dashboard/confirmations?day=2026-11-14')).body.items.find((i: { id: string }) => i.id === id);
+    assert.deepEqual([listed.voided, listed.changeCount], [true, 1], 'dashboard confirmed list: voided');
+    const summary = (await get(client, '/api/dashboard/summary?date=2026-11-14')).body;
+    assert.equal(summary.awaiting.find((a: { orderId: string }) => a.orderId === 'MF-10482').voidedConfirmationId, id, 'dashboard awaiting list');
+    const row = (await get(client, '/api/dashboard/report?date=2026-11-14')).body.rows.find((r: { orderId: string }) => r.orderId === 'MF-10482');
+    assert.deepEqual([row.status, row.voidedConfirmationId], ['awaiting', id], 'end-of-day report');
+    const csv = new TextDecoder().decode((await get(client, '/api/dashboard/report.csv?date=2026-11-14')).bytes);
+    assert.match(csv, /MF-10482,[^\r\n]*Awaiting \(confirmation voided\)/);
+
+    await post(client, `/api/dashboard/confirmations/${id}/unvoid`, { reason: 'Mistake' });
+    const back = (await get(client, '/api/dashboard/confirmations?day=2026-11-14')).body.items.find((i: { id: string }) => i.id === id);
+    assert.deepEqual([back.voided, back.changeCount], [false, 2], 'listed as changed (void + undo)');
+    const delivery = (await get(client, '/api/dashboard/deliveries?date=2026-11-14')).body.items.find((i: { orderId: string }) => i.orderId === 'MF-10482');
+    assert.deepEqual([delivery.status, delivery.changed], ['confirmed', true]);
+    const after = (await get(client, '/api/dashboard/report?date=2026-11-14')).body.rows.find((r: { orderId: string }) => r.orderId === 'MF-10482');
+    assert.deepEqual([after.status, after.changed, after.voidedConfirmationId], ['delivered', true, null]);
+  });
+
+  it('the Changes section also shows changes made to an earlier, voided confirmation of the same order', async () => {
+    const { client } = setup();
+    const first = await voided(client);
+    const again = await client.request('POST', '/api/driver/confirmations', validSubmission(), { now: NOW });
+    const detail = (await get(client, `/api/dashboard/confirmations/${again.body.confirmation.id}`)).body.confirmation;
+    assert.deepEqual(
+      detail.corrections.map((k: { kind: string; reason: string; otherRecord?: boolean }) => [k.kind, k.reason, Boolean(k.otherRecord)]),
+      [['void', 'Wrong order', true]],
+    );
+    const old = (await get(client, `/api/dashboard/confirmations/${first}`)).body.confirmation;
+    assert.deepEqual(old.corrections.map((k: { otherRecord?: boolean }) => Boolean(k.otherRecord)), [false]);
   });
 });

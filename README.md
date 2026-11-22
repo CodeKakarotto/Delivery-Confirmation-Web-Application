@@ -23,7 +23,7 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
   calendar of the driver's own confirmations with times and signatures.
 
 - **Driver screen** (`/confirm`): open one order by its exact ID. The card shows, in this order:
-  `#` → Zone → Order ID + Code 128 barcode → Deliver To (a **Delivered to recipient** bubble, then the Delivery
+  `#` → Zone → Order ID → Deliver To (a **Delivered to recipient** bubble, then the Delivery
   Exception options) → Total Products → Delivery Instructions (with Received By and Customer Signature).
 - **Delivered to recipient**: Received By and the customer signature ("Tap to sign" opens a full-screen signing area).
   **Delivery exception**: no signature; an **Exception note \*** (required) and Received By. Total Products lists the
@@ -41,7 +41,7 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
   the window comes back into view. Tapping a day shows its figures, the orders still awaiting (tap to open) and the confirmed
   deliveries with their **delivery time**, 10 per page. **Deliveries** tab: a small calendar (**Month** or **Week**) where tapping
   a day lists that day's deliveries underneath (10 per page, filter by status). **Search** tab: part of an order ID or recipient name.
-  - **Record and print** (`/shop/confirmations/:id`): the saved record in the same field order, with logo, barcode,
+  - **Record and print** (`/shop/confirmations/:id`): the saved record in the same field order, with logo,
     signature and delivery time, and refused duplicate/conflicting attempts.
 
 ## When something goes wrong
@@ -50,7 +50,7 @@ Workers, Cloudflare D1, the sponsor's logo and color tokens), so the two can be 
 | --- | --- |
 | **Signal drops mid-submit** (or the server has a problem) | The driver sees **"Saved on this phone. It will submit automatically when you regain connection."** It submits by itself later and can never be saved twice. |
 | **No signal at the door** | The same: **"Saved on this phone. It will submit automatically when you regain connection."** A banner shows how many are waiting. Open the driver dashboard once with signal before leaving, so today's deliveries are on the phone and orders can be opened without signal. Signing out warns if anything has not been submitted. |
-| **A confirmation is wrong** | Employees can **Correct** it (received by, outcome, exception note) or **Void** it (e.g. wrong order), always with a reason. The original values stay visible under "Changes"; a voided order goes back to Awaiting. A record voided by mistake shows **Undo void** (only on voided records, with a reason); it is refused if the order has been confirmed again since. |
+| **A confirmation is wrong** | Every void and undo shows everywhere the order appears (dashboard, Deliveries, Search, missed alert, End-of-day report) with a **Voided** tag; any record with history shows **Changed**. Employees can **Correct** it (received by, outcome, exception note) or **Void** it (e.g. wrong order), always with a reason. The original values stay visible under "Changes"; a voided order goes back to Awaiting. A record voided by mistake shows **Undo void** (only on voided records, with a reason); it is refused if the order has been confirmed again since. |
 | **No copy outside the app** | **End-of-day report** (employees): every order of the day with its result, who received it, the time and any exception note, plus the totals. Unconfirmed orders show as **Missing** once the day is over. **Print** it or **Download for Excel** at the end of each day. |
 | **A delivery was never confirmed** | The employee **Dashboard** shows a red alert: **"N deliveries were not confirmed"**, by day, for the last 7 days, and for today once the shop has closed (6:00 PM; change `SHOP_CLOSING_TIME` in `wrangler.jsonc`). Tap a day to see its orders and check with the driver. Once each one is confirmed it disappears. When nothing was missed, after closing it says **"All deliveries are confirmed."** |
 | **The computer breaks or the data is damaged** | **Automatic backups**: every time `Start-App.bat` runs, a checked copy of the database is saved in the `backups` folder. The **7 newest copies** are kept, and like the database itself **every copy holds only the last 30 days of deliveries** (older ones are removed from the copies too). To keep copies off this computer, add a line `BACKUP_DIR=C:\Users\<you>\OneDrive\Delivery backups` to `.dev.vars`. Back up by hand any time: `npm run db:backup:local`. **To restore**: close the two app windows, run `npm run db:restore:local` to list the backups, then `npm run db:restore:local -- <file name>`, and start the app again. The data from just before the restore is backed up first, so a restore can be undone. |
@@ -87,7 +87,7 @@ To try the driver screen on a phone on the same Wi-Fi, add this computer's LAN a
 ## Checks
 
 ```bash
-npm test            # Worker API, barcode and React component tests (Node's built-in test runner)
+npm test            # Worker API and React component tests (Node's built-in test runner)
 npm run typecheck   # Worker, frontend and tests
 npm run build:web   # production build
 npm run check       # all three

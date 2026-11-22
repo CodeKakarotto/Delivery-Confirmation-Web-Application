@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import type { DriverDelivery } from '../../../shared/types.ts';
-import { Barcode } from './Barcode.tsx';
 
 /** The required display order. Used by the driver form, the employee detail view and the printout. */
 export const DELIVERY_SECTIONS = [
@@ -15,7 +14,7 @@ export const DELIVERY_SECTIONS = [
 const DASH = '—';
 
 /**
- * One delivery, always in the same order: #, Zone, Order ID (+ barcode), Deliver To (+ Delivery Exception),
+ * One delivery, always in the same order: #, Zone, Order ID, Deliver To (+ Delivery Exception),
  * Total Products, Delivery Instructions (+ Received By, Customer Signature). The interactive or saved parts are
  * passed in as slots, so the form and the saved record can never drift apart. All text renders as text.
  */
@@ -56,7 +55,6 @@ export function DeliveryCard({
       <section data-section="order-id" className="dc-section">
         <h2 className="dc-label">Order ID</h2>
         <p className="dc-order-id">{d.orderId}</p>
-        <Barcode value={d.orderId} />
       </section>
 
       <section data-section="deliver-to" className="dc-section">

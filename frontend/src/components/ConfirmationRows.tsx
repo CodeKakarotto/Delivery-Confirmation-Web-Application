@@ -20,7 +20,7 @@ export function ConfirmationRows({
     <ul className="conf-rows">
       {items.map((c) => (
         <li key={c.id}>
-          <Link to={`${linkBase}/${c.id}`} className="conf-row">
+          <Link to={`${linkBase}/${c.id}`} className={`conf-row${c.voided ? ' is-voided' : ''}`}>
             <time className="conf-time" dateTime={c.confirmedAt}>
               {showDate ? shopDateTime(c.confirmedAt, timeZone) : shopTime(c.confirmedAt, timeZone)}
             </time>
@@ -35,6 +35,8 @@ export function ConfirmationRows({
               </span>
             </span>
             <span className="row-tags conf-tags">
+              {c.voided && <span className="tag tag-not-verified">Voided</span>}
+              {!c.voided && c.changeCount > 0 && <span className="tag tag-warn">Changed</span>}
               <ResultTag result={c.result} />
               <FlagTag count={c.attemptCount} conflict={c.hasConflict} />
             </span>

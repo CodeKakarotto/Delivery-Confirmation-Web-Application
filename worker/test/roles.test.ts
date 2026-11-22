@@ -116,7 +116,7 @@ describe('driver dashboard: awaiting orders, 5 per page', () => {
     assert.equal(res.headers.get('Cache-Control'), 'no-store');
     assert.equal(res.body.date, '2026-11-14');
     assert.deepEqual(res.body.items.map((i: { orderId: string }) => i.orderId), ['MF-10483', 'MF-10484', 'FTD-2207731', 'MF-10485']);
-    assert.deepEqual(Object.keys(res.body.items[0]).sort(), ['city', 'orderId', 'recipientName', 'stopNumber', 'zone']);
+    assert.deepEqual(Object.keys(res.body.items[0]).sort(), ['city', 'orderId', 'recipientName', 'stopNumber', 'voidedConfirmationId', 'zone']);
     assert.ok(!JSON.stringify(res.body).includes('Placeholder Ct'));
   });
 

@@ -4984,3 +4984,16 @@ button.account-dropdown-item {
   line-height: 1.25;
   color: var(--evergreen);
 }
+
+/* A voided record in a list: still there, clearly marked and dimmed. */
+.conf-row.is-voided .conf-main {
+  opacity: 0.6;
+}
+.missed-voided {
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+.correction-other {
+  font-size: 0.85rem;
+  color: var(--muted);
+}

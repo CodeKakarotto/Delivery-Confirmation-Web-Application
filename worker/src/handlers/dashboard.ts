@@ -149,7 +149,8 @@ export async function summary(ctx: RequestContext): Promise<Response> {
       .bind(date),
     ctx.db
       .prepare(
-        `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city
+        `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city,
+                (SELECT v.id FROM delivery_confirmations v WHERE v.delivery_id = d.id AND v.voided_at IS NOT NULL ORDER BY v.voided_at DESC LIMIT 1) AS voided_id
            FROM deliveries d
           WHERE d.delivery_date = ? AND d.cancelled_at IS NULL
             AND NOT EXISTS (SELECT 1 FROM delivery_confirmations c WHERE c.delivery_id = d.id AND c.voided_at IS NULL)
@@ -167,7 +168,14 @@ export async function summary(ctx: RequestContext): Promise<Response> {
     needsReview: c.needs_review ?? 0,
     flagged: c.flagged ?? 0,
     awaiting: (awaiting!.results as AwaitingRow[]).map(
-      (r): AwaitingDelivery => ({ orderId: r.order_id, stopNumber: r.stop_number, zone: r.zone, recipientName: r.recipient_name, city: r.city }),
+      (r): AwaitingDelivery => ({
+        orderId: r.order_id,
+        stopNumber: r.stop_number,
+        zone: r.zone,
+        recipientName: r.recipient_name,
+        city: r.city,
+        voidedConfirmationId: r.voided_id ?? null,
+      }),
     ),
   };
   return json(body);
@@ -189,7 +197,8 @@ export async function missed(ctx: RequestContext): Promise<Response> {
   const to = afterClosing ? today : addDays(today, -1);
   const res = await ctx.db
     .prepare(
-      `SELECT d.delivery_date, d.order_id, d.stop_number, d.zone, d.recipient_name, d.city
+      `SELECT d.delivery_date, d.order_id, d.stop_number, d.zone, d.recipient_name, d.city,
+              (SELECT v.id FROM delivery_confirmations v WHERE v.delivery_id = d.id AND v.voided_at IS NOT NULL ORDER BY v.voided_at DESC LIMIT 1) AS voided_id
          FROM deliveries d
         WHERE d.delivery_date >= ? AND d.delivery_date <= ? AND d.cancelled_at IS NULL
           AND NOT EXISTS (SELECT 1 FROM delivery_confirmations c WHERE c.delivery_id = d.id AND c.voided_at IS NULL)
@@ -202,7 +211,14 @@ export async function missed(ctx: RequestContext): Promise<Response> {
   for (const r of res.results) {
     let day = days[days.length - 1];
     if (!day || day.date !== r.delivery_date) days.push((day = { date: r.delivery_date, orders: [] }));
-    day.orders.push({ orderId: r.order_id, stopNumber: r.stop_number, zone: r.zone, recipientName: r.recipient_name, city: r.city });
+    day.orders.push({
+      orderId: r.order_id,
+      stopNumber: r.stop_number,
+      zone: r.zone,
+      recipientName: r.recipient_name,
+      city: r.city,
+      voidedConfirmationId: r.voided_id ?? null,
+    });
   }
   const body: MissedDeliveries = {
     today,
@@ -216,6 +232,7 @@ export async function missed(ctx: RequestContext): Promise<Response> {
 }
 
 interface AwaitingRow {
+  voided_id?: string | null;
   order_id: string;
   stop_number: number | null;
   zone: string | null;
@@ -369,6 +386,7 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
     result: ConfirmationResult | null;
     received_by: string | null;
     voided_id: string | null;
+    change_count: number | null;
   };
   const [rows, count] = await ctx.db.batch<Row | { n: number }>([
     ctx.db
@@ -376,7 +394,8 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
         `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city, d.delivery_date, d.cancelled_at,
                 c.id AS c_id, c.confirmed_at, c.result, c.received_by,
                 (SELECT v.id FROM delivery_confirmations v WHERE v.delivery_id = d.id AND v.voided_at IS NOT NULL
-                  ORDER BY v.voided_at DESC LIMIT 1) AS voided_id
+                  ORDER BY v.voided_at DESC LIMIT 1) AS voided_id,
+                (SELECT COUNT(*) FROM confirmation_corrections k WHERE k.confirmation_id = c.id) AS change_count
            ${from}${clause}
           ORDER BY d.delivery_date DESC, d.stop_number IS NULL, d.stop_number, d.order_id
           LIMIT ? OFFSET ?`,
@@ -397,6 +416,7 @@ export async function deliveries(ctx: RequestContext): Promise<Response> {
         status: r.c_id ? (r.result === 'confirmed' ? 'confirmed' : 'exception') : r.cancelled_at ? 'cancelled' : 'awaiting',
         confirmation: r.c_id ? { id: r.c_id, confirmedAt: r.confirmed_at!, result: r.result!, receivedBy: r.received_by! } : null,
         voidedConfirmationId: r.c_id ? null : r.voided_id,
+        changed: Boolean(r.c_id && r.change_count),
       }),
     ),
   };
@@ -604,6 +624,8 @@ interface ReportRowDb {
   source: 'app' | 'paper' | null;
   corrected: number;
   flagged: number;
+  change_count: number | null;
+  voided_id: string | null;
 }
 
 async function buildReport(ctx: RequestContext): Promise<DailyReport> {
@@ -617,7 +639,9 @@ async function buildReport(ctx: RequestContext): Promise<DailyReport> {
       `SELECT d.order_id, d.stop_number, d.zone, d.recipient_name, d.city, d.cancelled_at,
               c.id AS c_id, c.received_by, c.outcome, c.outcome_detail, c.result, c.confirmed_at, c.source,
               EXISTS (SELECT 1 FROM confirmation_corrections k WHERE k.confirmation_id = c.id AND k.kind = 'correction') AS corrected,
-              EXISTS (SELECT 1 FROM confirmation_attempts a WHERE a.confirmation_id = c.id) AS flagged
+              EXISTS (SELECT 1 FROM confirmation_attempts a WHERE a.confirmation_id = c.id) AS flagged,
+              (SELECT COUNT(*) FROM confirmation_corrections k WHERE k.confirmation_id = c.id) AS change_count,
+              (SELECT v.id FROM delivery_confirmations v WHERE v.delivery_id = d.id AND v.voided_at IS NOT NULL ORDER BY v.voided_at DESC LIMIT 1) AS voided_id
          FROM deliveries d
          LEFT JOIN delivery_confirmations c ON c.delivery_id = d.id AND c.voided_at IS NULL
         WHERE d.delivery_date = ?
@@ -657,8 +681,10 @@ async function buildReport(ctx: RequestContext): Promise<DailyReport> {
       confirmedAt: r.confirmed_at,
       source: r.source,
       corrected: r.corrected === 1,
+      changed: Boolean(r.c_id && r.change_count),
       flagged: r.flagged === 1,
       confirmationId: r.c_id,
+      voidedConfirmationId: r.c_id ? null : r.voided_id,
     };
   });
   return { date, isPast, totals, rows };
@@ -688,10 +714,13 @@ function csvCell(value: string | number | null): string {
 export async function reportCsv(ctx: RequestContext): Promise<Response> {
   const r = await buildReport(ctx);
   const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: ctx.settings.timeZone });
-  const header = ['Date', 'Stop', 'Zone', 'Order ID', 'Recipient', 'City', 'Result', 'Received by', 'Delivery time', 'Exception note', 'Entered from', 'Corrected', 'Flagged'];
+  const header = ['Date', 'Stop', 'Zone', 'Order ID', 'Recipient', 'City', 'Result', 'Received by', 'Delivery time', 'Exception note', 'Entered from', 'Changed', 'Flagged'];
   const lines = [header.map(csvCell).join(',')];
   for (const row of r.rows) {
-    const result = row.status === 'exception' && row.outcome ? OUTCOME_LABELS[row.outcome] : STATUS_WORDS[row.status];
+    // A voided order says so, next to its current status (Awaiting / Missing).
+    const result =
+      (row.status === 'exception' && row.outcome ? OUTCOME_LABELS[row.outcome] : STATUS_WORDS[row.status]) +
+      (row.voidedConfirmationId ? ' (confirmation voided)' : '');
     lines.push(
       [
         r.date,
@@ -705,7 +734,7 @@ export async function reportCsv(ctx: RequestContext): Promise<Response> {
         row.confirmedAt ? time.format(new Date(row.confirmedAt)) : null,
         row.outcomeDetail,
         row.source === 'paper' ? 'Paper slip' : row.source === 'app' ? 'App' : null,
-        row.confirmationId ? (row.corrected ? 'Yes' : 'No') : null,
+        row.confirmationId || row.voidedConfirmationId ? (row.changed || row.voidedConfirmationId ? 'Yes' : 'No') : null,
         row.confirmationId ? (row.flagged ? 'Yes' : 'No') : null,
       ]
         .map(csvCell)

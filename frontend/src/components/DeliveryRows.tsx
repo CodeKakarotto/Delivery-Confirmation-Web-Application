@@ -34,6 +34,7 @@ export function DeliveryRows({ items, timeZone, showDate = false }: { items: Del
                 {d.status === 'awaiting' && d.voidedConfirmationId && <span className="tag tag-not-verified">Voided</span>}
                 {d.status === 'awaiting' && <span className="tag tag-quiet">Awaiting</span>}
                 {d.status === 'cancelled' && <span className="tag tag-status-cancelled">Cancelled</span>}
+                {d.changed && <span className="tag tag-warn">Changed</span>}
                 {d.confirmation && <ResultTag result={d.confirmation.result} />}
               </span>
             </Link>

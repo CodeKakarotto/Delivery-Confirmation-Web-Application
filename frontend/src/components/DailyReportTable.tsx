@@ -65,8 +65,8 @@ export function DailyReportTable({ report: r, timeZone }: { report: DailyReport;
                     {row.stopNumber ?? '—'}
                   </td>
                   <td data-label="Order">
-                    {row.confirmationId ? (
-                      <Link to={`/shop/confirmations/${row.confirmationId}`} className="cell-strong">
+                    {row.confirmationId || row.voidedConfirmationId ? (
+                      <Link to={`/shop/confirmations/${row.confirmationId ?? row.voidedConfirmationId}`} className="cell-strong">
                         {row.orderId}
                       </Link>
                     ) : (
@@ -89,7 +89,8 @@ export function DailyReportTable({ report: r, timeZone }: { report: DailyReport;
                     {row.outcomeDetail && <span className="report-note">{row.outcomeDetail}</span>}
                     <span className="row-tags">
                       {row.source === 'paper' && <span className="tag tag-demo">Paper</span>}
-                      {row.corrected && <span className="tag tag-warn">Corrected</span>}
+                      {row.voidedConfirmationId && <span className="tag tag-not-verified">Voided</span>}
+                      {row.changed && <span className="tag tag-warn">Changed</span>}
                       {row.flagged && <span className="tag tag-not-verified">Flagged</span>}
                     </span>
                   </td>

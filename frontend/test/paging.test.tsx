@@ -20,7 +20,7 @@ describe('10 per page, everywhere', () => {
   it('end-of-day report: 10 rows on screen with Previous / Next, every row kept for printing', () => {
     const rows: DailyReportRow[] = ids(12).map((orderId, i) => ({
       orderId, stopNumber: i + 1, zone: 'A', recipientName: 'Avery', city: 'Lake Ridge', status: 'awaiting',
-      receivedBy: null, outcome: null, outcomeDetail: null, confirmedAt: null, source: null, corrected: false, flagged: false, confirmationId: null,
+      receivedBy: null, outcome: null, outcomeDetail: null, confirmedAt: null, source: null, corrected: false, flagged: false, confirmationId: null, changed: false, voidedConfirmationId: null,
     }));
     const html = renderToStaticMarkup(
       <MemoryRouter>
@@ -35,7 +35,7 @@ describe('10 per page, everywhere', () => {
   it('missed-deliveries alert: each day shows 10 orders, then pages', () => {
     const data: MissedDeliveries = {
       today: '2026-11-16', closingTime: '18:00', afterClosing: true, lookbackDays: 7, total: 14,
-      days: [{ date: '2026-11-15', orders: ids(14).map((orderId) => ({ orderId, stopNumber: 1, zone: 'A', recipientName: 'Jordan', city: 'Lorton' })) }],
+      days: [{ date: '2026-11-15', orders: ids(14).map((orderId) => ({ orderId, stopNumber: 1, zone: 'A', recipientName: 'Jordan', city: 'Lorton', voidedConfirmationId: null })) }],
     };
     const html = renderToStaticMarkup(
       <MemoryRouter>

@@ -79,8 +79,14 @@ function MissedDay({ day, today, open }: { day: MissedDeliveries['days'][number]
       <ul className="plain-list missed-list">
         {pageOf(day.orders, page).map((o) => (
           <li key={o.orderId}>
-            <Link to={`/shop/orders/${encodeURIComponent(o.orderId)}`} className="missed-order">
-              <span className="cell-strong">{o.orderId}</span>
+            <Link
+              to={o.voidedConfirmationId ? `/shop/confirmations/${o.voidedConfirmationId}` : `/shop/orders/${encodeURIComponent(o.orderId)}`}
+              className="missed-order"
+            >
+              <span className="cell-strong">
+                {o.orderId}
+                {o.voidedConfirmationId && <span className="tag tag-not-verified missed-voided">Voided</span>}
+              </span>
               <span className="cell-sub">
                 # {o.stopNumber ?? '—'} · Zone {o.zone ?? '—'} · {o.recipientName ?? 'No recipient name'}, {o.city}
               </span>

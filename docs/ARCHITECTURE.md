@@ -3,7 +3,7 @@
 ```
 Browser (React SPA)  ──/api──▶  Cloudflare Worker (worker/src)  ──▶  D1 (SQLite)
    frontend/src                 app.ts → security.ts guards → handlers → db
-          └──────── shared/ (types, schemas, validation, barcode) ────────┘
+          └──────── shared/ (types, schemas, validation) ────────┘
 ```
 
 One origin serves both the built app (`frontend/dist`, static assets) and the API (`run_worker_first: /api/*`), as in
@@ -35,8 +35,7 @@ the route app. In development Vite (5173) proxies `/api` to `wrangler dev` (8787
 | `/shop/orders/:orderId` | One order opened from the awaiting list |
 
 `DeliveryCard` renders the required field order once; the driver form (`DriverConfirmPage`) and the saved record
-(`SavedConfirmationCard`) fill its slots, so they cannot drift apart. `Barcode` draws Code 128-B from
-`shared/barcode.ts` as SVG. `SignatureField` opens a full-screen pop-up with `SignaturePad`, which keeps strokes in
+(`SavedConfirmationCard`) fill its slots, so they cannot drift apart. No barcode is drawn (the shop does not use them). `SignatureField` opens a full-screen pop-up with `SignaturePad`, which keeps strokes in
 memory and exports a white PNG in the pad's shape (fitted into 1500×900).
 
 ## Shop time zone

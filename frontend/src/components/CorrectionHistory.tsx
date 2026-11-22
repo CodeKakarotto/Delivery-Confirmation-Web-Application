@@ -8,7 +8,10 @@ function show(field: keyof typeof FIELD_LABEL, value: string | null): string {
   return field === 'outcome' ? (OUTCOME_LABELS[value as DeliveryOutcome] ?? value) : value;
 }
 
-/** Every correction and void of a record, oldest first: the original values stay visible, crossed out. */
+/**
+ * Every change to the order, oldest first: corrections, voids and undone voids, including those made to an earlier
+ * (voided) confirmation of the same order. The original values stay visible, crossed out.
+ */
 export function CorrectionHistory({ items, timeZone }: { items: ConfirmationCorrection[]; timeZone?: string }) {
   if (items.length === 0) return null;
   return (
@@ -18,6 +21,7 @@ export function CorrectionHistory({ items, timeZone }: { items: ConfirmationCorr
           <p className="correction-head">
             <strong>{c.kind === 'void' ? 'Voided' : c.kind === 'unvoid' ? 'Void undone' : 'Corrected'}</strong> by {c.by ?? 'an employee'} ·{' '}
             <time dateTime={c.createdAt}>{shopDateTime(c.createdAt, timeZone)}</time>
+            {c.otherRecord && <span className="correction-other"> · on an earlier confirmation of this order</span>}
           </p>
           {c.changes.length > 0 && (
             <ul className="correction-changes">

@@ -123,6 +123,8 @@ export interface ConfirmationListItem {
   source: 'app' | 'paper';
   /** Changed by an employee afterwards (see the record's history). */
   corrected: boolean;
+  /** How many entries the record's change history has (corrections, voids and undone voids). */
+  changeCount: number;
   /** Voided by an employee: no longer counts. */
   voided: boolean;
 }
@@ -163,6 +165,8 @@ export interface ConfirmationCorrection {
   by: string | null;
   createdAt: string;
   changes: Array<{ field: 'receivedBy' | 'outcome' | 'outcomeDetail'; from: string | null; to: string | null }>;
+  /** True when the entry belongs to another confirmation of the same order (e.g. an earlier, voided one). */
+  otherRecord?: boolean;
 }
 
 /** An employee's correction: at least one field and always a reason. The signature can never be changed. */
@@ -190,6 +194,10 @@ export interface DailyReportRow {
   corrected: boolean;
   flagged: boolean;
   confirmationId: string | null;
+  /** The confirmation has entries in its change history (corrections, voids, undone voids). */
+  changed: boolean;
+  /** With no active confirmation: the voided one, if any. */
+  voidedConfirmationId: string | null;
 }
 
 /** The end-of-day report: every order scheduled for the day, with the day's totals. */
@@ -217,6 +225,8 @@ export interface AwaitingDelivery {
   zone: string | null;
   recipientName: string | null;
   city: string;
+  /** Set when the order's confirmation was voided: that record (with its history and "Undo void"). */
+  voidedConfirmationId: string | null;
 }
 
 /** Per-day overview. "Expected" = orders scheduled for that day and not cancelled (the only reliable source). */
@@ -287,6 +297,8 @@ export interface DeliveryListItem {
   confirmation: { id: string; confirmedAt: string; result: ConfirmationResult; receivedBy: string } | null;
   /** With no active confirmation: the most recently voided one (its record has the history and "Undo void"). */
   voidedConfirmationId: string | null;
+  /** The active confirmation has entries in its change history (corrected, or voided and restored). */
+  changed: boolean;
 }
 
 export interface DeliveryListResponse {

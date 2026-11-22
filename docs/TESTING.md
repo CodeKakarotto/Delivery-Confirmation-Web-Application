@@ -32,11 +32,10 @@ for the test runner by `frontend/test/register-tsx.mjs` (esbuild).
 | `frontend/test/paging.test.tsx` | 10 per page everywhere: page splitting, the end-of-day report (10 on screen, all rows printed), the missed alert per day |
 | `frontend/test/missedAlert.test.tsx` | The red alert (by day, linking to each order, no paper-slip links), the green "all confirmed" line after closing, nothing before closing, 6:00 PM formatting |
 | `frontend/test/callShop.test.tsx` | The shop's number as a tap-to-call link for drivers |
-| `worker/test/unvoidReport.test.ts` | Undo void (only on voided records, reason required, counts again, refused after re-confirmation, employees only) and the end-of-day report (rows and totals, Missing on past days, CSV for Excel, formula escaping, date checks) |
+| `worker/test/unvoidReport.test.ts` | A void and its undo show everywhere (dashboard lists, awaiting list, Deliveries, report, CSV; "Changed" after an undo), the Changes section includes an earlier voided confirmation of the order; undo void (only on voided records, reason required, counts again, refused after re-confirmation, employees only) and the end-of-day report (rows and totals, Missing on past days, CSV for Excel, formula escaping, date checks) |
 | `frontend/test/recordActions.test.tsx` | Record buttons (Undo void only on a voided record), "Void undone" in the history, the report table |
 | `frontend/test/correctionsUi.test.tsx` | Change history (old value crossed out → new, who, when, why; voids) |
-| `worker/test/barcode.test.ts` | Code 128 table, checksum, exact round-trip of order IDs |
-| `frontend/test/deliveryCard.test.tsx` | Required field order, barcode under the order ID encoding it exactly, exception inside Deliver To, Received By/Signature inside Delivery Instructions, "—"/"Not recorded", text escaping, saved/print view order |
+| `frontend/test/deliveryCard.test.tsx` | Required field order, no barcode, exception inside Deliver To, Received By/Signature inside Delivery Instructions, "—"/"Not recorded", text escaping, saved/print view order |
 | `frontend/test/confirmationForm.test.tsx` | Client validation: outcome, "Other" detail, Received By, drawn signature required |
 
 Manual checks done during development: headless Edge driven over the DevTools protocol at 390×844 (phone) and

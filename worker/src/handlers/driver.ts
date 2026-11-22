@@ -202,7 +202,7 @@ export async function awaiting(ctx: RequestContext): Promise<Response> {
   const body: DriverAwaitingResponse = {
     date,
     total: (count!.results[0] as { n: number }).n,
-    items: (rows!.results as AwaitingRow[]).map((r) => ({ orderId: r.order_id, stopNumber: r.stop_number, zone: r.zone, recipientName: r.recipient_name, city: r.city })),
+    items: (rows!.results as AwaitingRow[]).map((r) => ({ orderId: r.order_id, stopNumber: r.stop_number, zone: r.zone, recipientName: r.recipient_name, city: r.city, voidedConfirmationId: null })),
   };
   return json(body);
 }

@@ -208,6 +208,7 @@ interface ListRow {
   conflict_count: number;
   source: 'app' | 'paper';
   corrected: number;
+  change_count: number;
   voided: number;
 }
 
@@ -217,6 +218,7 @@ const LIST_SELECT = `
          (SELECT COUNT(*) FROM confirmation_attempts a WHERE a.confirmation_id = c.id AND a.kind = 'conflict') AS conflict_count,
          c.source,
          EXISTS (SELECT 1 FROM confirmation_corrections k WHERE k.confirmation_id = c.id AND k.kind = 'correction') AS corrected,
+         (SELECT COUNT(*) FROM confirmation_corrections k WHERE k.confirmation_id = c.id) AS change_count,
          c.voided_at IS NOT NULL AS voided
     FROM delivery_confirmations c
     JOIN deliveries d ON d.id = c.delivery_id`;
@@ -236,6 +238,7 @@ function toListItem(r: ListRow): ConfirmationListItem {
     hasConflict: r.conflict_count > 0,
     source: r.source,
     corrected: r.corrected === 1,
+    changeCount: r.change_count ?? 0,
     voided: r.voided === 1,
   };
 }
@@ -317,6 +320,7 @@ export async function getConfirmationDetail(db: D1Database, id: string, userId?:
               (SELECT COUNT(*) FROM confirmation_attempts a WHERE a.confirmation_id = c.id AND a.kind = 'conflict') AS conflict_count,
               c.source,
               EXISTS (SELECT 1 FROM confirmation_corrections k WHERE k.confirmation_id = c.id AND k.kind = 'correction') AS corrected,
+              (SELECT COUNT(*) FROM confirmation_corrections k WHERE k.confirmation_id = c.id) AS change_count,
               c.voided_at IS NOT NULL AS voided, c.voided_at, c.void_reason,
               (SELECT u.display_name FROM users u WHERE u.id = c.voided_by_user_id) AS voided_by,
               c.reported_delivered_at, c.paper_reference, c.slip_photo IS NOT NULL AS has_photo,
@@ -418,10 +422,15 @@ export async function listCorrections(db: D1Database, confirmationId: string): P
   const res = await db
     .prepare(
       `SELECT k.kind, k.reason, k.created_at, k.old_received_by, k.new_received_by, k.old_outcome, k.new_outcome,
-              k.old_outcome_detail, k.new_outcome_detail, (SELECT u.display_name FROM users u WHERE u.id = k.by_user_id) AS by_name
-         FROM confirmation_corrections k WHERE k.confirmation_id = ? ORDER BY k.created_at, k.id`,
+              k.old_outcome_detail, k.new_outcome_detail, (SELECT u.display_name FROM users u WHERE u.id = k.by_user_id) AS by_name,
+              k.confirmation_id <> ? AS other_record
+         FROM confirmation_corrections k
+        WHERE k.confirmation_id IN (
+                SELECT o.id FROM delivery_confirmations o
+                 WHERE o.delivery_id = (SELECT delivery_id FROM delivery_confirmations WHERE id = ?))
+        ORDER BY k.created_at, k.id`,
     )
-    .bind(confirmationId)
+    .bind(confirmationId, confirmationId)
     .all<Record<string, string | null>>();
   return res.results.map((k) => {
     const changes: ConfirmationCorrection['changes'] = [];
@@ -430,7 +439,14 @@ export async function listCorrections(db: D1Database, confirmationId: string): P
       if (k.old_outcome !== k.new_outcome) changes.push({ field: 'outcome', from: k.old_outcome, to: k.new_outcome });
       if (k.old_outcome_detail !== k.new_outcome_detail) changes.push({ field: 'outcomeDetail', from: k.old_outcome_detail, to: k.new_outcome_detail });
     }
-    return { kind: k.kind as 'correction' | 'void', reason: k.reason ?? '', by: k.by_name, createdAt: k.created_at ?? '', changes };
+    return {
+      kind: k.kind as ConfirmationCorrection['kind'],
+      reason: k.reason ?? '',
+      by: k.by_name,
+      createdAt: k.created_at ?? '',
+      changes,
+      ...(Number(k.other_record) === 1 ? { otherRecord: true } : {}),
+    };
   });
 }
 
