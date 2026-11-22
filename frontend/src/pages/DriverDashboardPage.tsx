@@ -1,15 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
-import { ORDER_ID_MAX, ORDER_ID_PATTERN } from '../../../shared/schemas.ts';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
 import { localDateKey } from '../../../shared/shopTime.ts';
 import type { DriverDelivery } from '../../../shared/types.ts';
 import { ApiRequestError, errorMessage } from '../api/client.ts';
 import { dashboardApi, driverApi } from '../api/endpoints.ts';
 import { ConfirmationRows, Pager } from '../components/ConfirmationRows.tsx';
-import { Field, Notice, Spinner } from '../components/ui.tsx';
-import { SearchSuggest } from '../components/SearchSuggest.tsx';
-import { driverSuggestions } from '../lib/orderSuggestions.ts';
-import { useLoadToday } from '../lib/useLoadToday.ts';
+import { Notice, Spinner } from '../components/ui.tsx';
+import { DriverFind } from '../components/DriverFind.tsx';
 import { useAuth } from '../lib/auth.tsx';
 import { OutboxBanner, useOffline } from '../lib/offline.tsx';
 import { fullDayLabel } from '../lib/calendar.ts';
@@ -28,14 +25,11 @@ const RECENT = 5;
 export function DriverDashboardPage() {
   const { user } = useAuth();
   const timeZone = useShopTimeZone();
-  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get('p')) || 1);
   const offline = useOffline();
   const awaiting = useApi(() => driverApi.awaiting({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }), [page, offline.sentVersion], { live: true });
   const recent = useApi(() => dashboardApi.list({ limit: RECENT }), [offline.sentVersion], { live: true });
-  const [orderId, setOrderId] = useState('');
-  const [error, setError] = useState<string | undefined>();
 
   // While there is signal, keep a copy of today's deliveries on the phone (for opening orders without signal).
   useEffect(() => {
@@ -65,17 +59,6 @@ export function DriverDashboardPage() {
           items: phoneCopy.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
         }
       : null);
-
-  // Suggestions while typing (order ID, name or address): today's deliveries from the phone's copy, then my confirmations.
-  const loadToday = useLoadToday();
-
-  const onSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const id = orderId.trim();
-    if (!id) return setError('Enter the order ID from the ticket');
-    if (id.length > ORDER_ID_MAX || !ORDER_ID_PATTERN.test(id)) return setError('Order IDs use letters, numbers and . _ # / -');
-    navigate(`/confirm/${encodeURIComponent(id)}`);
-  };
 
   return (
     <>
@@ -148,41 +131,7 @@ export function DriverDashboardPage() {
           )}
         </section>
 
-        <form className="card start-card driver-find" onSubmit={onSubmit} noValidate>
-          <h2>Can’t find the order?</h2>
-          <Field label="Enter the order ID" error={error} hint="Type the order number, the recipient's name or the address and pick it from the list.">
-            {(p) => (
-              <SearchSuggest
-                value={orderId}
-                onChange={(v) => {
-                  setOrderId(v);
-                  setError(undefined);
-                }}
-                getSuggestions={(s) => driverSuggestions(s, loadToday)}
-                onPick={(s) => navigate(s.to)}
-                footer={(s) => ({
-                  label: s ? `More search options for “${s}”` : 'More search options (name, address, filters)',
-                  onSelect: () => navigate(s ? `/driver/search?${new URLSearchParams({ q: s })}` : '/driver/search'),
-                })}
-                inputProps={{
-                  ...p,
-                  className: 'input-large',
-                  autoCapitalize: 'characters',
-                  autoCorrect: 'off',
-                  spellCheck: false,
-                  enterKeyHint: 'go',
-                  maxLength: ORDER_ID_MAX,
-                }}
-              />
-            )}
-          </Field>
-          <button type="submit" className="btn btn-primary btn-block btn-large">
-            Open delivery
-          </button>
-          <p className="driver-find-more">
-            <Link to={orderId.trim() ? `/driver/search?${new URLSearchParams({ q: orderId.trim() })}` : '/driver/search'}>More search options →</Link>
-          </p>
-        </form>
+        <DriverFind />
       </div>
 
       <section className="card confirmed-card" aria-labelledby="recent-title">

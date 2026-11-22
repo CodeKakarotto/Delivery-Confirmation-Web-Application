@@ -1,4 +1,4 @@
-import type { ConfirmationListItem, DeliveryListItem, DriverDelivery, SearchField, SearchLead } from '../../../shared/types.ts';
+import type { DeliveryListItem, DriverDelivery, SearchField, SearchLead } from '../../../shared/types.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { MAX_SUGGESTIONS, matchesQuery, type Suggestion } from '../components/SearchSuggest.tsx';
 
@@ -46,51 +46,6 @@ export function deliveryMatches(d: Pick<DriverDelivery, 'orderId' | 'recipientNa
   const name = matchesQuery(d.recipientName, q);
   const address = matchesQuery(d.addressLine, q) || matchesQuery(d.city, q) || matchesQuery(d.postalCode, q);
   return field === 'order' ? order : field === 'name' ? name : field === 'address' ? address : order || name || address;
-}
-
-/** A driver's suggestion for one of today's deliveries still to deliver. */
-export function todaySuggestion(d: DriverDelivery, savedOnPhone = false, lead: SearchLead = 'order'): Suggestion {
-  const name = d.recipientName ?? 'No recipient name';
-  const addr = `${d.addressLine}, ${d.city}`;
-  return {
-    key: `today-${d.orderId}`,
-    label: d.orderId,
-    detail: `Stop ${d.stopNumber ?? '—'} · ${name} · ${addr}`,
-    emphasis: lead === 'name' ? name : lead === 'address' ? addr : undefined,
-    tag: savedOnPhone ? { text: 'Saved on phone', tone: 'warn' } : { text: 'To deliver', tone: 'quiet' },
-    to: `/confirm/${encodeURIComponent(d.orderId)}`,
-  };
-}
-
-/** A driver's suggestion for one of their own confirmations. */
-export function mineSuggestion(c: ConfirmationListItem, lead: SearchLead = 'order'): Suggestion {
-  const name = c.recipientName ?? 'No recipient name';
-  return {
-    key: `mine-${c.id}`,
-    label: c.orderId,
-    detail: `${name} · received by ${c.receivedBy}`,
-    emphasis: lead === 'name' ? name : undefined,
-    tag: c.voided
-      ? { text: 'Voided', tone: 'bad' }
-      : c.result === 'confirmed'
-        ? { text: 'Delivered', tone: 'ok' }
-        : { text: 'Delivered (exception)', tone: 'ok' },
-    to: `/driver/confirmations/${c.id}`,
-  };
-}
-
-/**
- * Drivers: today's deliveries still to deliver (from the copy on the phone, so it works with no signal), then their own
- * confirmations (any day; skipped quietly when there is no signal).
- */
-export async function driverSuggestions(q: string, loadToday: () => Promise<DriverDelivery[]>, lead: SearchLead = 'order'): Promise<Suggestion[]> {
-  const today = rankToday(await loadToday().catch(() => [] as DriverDelivery[]), q, lead).map((d) => todaySuggestion(d, false, lead));
-  if (today.length >= MAX_SUGGESTIONS) return today;
-  const mine = await dashboardApi
-    .list({ q, in: lead, limit: MAX_SUGGESTIONS })
-    .then((r) => r.items.map((c) => mineSuggestion(c, lead)))
-    .catch(() => [] as Suggestion[]);
-  return [...today, ...mine];
 }
 
 /** Today's deliveries matching the text anywhere, those matching it in the chosen field first (in stop order). */

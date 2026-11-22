@@ -6,8 +6,7 @@ import { SHOP_PHONE, SHOP_PHONE_TEL } from '../lib/shop.ts';
 import { applyTheme, currentTheme, type Theme } from '../lib/theme.ts';
 import { PhoneIcon } from './CallShop.tsx';
 import { SearchSuggest } from './SearchSuggest.tsx';
-import { driverSuggestions, orderSuggestions } from '../lib/orderSuggestions.ts';
-import { useLoadToday } from '../lib/useLoadToday.ts';
+import { orderSuggestions } from '../lib/orderSuggestions.ts';
 
 /**
  * Header brand: the sponsor's original logo artwork (frontend/public/brand), same as the route-optimization app.
@@ -66,7 +65,6 @@ const NAV: Record<'driver' | 'employee', NavSection[]> = {
         { to: '/driver/confirmations', label: 'Confirmations', end: false },
       ],
     },
-    { kind: 'search', items: [{ to: '/driver/search', label: 'Search', end: false, icon: 'search', title: 'Search: today’s deliveries and your confirmations' }] },
   ],
   employee: [
     {
@@ -99,14 +97,13 @@ function NavGlyph({ icon }: { icon: NavIcon }) {
 }
 
 /**
- * The menu bar's search box (drivers and employees): type to get suggestions and click one to open it; the last line
+ * The menu bar's search box (employees): type to get suggestions and click one to open it; the last line
  * (or the magnifier, or Enter) opens the Search page with the full results and filters. Highlighted while on that page.
  * On narrow screens it becomes the magnifier button (no room for a box).
  */
-function NavSearch({ item, role }: { item: NavItem; role: 'driver' | 'employee' }) {
+function NavSearch({ item }: { item: NavItem }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const loadToday = useLoadToday();
   const [text, setText] = useState('');
   useEffect(() => setText(''), [pathname]);
   const openSearch = (q: string) => navigate(q ? `${item.to}?${new URLSearchParams({ q })}` : item.to);
@@ -124,7 +121,7 @@ function NavSearch({ item, role }: { item: NavItem; role: 'driver' | 'employee' 
         <SearchSuggest
           value={text}
           onChange={setText}
-          getSuggestions={role === 'driver' ? (q) => driverSuggestions(q, loadToday) : orderSuggestions}
+          getSuggestions={orderSuggestions}
           onPick={(s) => navigate(s.to)}
           footer={(q) =>
             q
@@ -134,7 +131,7 @@ function NavSearch({ item, role }: { item: NavItem; role: 'driver' | 'employee' 
           inputProps={{
             type: 'search',
             className: 'nav-search-input',
-            placeholder: role === 'driver' ? 'Search deliveries' : 'Search orders',
+            placeholder: 'Search orders',
             'aria-label': 'Search by order ID, name or address',
             maxLength: 100,
             spellCheck: false,
@@ -271,7 +268,7 @@ export function AppLayout() {
             {nav.map((section) => (
               <div key={section.kind} className={`nav-section nav-${section.kind}`}>
                 {section.kind === 'search' ? (
-                  <NavSearch item={section.items[0]!} role={user!.role} />
+                  <NavSearch item={section.items[0]!} />
                 ) : (
                 section.items.map((item) => (
                   <NavLink key={item.to} to={item.to} end={item.end} title={item.title} className={({ isActive }) => (isActive ? 'is-active' : '')}>
