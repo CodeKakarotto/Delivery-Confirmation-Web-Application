@@ -7,6 +7,7 @@ import { ApiRequestError, errorMessage } from '../api/client.ts';
 import { dashboardApi, driverApi } from '../api/endpoints.ts';
 import { ConfirmationRows, Pager } from '../components/ConfirmationRows.tsx';
 import { Field, Notice, Spinner } from '../components/ui.tsx';
+import { matchesQuery, SearchSuggest, type Suggestion } from '../components/SearchSuggest.tsx';
 import { useAuth } from '../lib/auth.tsx';
 import { OutboxBanner, useOffline } from '../lib/offline.tsx';
 import { fullDayLabel } from '../lib/calendar.ts';
@@ -62,6 +63,21 @@ export function DriverDashboardPage() {
           items: phoneCopy.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
         }
       : null);
+
+  // Suggestions while typing: today's orders (the copy kept on the phone, so it also works with no signal).
+  const suggestToday = async (q: string): Promise<Suggestion[]> => {
+    let today: Array<{ orderId: string; stopNumber: number | null; recipientName: string | null; city: string }> = await offline.listToday();
+    if (!today.length) today = (await driverApi.awaiting({ limit: 50, offset: 0 })).items;
+    return today
+      .filter((d) => matchesQuery(d.orderId, q) || matchesQuery(d.recipientName, q))
+      .map((d) => ({
+        key: d.orderId,
+        label: d.orderId,
+        detail: `Stop ${d.stopNumber ?? '—'} · ${d.recipientName ?? 'No recipient name'} · ${d.city}`,
+        tag: waitingOrders.has(d.orderId.toLowerCase()) ? { text: 'Saved on phone', tone: 'warn' as const } : undefined,
+        to: `/confirm/${encodeURIComponent(d.orderId)}`,
+      }));
+  };
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -148,22 +164,25 @@ export function DriverDashboardPage() {
 
         <form className="card start-card driver-find" onSubmit={onSubmit} noValidate>
           <h2>Can’t find the order?</h2>
-          <Field label="Enter the order ID" error={error} hint="Type the order or ticket number exactly as printed, e.g. MF-10482.">
+          <Field label="Enter the order ID" error={error} hint="Start typing the order number or the recipient's name and pick it from the list.">
             {(p) => (
-              <input
-                {...p}
-                className="input-large"
+              <SearchSuggest
                 value={orderId}
-                onChange={(e) => {
-                  setOrderId(e.target.value);
+                onChange={(v) => {
+                  setOrderId(v);
                   setError(undefined);
                 }}
-                autoComplete="off"
-                autoCapitalize="characters"
-                autoCorrect="off"
-                spellCheck={false}
-                enterKeyHint="go"
-                maxLength={ORDER_ID_MAX}
+                getSuggestions={suggestToday}
+                onPick={(s) => navigate(s.to)}
+                inputProps={{
+                  ...p,
+                  className: 'input-large',
+                  autoCapitalize: 'characters',
+                  autoCorrect: 'off',
+                  spellCheck: false,
+                  enterKeyHint: 'go',
+                  maxLength: ORDER_ID_MAX,
+                }}
               />
             )}
           </Field>

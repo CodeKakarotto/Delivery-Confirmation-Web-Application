@@ -1,15 +1,41 @@
 import { useState, type FormEvent } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { errorMessage } from '../api/client.ts';
 import { dashboardApi } from '../api/endpoints.ts';
 import { Pager } from '../components/ConfirmationRows.tsx';
 import { DeliveryRows } from '../components/DeliveryRows.tsx';
+import { SearchSuggest, type Suggestion } from '../components/SearchSuggest.tsx';
+import type { DeliveryListItem } from '../../../shared/types.ts';
 import { EmptyState, Notice, Spinner } from '../components/ui.tsx';
 import { useApi } from '../lib/useApi.ts';
 import { useShopTimeZone } from '../lib/useShopConfig.ts';
 import { localDateKey } from '../../../shared/shopTime.ts';
 import { PAGE_SIZE } from '../lib/paging.ts';
 
+
+const shortDay = (d: string | null) =>
+  d ? new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }) : '';
+
+/** What a suggestion shows and opens for one order (same places as the result rows). */
+function toSuggestion(d: DeliveryListItem): Suggestion {
+  const record = d.confirmation?.id ?? d.voidedConfirmationId;
+  const tag: Suggestion['tag'] = d.voidedConfirmationId
+    ? { text: 'Voided', tone: 'bad' }
+    : d.status === 'confirmed'
+      ? { text: 'Delivered', tone: 'ok' }
+      : d.status === 'exception'
+        ? { text: 'Exception', tone: 'warn' }
+        : d.status === 'cancelled'
+          ? { text: 'Cancelled', tone: 'quiet' }
+          : { text: 'Awaiting', tone: 'quiet' };
+  return {
+    key: d.orderId,
+    label: d.orderId,
+    detail: [d.recipientName ?? 'No recipient name', d.city, shortDay(d.deliveryDate)].filter(Boolean).join(' · '),
+    tag,
+    to: record ? `/shop/confirmations/${record}` : `/shop/orders/${encodeURIComponent(d.orderId)}`,
+  };
+}
 
 /** Employees: find deliveries on any day by order ID or recipient name (part of either is enough). */
 export function ShopSearchPage() {
@@ -18,6 +44,7 @@ export function ShopSearchPage() {
   const q = params.get('q') ?? '';
   const page = Math.max(1, Number(params.get('p')) || 1);
   const [text, setText] = useState(q);
+  const navigate = useNavigate();
   // Examples built from today's date, so they match real orders (demo order IDs are MF-MMDD-NN).
   const today = localDateKey(new Date(), timeZone);
   const mmdd = today.slice(5, 7) + today.slice(8, 10);
@@ -44,16 +71,19 @@ export function ShopSearchPage() {
           Order ID or recipient name
         </label>
         <div className="search-form">
-          <input
-            id="shop-search"
-            type="search"
-            className="input-large"
-            placeholder={`e.g. MF-${mmdd}-04 or Avery`}
+          <SearchSuggest
             value={text}
-            onChange={(e) => setText(e.target.value)}
-            autoComplete="off"
-            spellCheck={false}
-            maxLength={100}
+            onChange={setText}
+            getSuggestions={async (s) => (await dashboardApi.deliveries({ q: s, limit: 6 })).items.map(toSuggestion)}
+            onPick={(s) => navigate(s.to)}
+            inputProps={{
+              id: 'shop-search',
+              type: 'search',
+              className: 'input-large',
+              placeholder: `e.g. MF-${mmdd}-04 or Avery`,
+              spellCheck: false,
+              maxLength: 100,
+            }}
           />
           <button type="submit" className="btn btn-primary btn-large">
             Search

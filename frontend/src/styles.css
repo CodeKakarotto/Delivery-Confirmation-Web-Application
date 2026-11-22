@@ -3028,10 +3028,11 @@ a.cell-strong {
   .detail-page > .notice {
     display: none;
   }
+  /* The card may continue on the next page: forcing it whole pushed tall records (more products, an exception,
+     a signature) to page 2 and left page 1 almost empty. Each section stays whole instead. */
   .delivery-card {
     box-shadow: none;
     border-color: #999;
-    break-inside: avoid;
   }
   .dc-top,
   .deliver-exception,
@@ -3039,14 +3040,9 @@ a.cell-strong {
   .dc-meta {
     background: #fff;
   }
-  .barcode,
-  .barcode svg,
   .signature-saved {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-  }
-  .barcode svg {
-    height: 18mm;
   }
   .tag {
     border: 0.5pt solid #666;
@@ -4996,4 +4992,129 @@ button.account-dropdown-item {
 .correction-other {
   font-size: 0.85rem;
   color: var(--muted);
+}
+
+/* Print: a record is compact enough that a normal one fits on one page. */
+@media print {
+  .detail-page .page-head h1 {
+    font-size: 16pt;
+    margin: 0;
+  }
+  .delivery-card .dc-section,
+  .delivery-card .dc-top,
+  .delivery-card .dc-meta,
+  .corrections > li,
+  .signature-saved {
+    break-inside: avoid;
+  }
+  .delivery-card .dc-section {
+    padding: 2.5mm 4mm;
+  }
+  .delivery-card .dc-chip {
+    padding: 2mm 4mm;
+  }
+  .delivery-card .dc-chip-value {
+    font-size: 14pt;
+  }
+  .delivery-card .dc-order-id {
+    font-size: 13pt;
+    margin: 0;
+  }
+  .delivery-card .deliver-outcome {
+    margin-top: 1.5mm;
+  }
+  .signature-saved {
+    max-width: 75mm;
+  }
+  .signature-saved img {
+    max-height: 30mm;
+    width: auto;
+    height: auto;
+  }
+  .corrections > li {
+    padding: 1.5mm 3mm;
+    margin-bottom: 1.5mm;
+  }
+}
+
+/* ---------- Search suggestions (autocomplete) ---------- */
+
+.suggest {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+.suggest > input {
+  width: 100%;
+}
+.suggest-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 60;
+  margin: 0;
+  padding: 0.3rem;
+  list-style: none;
+  max-height: 20rem;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-control);
+  box-shadow: 0 8px 24px rgba(36, 55, 114, 0.14);
+}
+.suggest-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.suggest-item:hover,
+.suggest-item[aria-selected='true'] {
+  background: var(--leaf);
+}
+.suggest-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.suggest-label {
+  font-weight: 700;
+  color: var(--evergreen-strong);
+}
+.suggest-detail {
+  font-size: 0.86rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suggest-item mark {
+  background: var(--amber-wash);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+.suggest-empty {
+  padding: 0.6rem 0.7rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+:root[data-theme='dark'] .suggest-list {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+:root[data-theme='dark'] .suggest-item mark {
+  background: rgba(240, 196, 108, 0.25);
+}
+/* The suggestion box fills the search row (the older fixed width applied to the bare input). */
+.search-form .suggest {
+  flex: 1 1 14rem;
+}
+.search-form .suggest > input,
+.search-card .search-form .suggest > input {
+  width: 100%;
+  flex: none;
 }
