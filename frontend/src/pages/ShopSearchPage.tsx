@@ -90,8 +90,8 @@ export function ShopSearchPage() {
         <h1>Search</h1>
       </div>
       <p className="muted lead search-lead">
-        Find any delivery (past, today or upcoming) by <strong>order ID</strong> (part is enough: <code>{mmdd}</code> finds every order from that
-        day), <strong>recipient’s name</strong> (first or last) or <strong>address</strong> (street, city or ZIP code).
+        Find any delivery, past, today’s or upcoming, by its <strong>order ID</strong> (part of it is enough: <code>{mmdd}</code> finds every
+        order from that day), the <strong>recipient’s name</strong> (first or last) or the <strong>address</strong> (street, city or ZIP code).
       </p>
       <form className="card search-card" role="search" onSubmit={onSubmit} noValidate>
         <label htmlFor="shop-search" className="search-card-label">
@@ -169,7 +169,7 @@ export function ShopSearchPage() {
         </div>
       </form>
 
-      {customIncomplete && active && <Notice tone="info">Pick a start and an end date to search between them.</Notice>}
+      {customIncomplete && active && <Notice tone="info">Pick a start date and an end date to search between them.</Notice>}
 
       {active && !customIncomplete && (
           <section className="card confirmed-card" aria-label="Search results">
@@ -184,10 +184,10 @@ export function ShopSearchPage() {
             ) : !results.data ? (
               <Spinner label="Searching" />
             ) : results.data.total === 0 ? (
-              <EmptyState title="No deliveries match.">Try part of the order ID, name or address, or clear the filters.</EmptyState>
+              <EmptyState title="No deliveries match your search.">Try part of the order ID, the name or the address, or clear the filters.</EmptyState>
             ) : (
               <div className={results.loading ? 'is-loading' : undefined}>
-                <DeliveryRows items={results.data.items} timeZone={timeZone} showDate lead={field} />
+                <DeliveryRows items={results.data.items} timeZone={timeZone} showDate lead={field} query={q} />
                 <Pager page={page} total={results.data.total} pageSize={PAGE_SIZE} onPage={(p) => setParams(new URLSearchParams({ ...Object.fromEntries(params), p: String(p) }))} />
               </div>
             )}

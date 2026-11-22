@@ -61,3 +61,13 @@ describe('search results: same layout, the searched field is the blue bold text'
     assert.equal(toSuggestion(item).emphasis, undefined);
   });
 });
+
+describe('the matched text is highlighted in results', () => {
+  it('marks the part of the order ID, name or address that matches, and nothing without a search', async () => {
+    const { Match } = await import('../src/components/Match.tsx');
+    assert.equal(renderToStaticMarkup(<Match text="100 Sample Way" q="sample" />), '100 <mark class="match">Sample</mark> Way');
+    assert.equal(renderToStaticMarkup(<Match text="MF-1121-04" q="21-0" />), 'MF-11<mark class="match">21-0</mark>4');
+    assert.equal(renderToStaticMarkup(<Match text="Avery Demo" />), 'Avery Demo');
+    assert.equal(renderToStaticMarkup(<Match text="Avery Demo" q="zz" />), 'Avery Demo');
+  });
+});

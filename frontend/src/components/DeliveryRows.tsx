@@ -4,6 +4,7 @@ import type { DeliveryListItem, SearchLead } from '../../../shared/types.ts';
 import { fullDayLabel } from '../lib/calendar.ts';
 import { shopTime } from '../lib/time.ts';
 import { ResultTag } from './ui.tsx';
+import { Match } from './Match.tsx';
 
 /** Employees' list of orders: confirmed (and voided) ones open their record, the others open the order. */
 export function DeliveryRows({
@@ -11,12 +12,15 @@ export function DeliveryRows({
   timeZone,
   showDate = false,
   lead = 'order',
+  query,
 }: {
   items: DeliveryListItem[];
   timeZone: string;
   showDate?: boolean;
-  /** What each row starts with (search results put the searched field first). */
+  /** Which field is the blue bold text (search results: the searched field). */
   lead?: SearchLead;
+  /** The search text: the part of the order ID, name or address it matches is highlighted. */
+  query?: string;
 }) {
   return (
     <ul className="conf-rows">
@@ -32,11 +36,18 @@ export function DeliveryRows({
               </span>
               <span className="conf-main">
                 {/* Same layout always; the searched field (order ID unless name or address) is the blue bold text. */}
-                <span className={`conf-order${lead === 'order' ? '' : ' is-plain'}`}>{d.orderId}</span>
+                <span className={`conf-order${lead === 'order' ? '' : ' is-plain'}`}>
+                  <Match text={d.orderId} q={query} />
+                </span>
                 <span className="cell-sub">
                   # {d.stopNumber ?? '—'} · Zone {d.zone ?? '—'} ·{' '}
-                  <Lead on={lead === 'name'}>{d.recipientName ?? 'No recipient name'}</Lead>,{' '}
-                  <Lead on={lead === 'address'}>{[d.addressLine, d.city].filter(Boolean).join(', ')}</Lead>
+                  <Lead on={lead === 'name'}>
+                    <Match text={d.recipientName ?? 'No recipient name'} q={query} />
+                  </Lead>
+                  ,{' '}
+                  <Lead on={lead === 'address'}>
+                    <Match text={[d.addressLine, d.city].filter(Boolean).join(', ')} q={query} />
+                  </Lead>
                   {showDate && d.deliveryDate ? ` · ${fullDayLabel(d.deliveryDate)}` : ''}
                 </span>
                 {d.confirmation && (

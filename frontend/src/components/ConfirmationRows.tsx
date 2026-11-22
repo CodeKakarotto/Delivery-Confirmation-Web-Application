@@ -3,6 +3,7 @@ import { OUTCOME_LABELS, type ConfirmationListItem } from '../../../shared/types
 import { shopDateTime, shopTime } from '../lib/time.ts';
 import { FlagTag, ResultTag } from './ui.tsx';
 import { Lead } from './DeliveryRows.tsx';
+import { Match } from './Match.tsx';
 
 /** Saved confirmations as tappable rows, each with its delivery time. */
 export function ConfirmationRows({
@@ -11,14 +12,17 @@ export function ConfirmationRows({
   showDate = false,
   linkBase = '/shop/confirmations',
   leadWithName = false,
+  query,
 }: {
   items: ConfirmationListItem[];
   timeZone: string;
   showDate?: boolean;
   /** Where a row opens: the employee or the driver record page. */
   linkBase?: string;
-  /** Search results by name start with the recipient's name. */
+  /** Search results by name: the name is the blue bold text. */
   leadWithName?: boolean;
+  /** The search text: the part of the order ID or name it matches is highlighted. */
+  query?: string;
 }) {
   return (
     <ul className="conf-rows">
@@ -29,13 +33,18 @@ export function ConfirmationRows({
               {showDate ? shopDateTime(c.confirmedAt, timeZone) : shopTime(c.confirmedAt, timeZone)}
             </time>
             <span className="conf-main">
-              <span className={`conf-order${leadWithName ? ' is-plain' : ''}`}>{c.orderId}</span>
+              <span className={`conf-order${leadWithName ? ' is-plain' : ''}`}>
+                <Match text={c.orderId} q={query} />
+              </span>
               <span className="cell-sub">
                 # {c.stopNumber ?? '—'} · Zone {c.zone ?? '—'}
                 {c.recipientName && (
                   <>
                     {' '}
-                    · For <Lead on={leadWithName}>{c.recipientName}</Lead>
+                    · For{' '}
+                    <Lead on={leadWithName}>
+                      <Match text={c.recipientName} q={query} />
+                    </Lead>
                   </>
                 )}
               </span>

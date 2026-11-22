@@ -5342,3 +5342,21 @@ button.account-dropdown-item {
 .driver-find .search-filter select {
   width: 100%;
 }
+
+/* The part of an order ID, name or address that matches the search: bold, in color, softly highlighted. */
+mark.match,
+.suggest-item mark {
+  font-weight: 700;
+  color: var(--evergreen);
+  background: var(--leaf-strong);
+  border-radius: 4px;
+  padding: 0 2px;
+}
+:root[data-theme='dark'] mark.match,
+:root[data-theme='dark'] .suggest-item mark {
+  color: #f3d9ef;
+  background: rgba(212, 179, 208, 0.28);
+}
+.find-more {
+  margin: 0.35rem 0 0;
+}
